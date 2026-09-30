@@ -29,6 +29,14 @@ one unified API.
    compacted (summarized then pruned). Never resend an unbounded history to the
    LLM. Do not set an output `max_tokens` by default (reasoning models return empty
    `content` when the budget is exhausted); record `usage` to track cost.
+8. **Always able to ask the operator on Telegram.** Whenever the agent is stuck,
+   uncertain, blocked (captcha, phone verification, refusal, ambiguous access
+   request, risky/irreversible action) it **must be able to ask the operator a
+   question on Telegram** and may wait for the answer. Use `Notifier.ask()` (or
+   the `request_human` tool) — never guess or force through a blocker. The
+   operator's Telegram replies are polled by the heartbeat, written to
+   `control/inbox.md` and the journal, and then read like any operator message.
+   Telegram must therefore stay configured and enabled.
 
 ## Connector contract
 

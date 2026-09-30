@@ -11,6 +11,7 @@ from mnemosyne.engine import Engine
 from mnemosyne.journal import Control, Journal
 from mnemosyne.llm import LlmClient
 from mnemosyne.logger import get_logger, set_level
+from mnemosyne.notify import Notifier
 from mnemosyne.vault import Vault, init_vault
 
 log = get_logger("cli")
@@ -98,6 +99,43 @@ def _cmd_llm_test(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
+def _cmd_telegram_test(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    notifier = Notifier(cfg.notify.telegram)
+
+    async def run() -> int:
+        me = await notifier.get_me()
+        print(f"bot: @{(me or {}).get('username', '?')}  enabled={notifier.enabled}")
+        ok = await notifier.send("test de connexion — si tu vois ce message, tout marche ✅")
+        print("send:", "ok" if ok else "échec")
+        if not ok:
+            print("→ ouvre la conversation du bot dans Telegram et envoie /start,")
+            print("  puis vérifie MNEMOSYNE_TELEGRAM_CHAT_ID (mnemosyne telegram updates).")
+        return 0 if ok else 1
+
+    return asyncio.run(run())
+
+
+def _cmd_telegram_updates(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    notifier = Notifier(cfg.notify.telegram)
+
+    async def run() -> int:
+        me = await notifier.get_me()
+        print(f"bot: @{(me or {}).get('username', '?')}")
+        updates = await notifier.get_updates()
+        print(f"updates: {len(updates)}  (chat_id configuré: {notifier.chat_id})")
+        for update in updates[-10:]:
+            msg = update.get("message") or {}
+            chat = msg.get("chat") or {}
+            print(f"  chat_id={chat.get('id')} text={(msg.get('text') or '')[:60]}")
+        if not updates:
+            print("→ Envoie /start au bot depuis Telegram, puis relance cette commande.")
+        return 0
+
+    return asyncio.run(run())
+
+
 def _cmd_doctor(args: argparse.Namespace) -> int:
     cfg = get_config()
     print("=== mnemosyne doctor ===")
@@ -124,7 +162,20 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"chrome cdp:  unreachable at {url} — {exc}")
 
-    asyncio.run(check_cdp())
+    notifier = Notifier(cfg.notify.telegram)
+
+    async def check_telegram() -> None:
+        me = await notifier.get_me()
+        print(
+            f"telegram:    enabled={notifier.enabled} chat_id={notifier.chat_id} "
+            f"bot=@{((me or {}).get('username') or '?')}"
+        )
+
+    async def check_all() -> None:
+        await check_cdp()
+        await check_telegram()
+
+    asyncio.run(check_all())
     return 0
 
 
@@ -280,6 +331,13 @@ def build_parser() -> argparse.ArgumentParser:
     lsub = pllm.add_subparsers(dest="llm_command", required=True)
     lt = lsub.add_parser("test", help="check auth + one round-trip")
     lt.set_defaults(func=_cmd_llm_test)
+
+    ptg = sub.add_parser("telegram", help="Telegram bot utilities")
+    tg = ptg.add_subparsers(dest="telegram_command", required=True)
+    tt = tg.add_parser("test", help="send a test message to the operator")
+    tt.set_defaults(func=_cmd_telegram_test)
+    tu = tg.add_parser("updates", help="show received messages and chat ids")
+    tu.set_defaults(func=_cmd_telegram_updates)
 
     pd = sub.add_parser("doctor", help="diagnose config, vault, LLM auth and Chrome")
     pd.set_defaults(func=_cmd_doctor)

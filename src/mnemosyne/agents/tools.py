@@ -178,8 +178,9 @@ class BrowserToolProvider(ToolProvider):
 
     async def _request_human(self, reason: str) -> str:
         message = f"human needed: {reason}"
-        await self._notifier.send(
-            f"intervention requise sur le navigateur de l'agent : {reason}", "blocked"
+        # Ask the operator on Telegram; their reply is read by the heartbeat.
+        await self._notifier.ask(
+            f"Intervention requise sur le navigateur de l'agent.\n{reason}"
         )
         if self._journal is not None:
             self._journal.append(f"escalade humaine : {reason}", level="warn", source="agent")

@@ -126,12 +126,25 @@ class Heartbeat:
     def stop(self) -> None:
         self._stop.set()
 
+    async def _poll_telegram(self) -> None:
+        """Forward the operator's Telegram replies into the control inbox."""
+        if not self.notifier.enabled:
+            return
+        offset = self.engine.db.get_kv("telegram_offset")
+        messages, next_offset = await self.notifier.poll(offset)
+        if next_offset is not None and next_offset != offset:
+            self.engine.db.set_kv("telegram_offset", next_offset)
+        for message in messages:
+            log.info("telegram operator: %s", message)
+            self.control.post(message)
+
     def _process_inbox(self) -> None:
         for message in self.control.consume():
             log.info("operator message: %s", message)
             self.journal.append(f"message opérateur : {message}", source="operator")
 
     async def _tick(self) -> None:
+        await self._poll_telegram()
         self._process_inbox()
         now = datetime.now(UTC)
         stale_cutoff = (now - timedelta(seconds=self.config.heartbeat.stale_lock_s)).isoformat()

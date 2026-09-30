@@ -140,6 +140,30 @@ sudo tailscale set --exit-node=
 sudo tailscale set --accept-routes=false
 ```
 
+## 4bis. Telegram — dialogue avec l'agent (obligatoire)
+
+Canal d'alerte **et** de dialogue : l'agent peut toujours poser une question à
+l'opérateur quand il est bloqué (captcha, phone verify, refus, action risquée).
+
+Configuration (`.env`) :
+- `MNEMOSYNE_TELEGRAM_BOT_TOKEN` — token du bot (BotFather) ;
+- `MNEMOSYNE_TELEGRAM_CHAT_ID` — **ton** id (destinataire).
+
+Mise en service (une fois) : ouvre la conversation du bot dans Telegram et envoie
+`/start`. Sans ça, Telegram refuse que le bot écrive le premier (« chat not found »).
+
+Deux sens :
+- **agent → toi** : alertes, questions (`Notifier.ask`) ;
+- **toi → agent** : tu **réponds au bot** ; le heartbeat lit tes messages à chaque
+  tick et les verse dans `control/inbox.md` + journal (traités comme `mnemosyne say`).
+
+Vérifs :
+```bash
+mnemosyne telegram test      # envoie un message de test
+mnemosyne telegram updates   # messages reçus + chat_id
+mnemosyne doctor             # ligne "telegram: enabled=… bot=@…"
+```
+
 ## 4. Surveiller & orienter l'agent
 
 | Canal | Usage |

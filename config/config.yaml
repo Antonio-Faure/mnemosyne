@@ -74,7 +74,7 @@ memory:
 
 notify:
   telegram:
-    enabled: false
+    enabled: true
     bot_token_env: MNEMOSYNE_TELEGRAM_BOT_TOKEN
     chat_id_env: MNEMOSYNE_TELEGRAM_CHAT_ID
 

@@ -7,10 +7,14 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 # Repository root = .../mnemosyne (config.py lives in src/mnemosyne/)
 ROOT = Path(__file__).resolve().parents[2]
+
+# Load .env so the CLI/API see the same secrets as the Docker containers.
+load_dotenv(ROOT / ".env")
 
 
 class AppConfig(BaseModel):

@@ -113,8 +113,10 @@ to access** (`journal/services/<id>.md`), each entry timestamped
 escalations.
 
 Edit `control/directives.md` for standing instructions (re-read on start). Telegram
-alerts fire on hard blockers (captcha, phone verify, refusal, permanent failures).
-See `docs/RUNBOOK.md` for launching and connecting the agent's Gmail over VNC.
+is a **two-way** channel: the agent alerts *and asks questions* on hard blockers
+(captcha, phone verify, refusal, risky actions), and **your replies on Telegram**
+are read by the heartbeat and handled like operator messages. Set the bot token +
+your chat id in `.env` and send `/start` to the bot once. See `docs/RUNBOOK.md`.
 
 ## LLM auth (OpenCode Go)
 
