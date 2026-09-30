@@ -1,0 +1,7 @@
+[Unit]
+Description=mnemosyne: connect one discovered provider (dev agent -> PR)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Documents/code/mnemosyne
+ExecStart=%h/Documents/code/mnemosyne/scripts/daily-connect.sh

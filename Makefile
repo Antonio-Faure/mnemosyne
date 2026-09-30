@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal history services service status say doctor token develop egress cdp vnc chrome-reset clean
+.PHONY: help install lint test run serve up down logs journal history services service status say doctor token develop connect-next install-timer egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -64,6 +64,16 @@ token:  ## store the GitHub token in the vault (run ALONE, then paste when promp
 
 develop:  ## self-extension: make develop TASK="Add the Europeana connector"
 	$(PY)/mnemosyne develop "$(TASK)"
+
+connect-next:  ## connect the next discovered provider now (dev agent -> PR)
+	$(PY)/mnemosyne connect-next
+
+install-timer:  ## install + enable the daily connect systemd user timer
+	mkdir -p ~/.config/systemd/user
+	cp deploy/systemd/mnemosyne-connect.* ~/.config/systemd/user/
+	systemctl --user daemon-reload
+	systemctl --user enable --now mnemosyne-connect.timer
+	@systemctl --user list-timers mnemosyne-connect.timer --no-pager
 
 egress:  ## verify the agent's traffic does not transit Tailscale
 	./scripts/check-egress.sh

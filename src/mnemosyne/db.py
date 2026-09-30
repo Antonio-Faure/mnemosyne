@@ -344,14 +344,34 @@ class Database:
             self._conn.commit()
         return new
 
-    def list_discoveries(self) -> list:
+    def list_discoveries(self, status: str | None = None) -> list:
         from mnemosyne.discovery.models import DiscoveryRecord
 
         with self._lock:
             rows = self._conn.execute(
                 "SELECT data FROM discoveries ORDER BY created_at DESC"
             ).fetchall()
-        return [DiscoveryRecord.model_validate_json(r["data"]) for r in rows]
+        records = [DiscoveryRecord.model_validate_json(r["data"]) for r in rows]
+        if status is not None:
+            records = [r for r in records if r.status == status]
+        return records
+
+    def set_discovery_status(self, discovery_id: str, status: str) -> None:
+        from mnemosyne.discovery.models import DiscoveryRecord
+
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT data FROM discoveries WHERE id = ?", (discovery_id,)
+            ).fetchone()
+            if not row:
+                return
+            record = DiscoveryRecord.model_validate_json(row["data"])
+            record.status = status
+            self._conn.execute(
+                "UPDATE discoveries SET data = ? WHERE id = ?",
+                (record.model_dump_json(), discovery_id),
+            )
+            self._conn.commit()
 
     def count_discoveries(self) -> int:
         with self._lock:

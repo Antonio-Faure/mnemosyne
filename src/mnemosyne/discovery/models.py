@@ -19,6 +19,7 @@ class DiscoveryRecord(BaseModel):
     country: str | None = None
     source: str = "unknown"
     item_count: int | None = None
+    status: str = "new"  # new | connecting | connected | failed
     evidence: dict[str, Any] = Field(default_factory=dict)
     discovered_at: str = Field(default_factory=utcnow_iso)
 

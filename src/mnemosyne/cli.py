@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import subprocess
 import sys
 
 from mnemosyne.config import get_config
@@ -133,6 +134,84 @@ def _cmd_discover(args: argparse.Namespace) -> int:
     for r in sorted(fresh, key=lambda x: x.item_count or 0, reverse=True)[: args.top]:
         print(f"  {r.item_count or '?':>7}  {r.host}  [{r.protocol}]")
     return 0
+
+
+def _cmd_discoveries(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    records = db.list_discoveries(status=args.status)
+    db.close()
+    for r in records:
+        print(f"{r.status:10} {r.item_count or '?':>8}  {r.host}")
+    print(f"\n{len(records)} candidat(s)")
+    return 0
+
+
+def _cmd_connect_next(args: argparse.Namespace) -> int:
+    """Connect the next discovered provider: dev agent researches it and opens a PR."""
+    cfg = get_config()
+    from mnemosyne.db import Database
+    from mnemosyne.dev.agent import run_dev_agent
+
+    db = Database(cfg.db_file())
+    pending = db.list_discoveries(status="new")
+    if not pending:
+        print("aucun candidat en attente de connexion")
+        db.close()
+        return 0
+    record = pending[-1]  # list is DESC by date -> last is the oldest
+    db.set_discovery_status(record.id, "connecting")
+    db.close()
+    print(f"connexion de {record.host} ({record.url})")
+
+    sample = (record.evidence or {}).get("sample_manifest")
+    task = (
+        f"Connect the discovered historical image provider at {record.url} "
+        f"(host {record.host}). It serves IIIF"
+        + (f" (sample manifest: {sample})" if sample else "")
+        + ". Investigate the host to find its IIIF entry point (a Collection "
+        "manifest URL, a single manifest, or a search endpoint) using fetch_url. "
+        "Then create config/sources/<slug>.yaml with protocol: iiif, base_url, "
+        "auth: none, and `extra: {collection: <url>}` (or `{manifest: <url>}`). "
+        "Prefer the GENERIC IIIF connector (src/mnemosyne/sources/iiif.py); do "
+        "not write a bespoke connector unless the generic one truly cannot work. "
+        "Run lint and tests, commit, push and open a PR."
+    )
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    try:
+        outcome = asyncio.run(
+            run_dev_agent(
+                cfg,
+                task,
+                vault_get=vault.get if vault else None,
+                journal=Journal(cfg.journal_path),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 - dirty tree, missing token, etc.
+        db = Database(cfg.db_file())
+        db.set_discovery_status(record.id, "new")
+        db.close()
+        print(f"échec pour {record.host}: {exc}")
+        return 1
+
+    # Trust only a branch that is actually ahead of the base (a real commit/PR).
+    status = "failed"
+    if outcome.branch:
+        res = subprocess.run(
+            ["git", "rev-list", "--count", f"{cfg.dev.base_branch}..{outcome.branch}"],
+            cwd=cfg.root,
+            capture_output=True,
+            text=True,
+        )
+        if res.stdout.strip().isdigit() and int(res.stdout.strip()) > 0:
+            status = "connected"
+    db = Database(cfg.db_file())
+    db.set_discovery_status(record.id, status)
+    db.close()
+    print(f"{record.host}: {status} | branch={outcome.branch} | {outcome.finish or ''}")
+    return 0 if status == "connected" else 1
 
 
 def _cmd_onboard(args: argparse.Namespace) -> int:
@@ -521,6 +600,13 @@ def build_parser() -> argparse.ArgumentParser:
     pdis.add_argument("--limit", type=int, default=100)
     pdis.add_argument("--top", type=int, default=20)
     pdis.set_defaults(func=_cmd_discover)
+
+    pdisc = sub.add_parser("discoveries", help="list discovered candidate providers")
+    pdisc.add_argument("--status", default=None, help="filter: new/connecting/connected/failed")
+    pdisc.set_defaults(func=_cmd_discoveries)
+
+    pcn = sub.add_parser("connect-next", help="connect the next discovery (dev agent -> PR)")
+    pcn.set_defaults(func=_cmd_connect_next)
 
     pon = sub.add_parser("onboard", help="manually run the onboarding agent on a provider")
     pon.add_argument("source", help="source id, e.g. europeana")

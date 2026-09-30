@@ -7,6 +7,7 @@ container. Requires the `agent` extra (`stirrup`, `openai`).
 from __future__ import annotations
 
 import os
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -60,6 +61,26 @@ class DevOutcome:
     branch: str | None
 
 
+def _ensure_clean(repo: Path) -> None:
+    """Abort if the working tree has uncommitted tracked changes.
+
+    The dev agent commits on a fresh branch; pre-existing modified tracked files
+    (outside its allowlist) make the commit guard refuse, which the model may
+    misreport as success. Better to fail fast and loud.
+    """
+    res = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=no"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    if res.stdout.strip():
+        raise RuntimeError(
+            "dev agent refused: the repo has uncommitted tracked changes — "
+            "commit or stash them first (git status).\n" + res.stdout.strip()
+        )
+
+
 async def run_dev_agent(
     config: Config,
     task: str,
@@ -69,6 +90,7 @@ async def run_dev_agent(
     journal: Journal | None = None,
 ) -> DevOutcome:
     repo_path = Path(repo or config.root).resolve()
+    _ensure_clean(repo_path)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
     client = build_agent_client(
         config, session="dev", vault_get=vault_get, model=config.dev.model
