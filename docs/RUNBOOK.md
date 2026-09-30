@@ -186,10 +186,18 @@ test, puis lint/tests, commit sur une branche `agent/*`, push et **PR**. Tu reli
 et merges.
 
 **Jeton GitHub (une fois)** — fine-grained PAT :
-GitHub → Settings → Developer settings → Fine-grained tokens →
-- Repository access : **uniquement** `Antonio-Faure/mnemosyne`
-- Permissions : **Contents: Read and write**, **Pull requests: Read and write**
-- (aucune permission Administration / delete)
+GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token
+- **Repository access** → *Only select repositories* → `Antonio-Faure/mnemosyne`
+- **Permissions** → *Repository permissions* → cocher **exactement** :
+  - **Contents** → **Read and write**  (`git push` : blobs/trees/commits/refs)
+  - **Pull requests** → **Read and write**  (`POST /repos/{owner}/{repo}/pulls`)
+- **Metadata** → *Read-only* : déjà requis/imposé, laissé tel quel.
+- Rien d'autre : pas d'*Administration*, pas de *Workflows*, pas de delete.
+- *Expiration* : au choix (60–90 j recommandé).
+
+> Les autres permissions (Issues, Actions, Webhooks…) ne sont **pas** nécessaires.
+> L'agent travaille sur une branche `agent/*` : `Contents: write` y suffit, et
+> `Pull requests: write` ouvre la PR vers `main`.
 
 Puis :
 ```bash
