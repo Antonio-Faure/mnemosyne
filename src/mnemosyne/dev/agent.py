@@ -42,6 +42,12 @@ WORKFLOW: start_branch(<slug>) → read code → write descriptor + connector +
 test → run_lint → run_tests → commit → push → open_pr → task_done.
 If you are stuck or a decision is ambiguous, call ask_operator (Telegram) and
 stop rather than guessing.
+
+BUDGET (token cost is quadratic: every step resends the whole transcript):
+- Read AT MOST one existing connector as a template. Do NOT re-read files you
+  already read. Do NOT list the whole tree.
+- Prefer grep to locate things, then read only the relevant file.
+- Keep tool outputs small; do not fetch large pages unless truly needed.
 """
 
 
@@ -61,7 +67,9 @@ async def run_dev_agent(
 ) -> DevOutcome:
     repo_path = Path(repo or config.root).resolve()
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
-    client = build_agent_client(config, session="dev", vault_get=vault_get)
+    client = build_agent_client(
+        config, session="dev", vault_get=vault_get, model=config.dev.model
+    )
     notifier = Notifier(config.notify.telegram)
     provider = DevToolProvider(
         repo_path, config.dev, token, notifier=notifier, journal=journal
@@ -71,7 +79,7 @@ async def run_dev_agent(
         name="mnemosyne_dev",
         system_prompt=_SYSTEM.format(name=config.identity.name, task=task),
         tools=[provider],
-        max_turns=config.agents.max_turns,
+        max_turns=config.dev.max_turns,
     )
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)

@@ -128,11 +128,11 @@ class DevToolProvider(ToolProvider):
                 return _fail(f"not a directory: {p.directory}")
             lines = []
             for child in sorted(base.iterdir()):
-                if child.name in {".git", "__pycache__", "node_modules"}:
+                if child.name in {".git", "__pycache__", "node_modules", ".venv", "data"}:
                     continue
                 rel = child.relative_to(self.repo)
                 lines.append(f"{'d' if child.is_dir() else 'f'} {rel}")
-            return _ok("\n".join(lines[:200]) or "(empty)")
+            return _ok("\n".join(lines[: self.config.list_max_entries]) or "(empty)")
 
         async def read_exec(p: PathParam):
             target = self._check_inside(p.path)
@@ -142,20 +142,38 @@ class DevToolProvider(ToolProvider):
                 text = target.read_text(encoding="utf-8")
             except OSError as exc:
                 return _fail(f"read failed: {exc}")
-            return _ok(text[:8000] + ("\n…(truncated)" if len(text) > 8000 else ""))
+            cap = self.config.read_max_chars
+            return _ok(text[:cap] + ("\n…(truncated)" if len(text) > cap else ""))
 
         async def grep_exec(p: GrepParam):
-            res = self._run_cmd(["grep", "-rnI", p.pattern, p.path])
+            # never scan .venv/.git/data: huge and irrelevant
+            res = self._run_cmd(
+                [
+                    "grep",
+                    "-rnI",
+                    "-m",
+                    "3",
+                    "--exclude-dir=.venv",
+                    "--exclude-dir=.git",
+                    "--exclude-dir=data",
+                    "--exclude-dir=node_modules",
+                    "--exclude-dir=__pycache__",
+                    "--exclude-dir=.pytest_cache",
+                    "--exclude-dir=.ruff_cache",
+                    p.pattern,
+                    p.path,
+                ]
+            )
             if res.returncode not in (0, 1):
                 return _fail(f"grep failed: {res.stderr[:200]}")
-            return _ok(res.stdout[:6000] or "(no match)")
+            return _ok(res.stdout[: self.config.grep_max_chars] or "(no match)")
 
         async def fetch_exec(p: FetchParam):
             try:
                 async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
                     resp = await client.get(p.url)
                 resp.raise_for_status()
-                return _ok(resp.text[:8000])
+                return _ok(resp.text[: self.config.fetch_max_chars])
             except httpx.HTTPError as exc:
                 return _fail(f"fetch failed: {exc}")
 

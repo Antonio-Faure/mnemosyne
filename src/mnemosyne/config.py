@@ -100,6 +100,15 @@ class DevConfig(BaseModel):
     branch_prefix: str = "agent/"
     base_branch: str = "main"
     github_repo: str = "Antonio-Faure/mnemosyne"
+    #: the dev agent resends its whole transcript every step, so keep turns low
+    max_turns: int = 18
+    #: tool output caps (chars/entries) — they live in the transcript forever
+    read_max_chars: int = 3000
+    list_max_entries: int = 60
+    grep_max_chars: int = 2500
+    fetch_max_chars: int = 3000
+    #: optional cheaper model for the dev agent (null = the default LLM model)
+    model: str | None = None
     #: only files under these prefixes may be written
     allow: list[str] = Field(
         default_factory=lambda: [

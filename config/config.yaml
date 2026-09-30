@@ -56,6 +56,15 @@ identity:
   agent_email: archivist.mnemosyne@gmail.com
   language: fr
 
+# Self-extension dev agent (host side, `mnemosyne develop`).
+dev:
+  max_turns: 18
+  read_max_chars: 3000
+  list_max_entries: 60
+  grep_max_chars: 2500
+  fetch_max_chars: 3000
+  # model: deepseek-v4.1-flash   # uncomment to use a cheaper model for dev
+
 # Stirrup agent loop (browser onboarding / outreach), P2.
 agents:
   max_turns: 40

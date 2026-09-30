@@ -212,6 +212,13 @@ make token        # saisie masquée, pas d'historique shell
 mnemosyne develop "Add the Europeana connector"     # ou : make develop TASK="..."
 ```
 
+**Coût** — le dev agent renvoie tout son transcript à chaque étape, donc le coût
+croît de façon quasi quadratique avec le nombre d'étapes et la taille des sorties
+d'outils (un run « Europeana » a coûté ~960k tokens). Réglages dans `config.dev` :
+`max_turns` (défaut 18), `read_max_chars`, `list_max_entries`, `grep_max_chars`,
+`fetch_max_chars`, et `model` (modèle moins cher optionnel). Le prompt du dev agent
+lui impose aussi de lire a minima. (`grep` exclut `.venv/.git/data`.)
+
 Garde-fous (dans le code, pas seulement le prompt) :
 - écriture **uniquement** sous `config/sources/`, `src/mnemosyne/sources/`,
   `tests/`, `docs/` ;

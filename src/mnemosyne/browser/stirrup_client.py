@@ -50,7 +50,11 @@ class ZenChatClient(ChatCompletionsClient):
 
 
 def build_agent_client(
-    config: Config, *, session: str = "mnemosyne-agent", vault_get=None
+    config: Config,
+    *,
+    session: str = "mnemosyne-agent",
+    vault_get=None,
+    model: str | None = None,
 ) -> ZenChatClient:
     prov = config.llm.providers.get(config.llm.default)
     if prov is None:
@@ -62,7 +66,7 @@ def build_agent_client(
             "vault, or log in to OpenCode Go so the cached token is available."
         )
     return ZenChatClient(
-        model=prov.model or "deepseek-v4.1-flash",
+        model=model or prov.model or "deepseek-v4.1-flash",
         max_tokens=config.agents.max_tokens,
         context_window_tokens=config.agents.context_window_tokens,
         base_url=prov.base_url,
