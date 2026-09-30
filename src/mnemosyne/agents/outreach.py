@@ -55,4 +55,9 @@ async def run_outreach(
     )
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
         finish, _history, _metadata = await session.run(task)
+    if journal:
+        journal.append(
+            f"outreach `{descriptor.id}` LLM usage: {client.usage.summary()}",
+            source="outreach",
+        )
     return AgentOutcome(finish=provider.finish or finish, outcome=provider.outcome)

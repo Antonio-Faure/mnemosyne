@@ -54,4 +54,9 @@ async def run_onboarding(
         finish, _history, _metadata = await session.run(
             onboarding_task(descriptor, config.identity)
         )
+    if journal:
+        journal.append(
+            f"onboarding `{descriptor.id}` LLM usage: {client.usage.summary()}",
+            source="onboard",
+        )
     return AgentOutcome(finish=provider.finish or finish, outcome=provider.outcome)

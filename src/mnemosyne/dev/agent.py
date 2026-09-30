@@ -16,8 +16,11 @@ from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.dev.tools import DevToolProvider
 from mnemosyne.journal import Journal
+from mnemosyne.logger import get_logger
 from mnemosyne.notify import Notifier
 from mnemosyne.util import ensure_dir
+
+log = get_logger("dev")
 
 _SYSTEM = """You are {name}, an autonomous software agent that extends its OWN
 repository: an open aggregator of historical image archive providers.
@@ -85,4 +88,8 @@ async def run_dev_agent(
     ensure_dir(out_dir)
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
         finish, _history, _metadata = await session.run(task)
+    usage = client.usage.summary()
+    log.info("dev agent usage (cache-aware): %s", usage)
+    if journal:
+        journal.append(f"dev agent usage: {usage}", source="dev")
     return DevOutcome(finish=provider.finish or finish, branch=provider.branch)
