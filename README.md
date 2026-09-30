@@ -90,6 +90,34 @@ docker compose up -d          # mnemosyne + dedicated Chrome (Xvfb + VNC + CDP 9
 
 The Chrome profile (holding the agent's own Google account) persists in a volume.
 
+## Monitoring & steering
+
+The agent keeps a **daily markdown journal** (`journal/YYYY-MM-DD.md`) and can be
+steered at any time:
+
+```bash
+mnemosyne journal                    # today's journal
+mnemosyne say "priorise Lacq"        # one-off message → control/inbox.md
+mnemosyne status                     # providers, assets, governor pressure
+mnemosyne doctor                     # config, vault, LLM auth, Chrome health
+```
+
+Edit `control/directives.md` for standing instructions (re-read on start). Telegram
+alerts fire on hard blockers (captcha, phone verify, refusal, permanent failures).
+See `docs/RUNBOOK.md` for launching and connecting the agent's Gmail over VNC.
+
+## LLM auth (OpenCode Go)
+
+The agent uses your OpenCode Go subscription by reading the token **opencode
+already caches** at `~/.local/share/opencode/auth.json` (entry `opencode-go`).
+Resolution order: `OPENCODE_API_KEY` → mnemosyne vault (`opencode_api_key`) →
+opencode auth store. No separate key needed if you are logged in.
+
+```bash
+mnemosyne doctor       # shows auth_source
+mnemosyne llm test     # one round-trip
+```
+
 ## Milestone status
 
 - **P0+P1 (this repo)**: heartbeat, catalog, governor, 5 keyless providers

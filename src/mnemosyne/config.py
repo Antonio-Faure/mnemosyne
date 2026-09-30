@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[2]
 class AppConfig(BaseModel):
     data_dir: str = "data"
     vault_path: str = "vault/vault.enc"
+    journal_dir: str = "journal"
+    control_dir: str = "control"
     log_level: str = "INFO"
 
 
@@ -55,6 +57,8 @@ class ProviderConfig(BaseModel):
     base_url: str
     api_key_env: str | None = None
     model: str | None = None
+    #: key used inside the opencode auth store (e.g. "opencode-go")
+    auth_provider: str | None = None
 
 
 class LlmConfig(BaseModel):
@@ -91,6 +95,14 @@ class Config(BaseModel):
     @property
     def vault_file(self) -> Path:
         return (self.root / self.app.vault_path).resolve()
+
+    @property
+    def journal_path(self) -> Path:
+        return (self.root / self.app.journal_dir).resolve()
+
+    @property
+    def control_path(self) -> Path:
+        return (self.root / self.app.control_dir).resolve()
 
     @property
     def sources_path(self) -> Path:

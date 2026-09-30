@@ -4,6 +4,8 @@
 app:
   data_dir: data
   vault_path: vault/vault.enc
+  journal_dir: journal
+  control_dir: control
   log_level: INFO
 
 api:
@@ -40,6 +42,8 @@ llm:
       base_url: https://opencode.ai/zen/go/v1
       api_key_env: OPENCODE_API_KEY
       model: deepseek-v4.1-flash
+      # Fall back to the token opencode caches after you log in to OpenCode Go.
+      auth_provider: opencode-go
 
 notify:
   telegram:

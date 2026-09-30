@@ -8,8 +8,10 @@ import sys
 
 from mnemosyne.config import get_config
 from mnemosyne.engine import Engine
+from mnemosyne.journal import Control, Journal
+from mnemosyne.llm import LlmClient
 from mnemosyne.logger import get_logger, set_level
-from mnemosyne.vault import init_vault
+from mnemosyne.vault import Vault, init_vault
 
 log = get_logger("cli")
 
@@ -19,6 +21,96 @@ def _cmd_vault_init(args: argparse.Namespace) -> int:
     path = init_vault(cfg.vault_file, overwrite=args.force)
     print(f"vault ready: {path}")
     print("keep vault/vault.key secret (it is git-ignored).")
+    return 0
+
+
+def _cmd_vault_set(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    vault = Vault(cfg.vault_file)
+    vault.set(args.key, args.value)
+    print(f"stored '{args.key}' in vault")
+    return 0
+
+
+def _cmd_vault_list(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    vault = Vault(cfg.vault_file)
+    for key in vault.keys():
+        print(key)
+    return 0
+
+
+def _cmd_journal(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    journal = Journal(cfg.journal_path)
+    if args.date:
+        from datetime import date
+
+        text = journal.read(date.fromisoformat(args.date))
+    else:
+        text = journal.read()
+    if not text:
+        print("(journal vide)")
+        return 0
+    print(text)
+    return 0
+
+
+def _cmd_say(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    control = Control(cfg.control_path)
+    control.post(args.message)
+    print("message déposé dans control/inbox.md — il sera lu au prochain tick.")
+    return 0
+
+
+def _cmd_llm_test(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    client = LlmClient(cfg, session="mnemosyne-doctor", vault_get=vault.get if vault else None)
+    print("auth:", client.describe())
+
+    async def run() -> int:
+        try:
+            reply = await client.complete(
+                "Réponds uniquement par le mot: OK", max_tokens=1024, temperature=0.0
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"LLM call failed: {exc}")
+            return 1
+        print("reply:", reply.strip()[:200] or "(vide)")
+        return 0
+
+    return asyncio.run(run())
+
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    print("=== mnemosyne doctor ===")
+    print(f"root:        {cfg.root}")
+    print(f"data dir:    {cfg.data_path}  (exists={cfg.data_path.exists()})")
+    print(f"vault:       {cfg.vault_file}  (exists={cfg.vault_file.exists()})")
+    print(f"journal:     {cfg.journal_path}")
+    print(f"control:     {cfg.control_path}")
+
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    client = LlmClient(cfg, session="mnemosyne-doctor", vault_get=vault.get if vault else None)
+    print(f"llm:         {client.describe()}")
+
+    async def check_cdp() -> None:
+        import httpx
+
+        from mnemosyne.browser import cdp_url
+
+        url = cdp_url().rstrip("/") + "/json/version"
+        try:
+            async with httpx.AsyncClient(timeout=5) as c:
+                resp = await c.get(url)
+            print(f"chrome cdp:  OK ({resp.json().get('Browser', '?')})")
+        except Exception as exc:  # noqa: BLE001
+            print(f"chrome cdp:  unreachable at {url} — {exc}")
+
+    asyncio.run(check_cdp())
     return 0
 
 
@@ -135,6 +227,12 @@ def build_parser() -> argparse.ArgumentParser:
     vi = vsub.add_parser("init", help="create the encrypted vault + key")
     vi.add_argument("--force", action="store_true", help="overwrite an existing key")
     vi.set_defaults(func=_cmd_vault_init)
+    vs = vsub.add_parser("set", help="store a secret (e.g. opencode_api_key)")
+    vs.add_argument("key")
+    vs.add_argument("value")
+    vs.set_defaults(func=_cmd_vault_set)
+    vl = vsub.add_parser("list", help="list stored secret keys")
+    vl.set_defaults(func=_cmd_vault_list)
 
     ps = sub.add_parser("sources", help="list configured providers")
     ps.set_defaults(func=_cmd_sources)
@@ -153,6 +251,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     pst = sub.add_parser("status", help="catalog + governor status")
     pst.set_defaults(func=_cmd_status)
+
+    pj = sub.add_parser("journal", help="show the daily journal")
+    pj.add_argument("--date", default=None, help="YYYY-MM-DD (default: today)")
+    pj.set_defaults(func=_cmd_journal)
+
+    psay = sub.add_parser("say", help="send a message/instruction to the agent")
+    psay.add_argument("message")
+    psay.set_defaults(func=_cmd_say)
+
+    pllm = sub.add_parser("llm", help="LLM (OpenCode Go) utilities")
+    lsub = pllm.add_subparsers(dest="llm_command", required=True)
+    lt = lsub.add_parser("test", help="check auth + one round-trip")
+    lt.set_defaults(func=_cmd_llm_test)
+
+    pd = sub.add_parser("doctor", help="diagnose config, vault, LLM auth and Chrome")
+    pd.set_defaults(func=_cmd_doctor)
 
     pserve = sub.add_parser("serve", help="run the aggregation API")
     pserve.add_argument("--host", default=None)

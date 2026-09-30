@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from mnemosyne.config import Config
 from mnemosyne.engine import Engine
+from mnemosyne.journal import Control, Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.models import Job, SourceState
 from mnemosyne.notify import Notifier
@@ -21,6 +22,8 @@ log = get_logger("heartbeat")
 class JobContext:
     config: Config
     engine: Engine
+    journal: Journal
+    control: Control
     notifier: Notifier
 
 
@@ -41,8 +44,10 @@ def handler(kind: str):
 async def handle_verify(ctx: JobContext, job: Job) -> dict | None:
     source_id = job.payload["source_id"]
     ok = await ctx.engine.verify(source_id)
-    log.info("verify %s → %s", source_id, "ok" if ok else "degraded")
+    state = "ok" if ok else "degraded"
+    log.info("verify %s → %s", source_id, state)
     if not ok:
+        ctx.journal.append(f"source `{source_id}` degraded/failing", level="warn", source="verify")
         await ctx.notifier.send(f"source `{source_id}` is degraded/failing", "warn")
     return None
 
@@ -57,6 +62,8 @@ async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
     seed = descriptor.seeds[index % len(descriptor.seeds)]
     saved = await ctx.engine.harvest(source_id, seed, limit=int(job.payload.get("limit", 20)))
     log.info("harvest %s [%s] → %d new assets", source_id, seed, saved)
+    if saved:
+        ctx.journal.append(f"harvest `{source_id}` « {seed} » → {saved} nouveaux assets")
     return {"seed_index": index + 1}
 
 
@@ -81,4 +88,17 @@ async def handle_onboard(ctx: JobContext, job: Job) -> dict | None:
     source_id = job.payload["source_id"]
     log.info("onboard requested for %s (P2 — not yet implemented)", source_id)
     ctx.engine.catalog.set_state(source_id, SourceState.ONBOARDING)
+    ctx.journal.append(f"onboarding demandé pour `{source_id}` (P2)")
+    return None
+
+
+@handler("journal")
+async def handle_journal(ctx: JobContext, job: Job) -> dict | None:
+    """Periodic status digest written to the daily journal."""
+    status = ctx.engine.status()
+    ctx.journal.append(
+        f"status: {status['assets_total']} assets, "
+        f"{len(status['sources'])} sources, pressure {status['governor']['pressure']}",
+        source="digest",
+    )
     return None

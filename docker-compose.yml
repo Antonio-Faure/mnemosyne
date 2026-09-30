@@ -8,10 +8,15 @@ services:
       MNEMOSYNE_CONFIG: /app/config/config.yaml
       MNEMOSYNE_CDP_URL: http://chrome:9222
       MNEMOSYNE_BROWSER_ENABLED: "1"
+      # Reuse the OpenCode Go token opencode caches after login (read-only mount).
+      OPENCODE_AUTH_PATH: /opencode-auth/auth.json
     volumes:
       - ./data:/app/data
       - ./vault:/app/vault
+      - ./journal:/app/journal
+      - ./control:/app/control
       - ./config:/app/config:ro
+      - ${HOME}/.local/share/opencode:/opencode-auth:ro
     ports:
       - "8080:8080"
     depends_on:

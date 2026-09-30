@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from mnemosyne.config import Config
 from mnemosyne.engine import Engine
 from mnemosyne.heartbeat.jobs import HANDLERS, JobContext
+from mnemosyne.journal import Control, Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.models import Job, JobState
 from mnemosyne.notify import Notifier
@@ -20,6 +21,7 @@ log = get_logger("heartbeat")
 HARVEST_INTERVAL_S = 1800
 VERIFY_INTERVAL_S = 21600
 WARMUP_INTERVAL_S = 3600
+JOURNAL_INTERVAL_S = 900
 
 
 class Heartbeat:
@@ -27,7 +29,15 @@ class Heartbeat:
         self.config = config
         self.engine = engine or Engine(config)
         self.notifier = Notifier(config.notify.telegram)
-        self.ctx = JobContext(config=config, engine=self.engine, notifier=self.notifier)
+        self.journal = Journal(config.journal_path)
+        self.control = Control(config.control_path)
+        self.ctx = JobContext(
+            config=config,
+            engine=self.engine,
+            journal=self.journal,
+            control=self.control,
+            notifier=self.notifier,
+        )
         self._stop = asyncio.Event()
 
     # ── bootstrap ────────────────────────────────────────────────────────
@@ -58,7 +68,18 @@ class Heartbeat:
             self.engine.db.enqueue(
                 Job(kind="warmup", payload={"interval_s": WARMUP_INTERVAL_S}, priority=20)
             )
+        if not self.engine.db.has_open_job("journal", "-"):
+            self.engine.db.enqueue(
+                Job(kind="journal", payload={"interval_s": JOURNAL_INTERVAL_S}, priority=90)
+            )
         log.info("heartbeat bootstrapped: %d supported providers", supported)
+
+        directives = self.control.directives()
+        self.journal.append(
+            f"démarrage heartbeat — {supported} providers supportés"
+            + (f" — directives: {directives}" if directives else ""),
+            source="boot",
+        )
 
     # ── main loop ────────────────────────────────────────────────────────
     async def run_forever(self) -> None:
@@ -81,12 +102,21 @@ class Heartbeat:
     def stop(self) -> None:
         self._stop.set()
 
+    def _process_inbox(self) -> None:
+        for message in self.control.consume():
+            log.info("operator message: %s", message)
+            self.journal.append(f"message opérateur : {message}", source="operator")
+
     async def _tick(self) -> None:
+        self._process_inbox()
         now = datetime.now(UTC)
         stale_cutoff = (now - timedelta(seconds=self.config.heartbeat.stale_lock_s)).isoformat()
         recovered = self.engine.db.recover_stale_jobs(stale_cutoff)
         if recovered:
             log.warning("recovered %d stale jobs", recovered)
+            self.journal.append(
+                f"{recovered} jobs bloqués récupérés", level="warn", source="recovery"
+            )
 
         jobs = self.engine.db.claim_due_jobs(utcnow_iso(), self.config.heartbeat.max_workers)
         if not jobs:
@@ -116,8 +146,10 @@ class Heartbeat:
         except Exception as exc:  # noqa: BLE001
             if job.attempts + 1 >= job.max_attempts:
                 self.engine.db.fail_job(job.id, str(exc))
+                self.journal.append(f"job {job.kind} échoué définitivement : {exc}", level="error")
                 await self.notifier.send(f"job {job.kind} failed permanently: {exc}", "error")
             else:
+                self.journal.append(f"job {job.kind} erreur (retry) : {exc}", level="warn")
                 self._reschedule(job, in_seconds=2 ** (job.attempts + 1) * 30, error=str(exc))
             return
         self.engine.db.complete_job(job.id)

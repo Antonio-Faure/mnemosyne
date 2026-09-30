@@ -48,6 +48,22 @@ Never leak a provider's raw shape into `Asset`: normalize at the connector bound
 3. Register it in `src/mnemosyne/sources/__init__.py`.
 4. Add a test in `tests/` (mock HTTP; never hit the network in tests).
 
+## Operator channels
+
+- **Journal**: `journal/YYYY-MM-DD.md`, one file per day, append-only. Written by
+  the heartbeat (`mnemosyne journal` to read). Git-ignored.
+- **Steering**: `control/directives.md` (standing instructions, re-read on start)
+  and `control/inbox.md` (one-off messages via `mnemosyne say`). Git-ignored.
+- **Alerts**: Telegram (`notify/`) for hard blockers.
+- **Health**: `mnemosyne doctor`.
+
+## LLM auth
+
+`llm/client.py` resolves the OpenCode Go key from `OPENCODE_API_KEY` → vault
+(`opencode_api_key`) → the opencode auth cache (`~/.local/share/opencode/auth.json`,
+entry `opencode-go`). It always sends a clean `User-Agent` and a stable
+`x-opencode-session` header (required by Zen).
+
 ## Dev
 
 ```bash

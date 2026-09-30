@@ -12,13 +12,17 @@ venv/
 .mypy_cache/
 
 # Secrets & runtime state  (NEVER commit)
+# NOTE: leading slash = repository root only, so `src/mnemosyne/vault/` (the
+# credential-vault *module*) is still tracked.
 .env
-vault/
-data/
+/vault/
+/data/
+/journal/
+/control/
 *.enc
 *.key
-chrome-profile/
-.chrome-profile/
+/chrome-profile/
+/.chrome-profile/
 
 # Logs
 *.log

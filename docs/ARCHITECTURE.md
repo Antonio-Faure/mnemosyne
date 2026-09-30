@@ -55,6 +55,14 @@ descriptor never loses lifecycle progress.
    whole pipeline before spending reputation on onboarding.
 8. **Atomic writes everywhere** (`.tmp` → `os.replace`); orphan tmp files are
    cleaned on startup.
+9. **Operator observability.** A daily markdown journal (`journal/`) makes the
+   agent's activity auditable, and plain files (`control/directives.md`,
+   `control/inbox.md`) give the human a low-tech way to steer it. Both are
+   git-ignored runtime state.
+10. **Reuse the OpenCode Go subscription.** `llm/client.py` reads the token opencode
+    already caches (`~/.local/share/opencode/auth.json` → `opencode-go`) so no
+    separate key is needed, and injects the `x-opencode-session` / `User-Agent`
+    headers Zen requires.
 
 ## Milestones
 
