@@ -6,6 +6,7 @@ container. Requires the `agent` extra (`stirrup`, `openai`).
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -59,7 +60,7 @@ async def run_dev_agent(
     journal: Journal | None = None,
 ) -> DevOutcome:
     repo_path = Path(repo or config.root).resolve()
-    token = vault_get("github_token") if vault_get else None
+    token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
     client = build_agent_client(config, session="dev", vault_get=vault_get)
     notifier = Notifier(config.notify.telegram)
     provider = DevToolProvider(

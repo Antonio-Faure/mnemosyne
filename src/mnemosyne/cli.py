@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 
 from mnemosyne.config import get_config
@@ -108,10 +109,12 @@ def _cmd_develop(args: argparse.Namespace) -> int:
 
     vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
     vault_get = vault.get if vault else None
-    if not vault_get or not vault_get("github_token"):
-        print("Aucun jeton GitHub dans le vault : l'agent pourra éditer/tester en local")
-        print("mais pas pousser. Crée un PAT fine-grained puis :")
-        print("  mnemosyne vault set github_token <token>")
+    token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        print("Aucun jeton GitHub (vault 'github_token' ou env GITHUB_TOKEN).")
+        print("L'agent pourra éditer/tester en local mais pas pousser. Stocke-le avec :")
+        print("  make token")
+        print("  # ou : .venv/bin/mnemosyne vault set github_token <token>")
 
     outcome = asyncio.run(
         run_dev_agent(

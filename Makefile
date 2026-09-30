@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal services service status say doctor develop egress cdp vnc chrome-reset clean
+.PHONY: help install lint test run serve up down logs journal services service status say doctor token develop egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -50,6 +50,9 @@ say:  ## send a message to the agent: make say SAY="priorise Lacq"
 
 doctor:  ## diagnose config, vault, LLM auth, Chrome
 	$(PY)/mnemosyne doctor
+
+token:  ## store the GitHub token in the vault (hidden prompt, no shell history)
+	@read -s -p "GitHub token (fine-grained): " T; echo; $(PY)/mnemosyne vault set github_token "$$T"; unset T
 
 develop:  ## self-extension: make develop TASK="Add the Europeana connector"
 	$(PY)/mnemosyne develop "$(TASK)"

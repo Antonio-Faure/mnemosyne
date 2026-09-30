@@ -199,10 +199,13 @@ GitHub → Settings → Developer settings → Fine-grained tokens → Generate 
 > L'agent travaille sur une branche `agent/*` : `Contents: write` y suffit, et
 > `Pull requests: write` ouvre la PR vers `main`.
 
-Puis :
+Puis, depuis le dossier du repo sur `yggdrasil` (l'exécutable est `.venv/bin/mnemosyne`, pas dans le PATH) :
 ```bash
-mnemosyne vault set github_token <token>   # jamais en clair ailleurs
+make token        # saisie masquée, pas d'historique shell
+# équivalent :
+.venv/bin/mnemosyne vault set github_token <token>
 ```
+(ou exporte `GITHUB_TOKEN=…` pour un usage ponctuel.)
 
 **Lancer une extension :**
 ```bash
