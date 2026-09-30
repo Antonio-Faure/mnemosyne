@@ -100,6 +100,41 @@ def _cmd_llm_test(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
+def _cmd_discover(args: argparse.Namespace) -> int:
+    """Run provider discovery now and store the new candidates."""
+    cfg = get_config()
+    from mnemosyne.catalog import Catalog
+    from mnemosyne.db import Database
+    from mnemosyne.discovery import host_of, run_discovery
+
+    db = Database(cfg.db_file())
+    catalog = Catalog(cfg.sources_path, db)
+    catalog.sync()
+    known = {host_of(d.base_url) for d in catalog.list()}
+    known.discard("")
+
+    async def run() -> list:
+        engine = Engine(cfg)
+        try:
+            return await run_discovery(engine.http, limit=args.limit)
+        finally:
+            await engine.aclose()
+
+    records = asyncio.run(run())
+
+    def is_known(host: str) -> bool:
+        return any(host == k or host.endswith("." + k) or k.endswith("." + host) for k in known)
+
+    fresh = [r for r in records if not is_known(r.host)]
+    added = db.save_discoveries(fresh)
+    total = db.count_discoveries()
+    db.close()
+    print(f"{len(records)} candidats trouvés, {added} nouveaux stockés (total {total})")
+    for r in sorted(fresh, key=lambda x: x.item_count or 0, reverse=True)[: args.top]:
+        print(f"  {r.item_count or '?':>7}  {r.host}  [{r.protocol}]")
+    return 0
+
+
 def _cmd_onboard(args: argparse.Namespace) -> int:
     """Manually run the onboarding agent on a provider (operator override)."""
     cfg = get_config()
@@ -481,6 +516,11 @@ def build_parser() -> argparse.ArgumentParser:
     pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
     pw.add_argument("--minutes", type=float, default=5.0)
     pw.set_defaults(func=_cmd_warmup)
+
+    pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")
+    pdis.add_argument("--limit", type=int, default=100)
+    pdis.add_argument("--top", type=int, default=20)
+    pdis.set_defaults(func=_cmd_discover)
 
     pon = sub.add_parser("onboard", help="manually run the onboarding agent on a provider")
     pon.add_argument("source", help="source id, e.g. europeana")

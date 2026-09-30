@@ -57,6 +57,12 @@ identity:
   agent_email: archivist.mnemosyne@gmail.com
   language: fr
 
+# P3: autonomous discovery of new providers.
+discovery:
+  enabled: true
+  interval_s: 86400
+  limit: 100
+
 # Self-extension dev agent (host side, `mnemosyne develop`).
 dev:
   max_turns: 18

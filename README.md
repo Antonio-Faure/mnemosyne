@@ -151,7 +151,8 @@ mnemosyne llm test     # one round-trip
 - **P2 (in progress)**: Stirrup agent loop + browser-use over CDP, deterministic
   tools, onboarding & outreach agents, Gmail-via-browser, governed by warmup.
   Install with `pip install -e '.[browser]'`. See `docs/P2-AGENTS.md`.
-- **P3**: autonomous discovery (GLAM SPARQL, directories).
+- **P3 (started)**: autonomous provider discovery via Wikidata IIIF manifests →
+  hosts, stored as candidates (`discover` job, `mnemosyne discover`).
 - **P4**: connector self-repair, dashboard, scale to hundreds of sources.
 
 See `docs/` and `AGENTS.md` for details.

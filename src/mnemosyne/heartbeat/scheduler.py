@@ -103,6 +103,14 @@ class Heartbeat:
             self.engine.db.enqueue(
                 Job(kind="journal", payload={"interval_s": JOURNAL_INTERVAL_S}, priority=90)
             )
+        if self.config.discovery.enabled and not self.engine.db.has_open_job("discover"):
+            self.engine.db.enqueue(
+                Job(
+                    kind="discover",
+                    payload={"interval_s": self.config.discovery.interval_s},
+                    priority=95,
+                )
+            )
         log.info("heartbeat bootstrapped: %d supported providers", supported)
 
         directives = self.control.directives()

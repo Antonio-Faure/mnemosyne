@@ -256,6 +256,40 @@ async def handle_outreach(ctx: JobContext, job: Job) -> dict | None:
     return None
 
 
+@handler("discover")
+async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
+    """P3: find candidate providers and store the new ones."""
+    from mnemosyne.discovery import host_of, run_discovery
+
+    cfg = ctx.config
+    if not cfg.discovery.enabled:
+        return None
+    records = await run_discovery(ctx.engine.http, limit=cfg.discovery.limit)
+
+    known = {host_of(d.base_url) for d in ctx.engine.catalog.list()}
+    known.discard("")
+
+    def is_known(host: str) -> bool:
+        return any(
+            host == k or host.endswith("." + k) or k.endswith("." + host) for k in known
+        )
+
+    fresh = [r for r in records if not is_known(r.host)]
+    added = ctx.engine.db.save_discoveries(fresh)
+    total = ctx.engine.db.count_discoveries()
+    note = f"discovery: {len(records)} candidats, {added} nouveaux (total {total})"
+    log.info(note)
+    ctx.journal.append(note, source="discover")
+    if added:
+        top = sorted(fresh, key=lambda r: r.item_count or 0, reverse=True)[:8]
+        await ctx.notifier.send(
+            "discovery — nouveaux fournisseurs : "
+            + ", ".join(f"{r.host} ({r.item_count})" for r in top),
+            "info",
+        )
+    return None
+
+
 @handler("journal")
 async def handle_journal(ctx: JobContext, job: Job) -> dict | None:
     """Periodic status digest written to the daily journal."""

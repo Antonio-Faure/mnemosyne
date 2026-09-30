@@ -114,6 +114,14 @@ class AgentsConfig(BaseModel):
     warmup_skip_probability: float = 0.2  # humans don't do it every time
 
 
+class DiscoveryConfig(BaseModel):
+    """P3: autonomous discovery of new providers."""
+
+    enabled: bool = True
+    interval_s: int = 86400
+    limit: int = 100
+
+
 class DevConfig(BaseModel):
     """Self-extension: what the developer agent may write and how it integrates."""
 
@@ -195,6 +203,7 @@ class Config(BaseModel):
     llm: LlmConfig = Field(default_factory=LlmConfig)
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
+    discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     dev: DevConfig = Field(default_factory=DevConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     notify: NotifyConfig = Field(default_factory=NotifyConfig)

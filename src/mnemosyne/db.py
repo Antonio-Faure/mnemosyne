@@ -53,6 +53,14 @@ CREATE TABLE IF NOT EXISTS kv (
     value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS discoveries (
+    id          TEXT PRIMARY KEY,
+    host        TEXT NOT NULL,
+    data        TEXT NOT NULL,
+    source      TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS memory (
     session TEXT NOT NULL,
     seq     INTEGER NOT NULL,
@@ -313,6 +321,42 @@ class Database:
                 "SELECT value FROM counters WHERE key = ?", (key,)
             ).fetchone()
         return int(row["value"]) if row else 0
+
+    # ── discoveries (candidate providers, P3) ────────────────────────────
+    def save_discoveries(self, records: list) -> int:
+        """Insert candidate providers, ignoring already-known ones. Returns new count."""
+        new = 0
+        with self._lock:
+            for record in records:
+                cur = self._conn.execute(
+                    """INSERT INTO discoveries (id, host, data, source, created_at)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(id) DO NOTHING""",
+                    (
+                        record.id,
+                        record.host,
+                        record.model_dump_json(),
+                        record.source,
+                        utcnow_iso(),
+                    ),
+                )
+                new += cur.rowcount
+            self._conn.commit()
+        return new
+
+    def list_discoveries(self) -> list:
+        from mnemosyne.discovery.models import DiscoveryRecord
+
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT data FROM discoveries ORDER BY created_at DESC"
+            ).fetchall()
+        return [DiscoveryRecord.model_validate_json(r["data"]) for r in rows]
+
+    def count_discoveries(self) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM discoveries").fetchone()
+        return int(row["n"]) if row else 0
 
     # ── memory (conversation store, pruned by compaction) ────────────────
     def memory_append(self, session: str, role: str, content: str) -> int:

@@ -179,6 +179,25 @@ mnemosyne doctor             # ligne "telegram: enabled=… bot=@…"
 Le journal contient : démarrages, directives, messages opérateur, harvests,
 sources dégradées, erreurs/retries, digests périodiques.
 
+## 4quater. Découverte autonome (P3)
+
+L'agent trouve **tout seul** de nouveaux fournisseurs d'images d'archives.
+Première source : **Wikidata** (propriété `P6108` = manifeste IIIF). On regroupe
+les 300 000+ manifestes par **hôte** → ça révèle les vrais fournisseurs qui
+servent du IIIF (bibliothèques nationales, musées, universités) sans aucune clé.
+
+- Job heartbeat `discover` : **1×/jour** (`config.discovery.interval_s`), dédup
+  automatique contre les hôtes déjà présents au catalogue, résumé Telegram.
+- Stockage : table `discoveries` (`db.count_discoveries()` / `list_discoveries()`).
+- Lancement manuel : `mnemosyne discover --limit 100 --top 20`.
+
+Candidats trouvés (extrait du 1er run) : `www.nga.gov` (127 942 manifestes),
+`nationalmuseumse.iiifhosting.com`, `manifests.collections.yale.edu`,
+`iiif.harvardartmuseums.org`, `iiif.musee-orsay.fr`, `iiif.bodleian.ox.ac.uk`…
+
+Suite (P4) : l'agent dev transforme un candidat en descripteur + connecteur et
+ouvre une PR (`docs/P2-AGENTS.md`).
+
 ## 4bisbis. Warmup automatique (« nourrir » le compte)
 
 Le heartbeat planifie **1 à 2 sessions/jour**, à des heures humaines aléatoires
