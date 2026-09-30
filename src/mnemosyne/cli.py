@@ -100,6 +100,76 @@ def _cmd_llm_test(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
+def _cmd_onboard(args: argparse.Namespace) -> int:
+    """Manually run the onboarding agent on a provider (operator override)."""
+    cfg = get_config()
+    from mnemosyne.agents.onboarding import run_onboarding
+    from mnemosyne.catalog import Catalog
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    try:
+        catalog = Catalog(cfg.sources_path, db)
+        catalog.sync()
+        descriptor = catalog.get(args.source)
+    finally:
+        db.close()
+    if descriptor is None:
+        print(f"source inconnue : {args.source}")
+        return 1
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    outcome = asyncio.run(
+        run_onboarding(
+            cfg,
+            descriptor,
+            vault_get=vault.get if vault else None,
+            journal=Journal(cfg.journal_path),
+        )
+    )
+    print("finish:", outcome.finish or "(pas de résumé)")
+    print("outcome:", outcome.outcome)
+    return 0
+
+
+def _cmd_outreach(args: argparse.Namespace) -> int:
+    """Manually run the outreach agent (email / contact form) on a provider."""
+    cfg = get_config()
+    from mnemosyne.agents.outreach import run_outreach
+    from mnemosyne.catalog import Catalog
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    try:
+        catalog = Catalog(cfg.sources_path, db)
+        catalog.sync()
+        descriptor = catalog.get(args.source)
+    finally:
+        db.close()
+    if descriptor is None:
+        print(f"source inconnue : {args.source}")
+        return 1
+    ask = args.ask or (
+        "Je construis un index ouvert d'images d'archives historiques. Comment "
+        "obtenir un accès API ou une autorisation pour indexer une partie de vos "
+        "collections ? Je cite et relie systématiquement la source."
+    )
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    outcome = asyncio.run(
+        run_outreach(
+            cfg,
+            descriptor,
+            ask,
+            contact_email=args.email,
+            contact_form_url=args.form,
+            vault_get=vault.get if vault else None,
+            journal=Journal(cfg.journal_path),
+        )
+    )
+    print("finish:", outcome.finish or "(pas de résumé)")
+    print("outcome:", outcome.outcome)
+    return 0
+
+
 def _cmd_develop(args: argparse.Namespace) -> int:
     cfg = get_config()
     if not cfg.dev.enabled:
@@ -411,6 +481,17 @@ def build_parser() -> argparse.ArgumentParser:
     pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
     pw.add_argument("--minutes", type=float, default=5.0)
     pw.set_defaults(func=_cmd_warmup)
+
+    pon = sub.add_parser("onboard", help="manually run the onboarding agent on a provider")
+    pon.add_argument("source", help="source id, e.g. europeana")
+    pon.set_defaults(func=_cmd_onboard)
+
+    pour = sub.add_parser("outreach", help="manually run the outreach agent on a provider")
+    pour.add_argument("source", help="source id")
+    pour.add_argument("--ask", default=None, help="the request to send")
+    pour.add_argument("--email", default=None, help="contact email")
+    pour.add_argument("--form", default=None, help="contact form URL")
+    pour.set_defaults(func=_cmd_outreach)
 
     pdev = sub.add_parser("develop", help="self-extension: add a provider via PR")
     pdev.add_argument("task", help="what to build, e.g. 'Add the Europeana connector'")
