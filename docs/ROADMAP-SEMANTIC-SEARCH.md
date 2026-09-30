@@ -24,6 +24,22 @@ asset (déjà stocké : image_url + métadonnées + provenance)
 Réutilise l'architecture existante (connecteurs, `normalize/`, provenance) au
 lieu de la dupliquer.
 
+## Politique de stockage : vectoriser puis supprimer
+
+Principe retenu : on **vectorise le contenu, puis on supprime le contenu** et on
+ne garde que **l'URL + le vecteur + les métadonnées** (+ licence/provenance).
+C'est un **index sémantique**, pas un mirroir : stockage minuscule, empreinte
+droits minimale.
+
+Points d'attention :
+- **Link rot** : si l'URL meurt, on garde le vecteur mais on ne peut plus montrer
+  l'image → prévoir une **vignette minuscule** (quelques Ko) comme source
+  d'affichage/re-embedding, ou re-fetch à la demande.
+- **Changement de modèle** : un embedding est lié au modèle → pour re-vectoriser
+  il faut la source. Garder soit la vignette, soit le re-fetch par URL.
+- **Droits** : le vecteur est une donnée dérivée ; on ne recopie pas l'œuvre. On
+  conserve attribution + lien canonique.
+
 ## Modèles d'embedding
 
 | Option | Avantages | Inconvénients |
