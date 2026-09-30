@@ -5,9 +5,15 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta
 
-#: Each automatic session commits to ONE goal (target + intent), like a person
-#: who opens their laptop with something in mind. `weight` skews the draw so the
-#: distribution is human: general/aggregator sites are common, deep archives rare.
+#: Each automatic session commits to ONE goal (target + intent). `weight` skews
+#: the draw so the distribution is human: general/aggregator sites are common,
+#: deep archives rare.
+#:
+#: IMPORTANT: this is an LLM driving a browser — it can only *read text and look
+#: at still images*. Only list text/image sites it can actually process. Never
+#: add video/streaming sites (YouTube, Twitch…): "watching" is meaningless for
+#: the agent and just parks a tab. The warmup's purpose is a *credible browsing
+#: history* for the account, not pretending to be human.
 WARMUP_GOALS: list[dict] = [
     {
         "name": "google",
@@ -39,15 +45,6 @@ WARMUP_GOALS: list[dict] = [
         "instruction": (
             "Check your Gmail inbox: read the subjects/snippets of a few messages, "
             "open one or two, then leave. Nothing to send."
-        ),
-    },
-    {
-        "name": "youtube",
-        "weight": 10,
-        "sites": ["https://www.youtube.com/"],
-        "instruction": (
-            "Look for a short history/industry documentary and watch part of it, "
-            "like anyone killing a few minutes."
         ),
     },
     {

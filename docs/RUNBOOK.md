@@ -188,8 +188,11 @@ quitte. Le tirage est **pondéré** (réaliste) : sites généralistes fréquent
 archives profondes rares.
 
 Poids (extrait, `warmup_schedule.py`) : Google 20, Wikipédia 16, Gmail 12,
-YouTube 10, presse 8, Gallica 6, INA 5, Commons 5, archive.org 4, Europeana 3,
+presse 8, Gallica 6, INA 5, Commons 5, archive.org 4, Europeana 3,
 Wikidata/RetroNews/Flickr Commons/LoC 2, Open Library/David Rumsey/Persée 1.
+
+Uniquement des sites **texte/image** : l'agent est un LLM, il ne peut pas
+« regarder » une vidéo. Pas de YouTube/Twitch (ça ne sert qu'à garer un onglet).
 
 Comportement : lecture, **scroll humain**, recherches plausibles, clics, skip
 d'un mur. **Aucun outbound** (pas de compte, pas de mail). C'est ce qui construit
