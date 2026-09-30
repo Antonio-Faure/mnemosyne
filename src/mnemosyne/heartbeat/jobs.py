@@ -5,8 +5,10 @@ A handler returns an optional dict of payload updates used when the job recurs.
 
 from __future__ import annotations
 
+import random
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 from mnemosyne.config import Config
 from mnemosyne.engine import Engine
@@ -91,17 +93,56 @@ async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
 
 @handler("warmup")
 async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
-    # P2: drive light, human-like navigation in the dedicated browser to build
-    # account reputation before any outbound action.
-    phase = ctx.engine.governor.phase()
-    log.info(
-        "warmup tick (phase until_day=%s, harvest=%d/day, outbound=%d/day)",
-        phase.until_day,
-        phase.harvest_per_day,
-        phase.outbound_per_day,
+    """Human-like warmup browsing: 1-2 randomized sessions/day inside a window.
+
+    Each session picks one goal (Gmail, Wikipedia, INA, Gallica…) and wanders
+    slowly to build the account's history/coherence. No outbound actions.
+    """
+    from mnemosyne.agents.warmup import run_warmup
+    from mnemosyne.agents.warmup_schedule import (
+        daily_session_target,
+        pick_goal,
+        seconds_until_next_window,
     )
+
+    cfg = ctx.config
+    now = datetime.now()
+    today = now.date().isoformat()
+    key = f"warmup:{today}"
+    count = ctx.engine.db.get_counter(key)
+    target = daily_session_target(
+        today, cfg.agents.warmup_per_day_min, cfg.agents.warmup_per_day_max
+    )
+
+    in_window = cfg.agents.warmup_window_start <= now.hour < cfg.agents.warmup_window_end
+    if not in_window or count >= target:
+        # outside human hours, or quota reached: sleep until the next window
+        return {"interval_s": seconds_until_next_window(now, cfg.agents.warmup_window_start)}
+
+    # humans don't do it on schedule every single time
+    if random.random() < cfg.agents.warmup_skip_probability:
+        ctx.journal.append("warmup : session sautée (au hasard)", source="warmup")
+        return {"interval_s": random.randint(30 * 60, 120 * 60)}
+
+    if not await _browser_ready(ctx):
+        ctx.journal.append("warmup : Chrome injoignable, reporté", level="warn", source="warmup")
+        return {"interval_s": 1800}
+
+    goal = pick_goal()
+    minutes = random.uniform(cfg.agents.warmup_session_min, cfg.agents.warmup_session_max)
+    note = f"warmup « {goal['name']} » ~{minutes:.0f} min (session {count + 1}/{target})"
+    log.info(note)
+    ctx.journal.append(note, source="warmup")
+    result = await run_warmup(
+        cfg, minutes=minutes, goal=goal, journal=ctx.journal, vault_get=_vault_get(ctx)
+    )
+    ctx.engine.db.incr_counter(key)
     ctx.engine.db.set_kv("warmup_last", job.run_at)
-    return None
+    ctx.journal.append(
+        f"warmup « {goal['name']} » terminé — {result.finish or 'ok'}", source="warmup"
+    )
+    # next session later, at a random human hour
+    return {"interval_s": random.randint(60 * 60, 3 * 60 * 60)}
 
 
 @handler("onboard")

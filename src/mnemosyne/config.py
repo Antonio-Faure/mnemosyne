@@ -104,6 +104,14 @@ class AgentsConfig(BaseModel):
         ]
     )
     warmup_max_turns: int = 40
+    #: automatic warmup scheduling (human-like)
+    warmup_per_day_min: int = 1
+    warmup_per_day_max: int = 2
+    warmup_window_start: int = 8      # earliest local hour
+    warmup_window_end: int = 23       # latest local hour
+    warmup_session_min: float = 6.0   # minutes
+    warmup_session_max: float = 12.0
+    warmup_skip_probability: float = 0.2  # humans don't do it every time
 
 
 class DevConfig(BaseModel):

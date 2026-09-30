@@ -198,19 +198,15 @@ class Heartbeat:
             return
         self.engine.db.complete_job(job.id)
 
-        interval = job.payload.get("interval_s")
+        payload = dict(job.payload)
+        if updates:
+            payload.update(updates)
+        # the handler may override interval_s to schedule the next run dynamically
+        interval = payload.get("interval_s")
         if interval:
-            payload = dict(job.payload)
-            if updates:
-                payload.update(updates)
             run_at = (datetime.now(UTC) + timedelta(seconds=int(interval))).isoformat()
             self.engine.db.enqueue(
-                Job(
-                    kind=job.kind,
-                    payload=payload,
-                    priority=job.priority,
-                    run_at=run_at,
-                )
+                Job(kind=job.kind, payload=payload, priority=job.priority, run_at=run_at)
             )
 
     def _reschedule(self, job: Job, in_seconds: int, error: str | None = None) -> None:

@@ -15,8 +15,9 @@ api:
 heartbeat:
   tick_seconds: 15
   max_workers: 4
-  job_timeout_s: 300
-  stale_lock_s: 600
+  # warmup/onboarding/outreach browser sessions can run several minutes
+  job_timeout_s: 1800
+  stale_lock_s: 3600
 
 reputation:
   # ISO date the agent's own Google account was created — enables the warmup
@@ -72,6 +73,13 @@ agents:
   context_window_tokens: 128000
   output_dir: data/agent-runs
   warmup_max_turns: 40
+  warmup_per_day_min: 1
+  warmup_per_day_max: 2
+  warmup_window_start: 8
+  warmup_window_end: 23
+  warmup_session_min: 6
+  warmup_session_max: 12
+  warmup_skip_probability: 0.2
   warmup_sites:
     - https://gallica.bnf.fr/
     - https://commons.wikimedia.org/wiki/Main_Page

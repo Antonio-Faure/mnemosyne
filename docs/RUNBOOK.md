@@ -179,6 +179,26 @@ mnemosyne doctor             # ligne "telegram: enabled=… bot=@…"
 Le journal contient : démarrages, directives, messages opérateur, harvests,
 sources dégradées, erreurs/retries, digests périodiques.
 
+## 4bisbis. Warmup automatique (« nourrir » le compte)
+
+Le heartbeat planifie **1 à 2 sessions/jour**, à des heures humaines aléatoires
+(fenêtre 8h–23h), avec 20% de chance de sauter (irrégularité humaine). Chaque
+session **choisit une cible** et se balade lentement comme une personne :
+Gmail, Wikipédia, Gallica, INA, Wikimedia Commons, Europeana, archive.org —
+lecture, scroll humain, recherches, clics, skip. **Aucun outbound** (pas de
+compte, pas de mail). C'est ce qui construit l'historique/cohérence du compte
+Google sans te solliciter.
+
+Réglages `config.agents` : `warmup_per_day_min/max`, `warmup_window_start/end`,
+`warmup_session_min/max` (minutes), `warmup_skip_probability`, `warmup_sites`,
+`warmup_max_turns`. Le budget horaire de job est `heartbeat.job_timeout_s`
+(1800s).
+
+Lancer **manuellement** une session (debug) : `mnemosyne warmup --minutes 8`
+(ou `make`-style dans le conteneur). Les sessions auto se voient dans le journal
+(`warmup « <cible> » ~N min (session i/total)`) et dans les logs (avec le
+`cached_pct`).
+
 ## 4ter. Auto-extension (l'agent code ses propres connecteurs)
 
 L'agent peut ajouter un fournisseur **lui-même** : descripteur + connecteur +

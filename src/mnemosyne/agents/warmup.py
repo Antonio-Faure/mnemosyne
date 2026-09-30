@@ -19,6 +19,7 @@ from stirrup.core.models import EmptyParams, Tool
 
 from mnemosyne.agents.onboarding import AgentOutcome
 from mnemosyne.agents.tools import BrowserToolProvider, _fail, _ok
+from mnemosyne.agents.warmup_schedule import pick_goal
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.journal import Journal
@@ -215,13 +216,16 @@ async def run_warmup(
     config: Config,
     *,
     minutes: float = 5.0,
+    goal: dict | None = None,
     journal: Journal | None = None,
     vault_get=None,
 ) -> AgentOutcome:
+    goal = goal or pick_goal()
+    sites = goal.get("sites") or config.agents.warmup_sites
     client = build_agent_client(config, session="warmup", vault_get=vault_get)
     notifier = Notifier(config.notify.telegram)
     provider = WarmupToolProvider(
-        sites=config.agents.warmup_sites,
+        sites=sites,
         minutes=minutes,
         vault_path=config.vault_file,
         notifier=notifier,
@@ -237,9 +241,9 @@ async def run_warmup(
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)
     task = (
-        f"Browse the history/archive sites for about {minutes:.0f} minutes like a "
-        "curious human researching archival images. Start with sites_list(), then "
-        "go slowly through the sites."
+        f"Session goal: {goal.get('instruction', 'browse archive sites')}\n"
+        f"Spend about {minutes:.0f} minutes doing this, slowly, like a curious "
+        "human. Start with sites_list(), then browse."
     )
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
         finish, _history, _metadata = await session.run(task)
