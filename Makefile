@@ -58,9 +58,16 @@ cdp:  ## check the Chrome DevTools endpoint (shared namespace)
 	docker run --rm --network container:mnemosyne-chrome-1 curlimages/curl:latest \
 		-s http://127.0.0.1:9222/json/version
 
-vnc:  ## print the noVNC URL (open it to sign Chrome into Google)
-	@echo "Open http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale"
-	@echo "(remote: ssh -L 6080:127.0.0.1:6080 -L 8080:127.0.0.1:8080 <user>@<host>)"
+vnc:  ## print how to open the noVNC page (local desktop or SSH tunnel)
+	@echo "=== CAS 1 : tu as un bureau/écran sur CETTE machine ($(shell hostname)) ==="
+	@echo "  Ouvre un navigateur ICI et va sur :"
+	@echo "  http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale"
+	@echo ""
+	@echo "=== CAS 2 : tu es sur TON portable et tu te connectes en SSH ==="
+	@echo "  Depuis TON portable, lance :"
+	@echo "  ssh -L 6080:127.0.0.1:6080 -L 8080:127.0.0.1:8080 $$(id -un)@$$(tailscale ip -4 2>/dev/null | head -1)"
+	@echo "  puis ouvre http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale"
+	@echo "  (garde la session SSH ouverte pendant que tu utilises la page)"
 
 chrome-reset:  ## wipe the Chrome profile (removes Google login) and restart it
 	docker compose rm -sf chrome
