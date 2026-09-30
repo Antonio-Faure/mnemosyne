@@ -1,30 +1,35 @@
 #!/usr/bin/env bash
-# Start a persistent, human-like Chrome accessible over VNC, with CDP on
-# 127.0.0.1:9222 (reachable by the mnemosyne container, which shares this netns).
+# Start a persistent Chrome accessible over VNC, CDP on 127.0.0.1:9222
+# (reachable by the mnemosyne container, which shares this netns).
+#
+# Chrome runs as the unprivileged user `chrome` so its sandbox stays enabled:
+# no "--no-sandbox / stability and security will suffer" warning.
 set -euo pipefail
 
 PROFILE_DIR="${CHROME_PROFILE_DIR:-/profile}"
 mkdir -p "$PROFILE_DIR"
+chown -R chrome:chrome "$PROFILE_DIR"
 
-# Clean locks left by an unclean shutdown (docker rm/restart/kill). Without this,
-# Chrome shows the "Chrome isn't stable — restore?" bubble on next start.
+# Clean locks left by an unclean shutdown (docker rm/restart/kill), including the
+# X server lock: a restart policy reuses the same container's /tmp.
 rm -f "$PROFILE_DIR"/Singleton* "$PROFILE_DIR"/.com.google.Chrome.* 2>/dev/null || true
+rm -f "/tmp/.X${DISPLAY#:}-lock" /tmp/.X11-unix/X"${DISPLAY#:}" 2>/dev/null || true
+
+mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
 echo "[chrome] starting Xvfb on $DISPLAY"
+# -ac: no X access control, so the unprivileged chrome user may connect.
 Xvfb "$DISPLAY" -screen 0 1280x900x24 -ac +extension RANDR &
 
-# Wait until the X server actually answers.
 for _ in $(seq 1 40); do
     if xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then break; fi
     sleep 0.25
 done
 
-echo "[chrome] launching Google Chrome (CDP on 127.0.0.1:9222)"
+echo "[chrome] launching Google Chrome as user 'chrome' (sandbox enabled)"
 # --password-store=basic keeps the password manager inside the persistent profile.
-# The crash/session flags suppress the "not stable / restore" bubble after an
-# unclean restart. --disable-gpu + --disable-dev-shm-usage make headless-ish
-# Xvfb Chrome stable (no GPU, small /dev/shm).
-google-chrome \
+# Crash/session flags suppress the "not stable / restore" bubble.
+HOME=/home/chrome gosu chrome google-chrome \
     --user-data-dir="$PROFILE_DIR" \
     --profile-directory=Default \
     --password-store=basic \
@@ -41,7 +46,6 @@ google-chrome \
     --disable-blink-features=AutomationControlled \
     --window-size=1280,900 \
     --lang=fr-FR \
-    --no-sandbox \
     about:blank &
 CHROME_PID=$!
 
@@ -60,6 +64,5 @@ shutdown() {
 }
 trap shutdown TERM INT
 
-# If Chrome ever exits, stop the container so Docker restarts it cleanly.
 wait "$CHROME_PID" || true
 echo "[chrome] Chrome exited"

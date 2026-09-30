@@ -14,6 +14,11 @@ services:
     environment:
       DISPLAY: ":99"
       CHROME_PROFILE_DIR: /profile
+    # Chrome runs as a non-root user WITH its sandbox: Docker's default seccomp
+    # profile blocks the user namespaces the sandbox needs, so relax seccomp for
+    # this dedicated, loopback-only container (Chrome's own sandbox stays active).
+    security_opt:
+      - seccomp=unconfined
     # Keep DNS off the tailnet (no MagicDNS / tail*.ts.net search domain).
     dns:
       - 1.1.1.1

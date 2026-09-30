@@ -72,23 +72,29 @@ descriptor never loses lifecycle progress.
     `identity.disclosure()`/`email_body()`/`form_message()` from `config.identity`,
     so the agent always states what it is and links the repo. Hand-rolled outreach
     copy is forbidden.
-13. **Chrome is signed into Google.** The persistent profile is logged into the
+13. **Chrome runs as non-root with its sandbox.** The dedicated container runs
+    Chrome as user `chrome`, not root, so we can drop `--no-sandbox` (no
+    "stability and security will suffer" warning, no root Chrome). Docker's
+    default seccomp blocks the namespaces the sandbox needs, so this dedicated,
+    loopback-only container sets `security_opt: [seccomp=unconfined]`; Chrome's
+    own sandbox stays active.
+14. **Chrome is signed into Google.** The persistent profile is logged into the
     agent's Google account (once, over VNC), giving automatic Gmail login and
     Chrome's built-in password manager (`--password-store=basic` keeps it inside
     the profile). The agent therefore does not need to store most site passwords
     itself.
-14. **Egress never through Tailscale.** The agent must browse on the machine's
+15. **Egress never through Tailscale.** The agent must browse on the machine's
     real residential IP. No exit node / accept-routes; containers use explicit
     public DNS with a neutral search domain (no `tail*.ts.net` MagicDNS leak); the
     compose subnet is pinned so a host policy route can force the physical NIC.
     `scripts/check-egress.sh` (aka `make egress`) asserts host and container
     egress IPs match.
-15. **One dated journal per service.** Besides the daily journal, each provider the
+16. **One dated journal per service.** Besides the daily journal, each provider the
     agent wants to access has its own markdown (`journal/services/<id>.md`), every
     entry timestamped `YYYY-MM-DD HH:MM:SS`. It records the full access history of
     that provider (attempts, key obtained, email sent, blocks, escalations), so the
     operator can audit a single service without scanning the global log.
-16. **Stirrup for cognition, home-made for control.** The heartbeat stays a
+17. **Stirrup for cognition, home-made for control.** The heartbeat stays a
     deterministic durable scheduler. The per-task agentic loop (onboarding,
     outreach) uses **Stirrup** with **browser-use** over CDP, exposing a small set
     of deterministic business tools rather than the DOM. Same pattern as

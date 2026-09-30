@@ -62,14 +62,22 @@ captcha/phone-verify à la main quand Telegram t'alerte.
 > réseau** et joint le CDP en `127.0.0.1:9222` (`MNEMOSYNE_CDP_URL`). Pour
 > vérifier : `make cdp`.
 
-### Si Chrome affiche « Chrome n'est pas stable / Rétablir »
+### Si Chrome affiche « Chrome n'est pas stable » / « stability and security will suffer »
 
-C'était dû à un arrêt non propre (conteneur redémarré plusieurs fois) laissant des
-verrous dans le profil. Corrigé : le conteneur supprime les `Singleton*`, passe
-`--hide-crash-restore-bubble` / `--disable-session-crashed-bubble`, et gère l'arrêt
-proprement (`--disable-gpu`, `--disable-dev-shm-usage`). Pour repartir d'un profil
-vierge (efface la connexion Google) : `make chrome-reset`, puis reconnecte via
-`make vnc`.
+Ce message venait de `--no-sandbox` (Chrome refusait le sandbox car lancé en root)
+et d'arrêts non propres. Corrigé :
+- Chrome tourne désormais en **utilisateur non-root `chrome`, sandbox activé** —
+  plus de `--no-sandbox`, plus de message d'avertissement ;
+- pour cela, le conteneur dédié relâche le **seccomp** de Docker
+  (`security_opt: seccomp=unconfined`) : sans ça le sandbox Chrome ne peut pas
+  créer ses namespaces. Trade-off assumé : conteneur dédié, sans réseau exposé
+  (CDP/nonVNC en loopback), et le sandbox Chrome reste actif ;
+- nettoyage des verrous (`Singleton*`, verrou X) et
+  `--hide-crash-restore-bubble` / `--disable-session-crashed-bubble` ;
+- arrêt SIGTERM propre, `--disable-gpu`, `--disable-dev-shm-usage`.
+
+Pour repartir d'un profil vierge (efface la connexion Google) : `make chrome-reset`,
+puis reconnecte via `make vnc`.
 
 ## 3bis. Transparence & mémoire
 
