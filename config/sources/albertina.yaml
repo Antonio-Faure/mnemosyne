@@ -1,0 +1,25 @@
+id: albertina
+name: ALBERTINA Sammlungen Online
+institution: ALBERTINA (Graphische Sammlung), Wien
+country: AT
+protocol: iiif
+base_url: https://sammlungenonline.albertina.at
+auth: none
+license: varies
+rights: "ALBERTINA, Wien — many public domain (Gemeinfrei), check per record"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, austria, prints, iiif, keyless]
+seeds:
+  - "Dürer Holzschnitt"
+  - "Rudolf von Alt Aquarell"
+  - "photography 19th century"
+  - "Albrecht Dürer"
+notes: >-
+  Per-object IIIF Presentation v2 manifests
+  (https://sammlungenonline.albertina.at/iiif/tms_<id>/manifest.json). The host
+  exposes no aggregate Collection manifest (probes for collection.json / iiiF
+  roots return 404), so a single manifest entry point is used; metadata carries
+  Title/Artist/Date/Copyright.
+extra:
+  manifest: https://sammlungenonline.albertina.at/iiif/tms_100813/manifest.json
