@@ -183,11 +183,17 @@ sources dégradées, erreurs/retries, digests périodiques.
 
 Le heartbeat planifie **1 à 2 sessions/jour**, à des heures humaines aléatoires
 (fenêtre 8h–23h), avec 20% de chance de sauter (irrégularité humaine). Chaque
-session **choisit une cible** et se balade lentement comme une personne :
-Gmail, Wikipédia, Gallica, INA, Wikimedia Commons, Europeana, archive.org —
-lecture, scroll humain, recherches, clics, skip. **Aucun outbound** (pas de
-compte, pas de mail). C'est ce qui construit l'historique/cohérence du compte
-Google sans te solliciter.
+session **choisit une cible** et se balade lentement comme une personne, puis
+quitte. Le tirage est **pondéré** (réaliste) : sites généralistes fréquents,
+archives profondes rares.
+
+Poids (extrait, `warmup_schedule.py`) : Google 20, Wikipédia 16, Gmail 12,
+YouTube 10, presse 8, Gallica 6, INA 5, Commons 5, archive.org 4, Europeana 3,
+Wikidata/RetroNews/Flickr Commons/LoC 2, Open Library/David Rumsey/Persée 1.
+
+Comportement : lecture, **scroll humain**, recherches plausibles, clics, skip
+d'un mur. **Aucun outbound** (pas de compte, pas de mail). C'est ce qui construit
+l'historique/cohérence du compte Google sans te solliciter.
 
 Réglages `config.agents` : `warmup_per_day_min/max`, `warmup_window_start/end`,
 `warmup_session_min/max` (minutes), `warmup_skip_probability`, `warmup_sites`,
