@@ -115,8 +115,10 @@ class DevToolProvider(ToolProvider):
         )
 
     async def _escalate(self, message: str) -> None:
+        # a git/write failure is not a question the operator can answer — alert,
+        # don't ask. (The explicit `ask_operator` tool still asks.)
         if self.notifier and self.notifier.enabled:
-            await self.notifier.ask(message)
+            await self.notifier.send(message, "warn")
         if self.journal:
             self.journal.append(message, level="warn", source="dev")
 
