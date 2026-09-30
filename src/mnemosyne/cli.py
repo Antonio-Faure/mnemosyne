@@ -129,6 +129,24 @@ def _cmd_develop(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_warmup(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.agents.warmup import run_warmup
+
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    outcome = asyncio.run(
+        run_warmup(
+            cfg,
+            minutes=args.minutes,
+            journal=Journal(cfg.journal_path),
+            vault_get=vault.get if vault else None,
+        )
+    )
+    print("finish:", outcome.finish or "(pas de résumé)")
+    print("usage:", outcome.outcome.get("usage"))
+    return 0
+
+
 def _cmd_telegram_test(args: argparse.Namespace) -> int:
     cfg = get_config()
     notifier = Notifier(cfg.notify.telegram)
@@ -361,6 +379,10 @@ def build_parser() -> argparse.ArgumentParser:
     lsub = pllm.add_subparsers(dest="llm_command", required=True)
     lt = lsub.add_parser("test", help="check auth + one round-trip")
     lt.set_defaults(func=_cmd_llm_test)
+
+    pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
+    pw.add_argument("--minutes", type=float, default=5.0)
+    pw.set_defaults(func=_cmd_warmup)
 
     pdev = sub.add_parser("develop", help="self-extension: add a provider via PR")
     pdev.add_argument("task", help="what to build, e.g. 'Add the Europeana connector'")

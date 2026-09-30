@@ -71,6 +71,15 @@ agents:
   max_tokens: 8192
   context_window_tokens: 128000
   output_dir: data/agent-runs
+  warmup_max_turns: 40
+  warmup_sites:
+    - https://gallica.bnf.fr/
+    - https://commons.wikimedia.org/wiki/Main_Page
+    - https://archive.org/
+    - https://www.europeana.eu/
+    - https://fr.wikipedia.org/wiki/Histoire_de_l%27industrie
+    - https://fr.wikipedia.org/wiki/P%C3%A9trole
+    - https://www.ina.fr/
 
 # Bounds the LLM context (and therefore the cost) of long-running agents.
 memory:

@@ -44,6 +44,13 @@ class Heartbeat:
     # ── bootstrap ────────────────────────────────────────────────────────
     def bootstrap(self) -> None:
         cleanup_orphan_tmp(self.config.data_path)
+        pruned = self.engine.db.prune_duplicate_jobs()
+        if pruned:
+            log.warning("pruned %d duplicate pending jobs", pruned)
+        done_cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
+        old = self.engine.db.prune_done_jobs(done_cutoff)
+        if old:
+            log.info("pruned %d finished jobs older than 7 days", old)
         descriptors = self.engine.catalog.sync()
         supported = 0
         for d in descriptors:
@@ -88,11 +95,11 @@ class Heartbeat:
                         )
                     )
         warmup = self.config.reputation.account_created_at
-        if warmup and not self.engine.db.has_open_job("warmup", "-"):
+        if warmup and not self.engine.db.has_open_job("warmup"):
             self.engine.db.enqueue(
                 Job(kind="warmup", payload={"interval_s": WARMUP_INTERVAL_S}, priority=20)
             )
-        if not self.engine.db.has_open_job("journal", "-"):
+        if not self.engine.db.has_open_job("journal"):
             self.engine.db.enqueue(
                 Job(kind="journal", payload={"interval_s": JOURNAL_INTERVAL_S}, priority=90)
             )

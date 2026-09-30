@@ -236,16 +236,52 @@ class Database:
             self._conn.commit()
             return cur.rowcount
 
-    def has_open_job(self, kind: str, source_id: str) -> bool:
-        pattern = f'%"source_id": "{source_id}"%'
+    def has_open_job(self, kind: str, source_id: str | None = None) -> bool:
+        """True if a pending/running job of `kind` exists.
+
+        With `source_id`, match that source; without it (singleton recurring jobs
+        like `journal`/`warmup`), match any open job of the kind.
+        """
         with self._lock:
-            row = self._conn.execute(
-                """SELECT 1 FROM jobs
-                   WHERE kind = ? AND state IN (?, ?) AND payload LIKE ?
-                   LIMIT 1""",
-                (kind, JobState.PENDING.value, JobState.RUNNING.value, pattern),
-            ).fetchone()
+            if source_id is not None:
+                pattern = f'%"source_id": "{source_id}"%'
+                row = self._conn.execute(
+                    """SELECT 1 FROM jobs
+                       WHERE kind = ? AND state IN (?, ?) AND payload LIKE ?
+                       LIMIT 1""",
+                    (kind, JobState.PENDING.value, JobState.RUNNING.value, pattern),
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    """SELECT 1 FROM jobs
+                       WHERE kind = ? AND state IN (?, ?) LIMIT 1""",
+                    (kind, JobState.PENDING.value, JobState.RUNNING.value),
+                ).fetchone()
         return row is not None
+
+    def prune_duplicate_jobs(self) -> int:
+        """Delete duplicate PENDING jobs sharing (kind, payload), keeping the oldest."""
+        pending = JobState.PENDING.value
+        with self._lock:
+            cur = self._conn.execute(
+                """DELETE FROM jobs
+                   WHERE state = ? AND id NOT IN (
+                       SELECT MIN(id) FROM jobs WHERE state = ? GROUP BY kind, payload
+                   )""",
+                (pending, pending),
+            )
+            self._conn.commit()
+            return cur.rowcount
+
+    def prune_done_jobs(self, before_iso: str) -> int:
+        """Delete finished jobs scheduled before `before_iso` (keep the table small)."""
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM jobs WHERE state = ? AND run_at < ?",
+                (JobState.DONE.value, before_iso),
+            )
+            self._conn.commit()
+            return cur.rowcount
 
     def count_jobs(self, state: JobState | None = None) -> int:
         with self._lock:

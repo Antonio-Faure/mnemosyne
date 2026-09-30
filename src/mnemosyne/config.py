@@ -91,6 +91,19 @@ class AgentsConfig(BaseModel):
     max_tokens: int = 8192
     context_window_tokens: int = 128000
     output_dir: str = "data/agent-runs"
+    #: warmup browsing: history/archive sites the agent wanders like a human
+    warmup_sites: list[str] = Field(
+        default_factory=lambda: [
+            "https://gallica.bnf.fr/",
+            "https://commons.wikimedia.org/wiki/Main_Page",
+            "https://archive.org/",
+            "https://www.europeana.eu/",
+            "https://fr.wikipedia.org/wiki/Histoire_de_l%27industrie",
+            "https://fr.wikipedia.org/wiki/P%C3%A9trole",
+            "https://www.ina.fr/",
+        ]
+    )
+    warmup_max_turns: int = 40
 
 
 class DevConfig(BaseModel):
