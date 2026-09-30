@@ -52,7 +52,7 @@ identity:
     a free and open research project that aggregates public historical image
     archives so they are easier to find and reuse
   repo_url: https://github.com/Antonio-Faure/mnemosyne
-  agent_email: null
+  agent_email: archivist.mnemosyne@gmail.com
   language: fr
 
 # Stirrup agent loop (browser onboarding / outreach), P2.
