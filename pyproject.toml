@@ -27,6 +27,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+agent = [
+    "stirrup",
+    "openai>=1.40",
+]
 browser = [
     "stirrup[browser]",
     "openai>=1.40",

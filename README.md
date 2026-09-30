@@ -103,6 +103,7 @@ mnemosyne journal                    # today's journal
 mnemosyne journal --services         # list per-service journals
 mnemosyne journal --service acme     # one md per provider, dated actions
 mnemosyne say "priorise Lacq"        # one-off message → control/inbox.md
+mnemosyne develop "Add Europeana"    # self-extension: agent opens a PR
 mnemosyne status                     # providers, assets, governor pressure
 mnemosyne doctor                     # config, vault, LLM auth, Chrome health
 ```

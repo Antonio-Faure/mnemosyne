@@ -93,6 +93,44 @@ class AgentsConfig(BaseModel):
     output_dir: str = "data/agent-runs"
 
 
+class DevConfig(BaseModel):
+    """Self-extension: what the developer agent may write and how it integrates."""
+
+    enabled: bool = True
+    branch_prefix: str = "agent/"
+    base_branch: str = "main"
+    github_repo: str = "Antonio-Faure/mnemosyne"
+    #: only files under these prefixes may be written
+    allow: list[str] = Field(
+        default_factory=lambda: [
+            "config/sources/",
+            "src/mnemosyne/sources/",
+            "tests/",
+            "docs/",
+        ]
+    )
+    #: never writable, even if under an allowed prefix (self-protection)
+    deny: list[str] = Field(
+        default_factory=lambda: [
+            ".env",
+            ".git/",
+            ".github/",
+            "vault/",
+            "data/",
+            "journal/",
+            "control/",
+            "src/mnemosyne/heartbeat/",
+            "src/mnemosyne/reputation/",
+            "src/mnemosyne/agents/",
+            "src/mnemosyne/dev/",
+            "AGENTS.md",
+            "docker-compose.yml",
+            "Dockerfile",
+            "pyproject.toml",
+        ]
+    )
+
+
 class MemoryConfig(BaseModel):
     """Bounds the LLM context (and therefore the cost) of long-running agents."""
 
@@ -127,6 +165,7 @@ class Config(BaseModel):
     llm: LlmConfig = Field(default_factory=LlmConfig)
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
+    dev: DevConfig = Field(default_factory=DevConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     notify: NotifyConfig = Field(default_factory=NotifyConfig)
     sources_dir: str = "config/sources"

@@ -179,6 +179,37 @@ mnemosyne doctor             # ligne "telegram: enabled=… bot=@…"
 Le journal contient : démarrages, directives, messages opérateur, harvests,
 sources dégradées, erreurs/retries, digests périodiques.
 
+## 4ter. Auto-extension (l'agent code ses propres connecteurs)
+
+L'agent peut ajouter un fournisseur **lui-même** : descripteur + connecteur +
+test, puis lint/tests, commit sur une branche `agent/*`, push et **PR**. Tu relis
+et merges.
+
+**Jeton GitHub (une fois)** — fine-grained PAT :
+GitHub → Settings → Developer settings → Fine-grained tokens →
+- Repository access : **uniquement** `Antonio-Faure/mnemosyne`
+- Permissions : **Contents: Read and write**, **Pull requests: Read and write**
+- (aucune permission Administration / delete)
+
+Puis :
+```bash
+mnemosyne vault set github_token <token>   # jamais en clair ailleurs
+```
+
+**Lancer une extension :**
+```bash
+mnemosyne develop "Add the Europeana connector"     # ou : make develop TASK="..."
+```
+
+Garde-fous (dans le code, pas seulement le prompt) :
+- écriture **uniquement** sous `config/sources/`, `src/mnemosyne/sources/`,
+  `tests/`, `docs/` ;
+- **interdit** : `.env`, `vault/`, `data/`, `heartbeat/`, `reputation/`,
+  `agents/`, `dev/`, `AGENTS.md`, `pyproject.toml`… (l'agent ne peut pas modifier
+  ses propres permissions) ;
+- **pas** de `--force` / `reset` / `clean` / `rm` / delete de branche ;
+- `ruff` + `pytest` doivent passer avant tout commit.
+
 ## 5. OpenCode Go (abo)
 
 L'agent utilise ton abonnement **sans clé séparée** : il lit le token mis en cache

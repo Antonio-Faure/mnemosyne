@@ -99,6 +99,33 @@ def _cmd_llm_test(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
+def _cmd_develop(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    if not cfg.dev.enabled:
+        print("self-extension is disabled (config.dev.enabled=false)")
+        return 1
+    from mnemosyne.dev.agent import run_dev_agent
+
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    vault_get = vault.get if vault else None
+    if not vault_get or not vault_get("github_token"):
+        print("Aucun jeton GitHub dans le vault : l'agent pourra éditer/tester en local")
+        print("mais pas pousser. Crée un PAT fine-grained puis :")
+        print("  mnemosyne vault set github_token <token>")
+
+    outcome = asyncio.run(
+        run_dev_agent(
+            cfg,
+            args.task,
+            vault_get=vault_get,
+            journal=Journal(cfg.journal_path),
+        )
+    )
+    print("finish:", outcome.finish or "(pas de résumé)")
+    print("branch:", outcome.branch or "(aucune)")
+    return 0
+
+
 def _cmd_telegram_test(args: argparse.Namespace) -> int:
     cfg = get_config()
     notifier = Notifier(cfg.notify.telegram)
@@ -331,6 +358,10 @@ def build_parser() -> argparse.ArgumentParser:
     lsub = pllm.add_subparsers(dest="llm_command", required=True)
     lt = lsub.add_parser("test", help="check auth + one round-trip")
     lt.set_defaults(func=_cmd_llm_test)
+
+    pdev = sub.add_parser("develop", help="self-extension: add a provider via PR")
+    pdev.add_argument("task", help="what to build, e.g. 'Add the Europeana connector'")
+    pdev.set_defaults(func=_cmd_develop)
 
     ptg = sub.add_parser("telegram", help="Telegram bot utilities")
     tg = ptg.add_subparsers(dest="telegram_command", required=True)

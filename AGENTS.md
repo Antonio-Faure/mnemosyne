@@ -94,6 +94,22 @@ without the `browser` extra. Browser work needs the extra:
 pip install -e '.[browser]'
 ```
 
+## Self-extension (the agent extends its own repo)
+
+`mnemosyne develop "<task>"` runs the developer agent (host side, `agent` extra):
+it edits the repo, runs lint/tests, commits on an `agent/*` branch, pushes and
+opens a PR that a human reviews and merges. Guardrails are enforced in
+`src/mnemosyne/dev/guard.py`:
+
+- writes allowed only under `config/sources/`, `src/mnemosyne/sources/`,
+  `tests/`, `docs/`;
+- never `.env`, `vault/`, `data/`, or the agent's own control code
+  (`heartbeat/`, `reputation/`, `agents/`, `dev/`), nor `AGENTS.md` /
+  `pyproject.toml` — the agent cannot change its own permissions;
+- no `--force`, `reset`, `clean`, `rm`, branch deletion; lint + tests must pass
+  before commit;
+- the GitHub token lives in the vault (`github_token`), scoped to this repo only.
+
 ## Dev
 
 ```bash
