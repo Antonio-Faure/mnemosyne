@@ -89,6 +89,8 @@ docker compose up -d          # mnemosyne + dedicated Chrome (Xvfb + VNC + CDP 9
 - noVNC (human intervention): http://localhost:6080
 
 The Chrome profile (holding the agent's own Google account) persists in a volume.
+Sign the profile into **Chrome** once over VNC: Gmail then logs in automatically
+and Chrome's **password manager** can create/store credentials. See `docs/RUNBOOK.md`.
 
 ## Monitoring & steering
 
@@ -117,6 +119,18 @@ opencode auth store. No separate key needed if you are logged in.
 mnemosyne doctor       # shows auth_source
 mnemosyne llm test     # one round-trip
 ```
+
+## Memory, cost & transparency
+
+- **Bounded memory**: `src/mnemosyne/memory.py` keeps the last N messages verbatim
+  plus a rolling summary; older turns are summarized by the LLM and pruned
+  (compaction). The context never grows without bound, so long-running agents do
+  not blow up the token bill. Tune in `config.memory`.
+- **No output cap by default**: calls send no `max_tokens` (the provider decides),
+  and the returned `usage` is recorded to follow the cost.
+- **Transparency**: every outbound email / contact form carries a one-line identity
+  disclosure and the repository URL, generated from `config.identity`
+  (`src/mnemosyne/identity.py`).
 
 ## Milestone status
 

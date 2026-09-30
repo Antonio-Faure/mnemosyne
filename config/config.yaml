@@ -45,6 +45,25 @@ llm:
       # Fall back to the token opencode caches after you log in to OpenCode Go.
       auth_provider: opencode-go
 
+# Public identity disclosed in every email / contact form (transparency).
+identity:
+  name: mnemosyne
+  purpose: >-
+    a free and open research project that aggregates public historical image
+    archives so they are easier to find and reuse
+  repo_url: https://github.com/Antonio-Faure/mnemosyne
+  agent_email: null
+  language: fr
+
+# Bounds the LLM context (and therefore the cost) of long-running agents.
+memory:
+  max_recent_messages: 12
+  compact_after_messages: 24
+  summary_instruction: >-
+    Résume la conversation ci-dessus en puces factuelles et durables (décisions,
+    faits, accès obtenus, tâches en cours, échecs). Conserve les identifiants,
+    URLs et clés de données (jamais les secrets). Sois concis : au plus 200 mots.
+
 notify:
   telegram:
     enabled: false

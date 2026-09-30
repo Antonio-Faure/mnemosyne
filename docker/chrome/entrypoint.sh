@@ -15,8 +15,15 @@ for _ in $(seq 1 30); do
 done
 
 echo "[chrome] launching Google Chrome (CDP on 9222)"
+# --password-store=basic keeps Chrome's password manager self-contained in the
+# persistent profile (no OS keyring in the container), so saved/generated
+# passwords survive restarts. Sign in to Chrome once (see RUNBOOK) and the
+# profile is tied to the agent's Google account: Gmail logs in automatically and
+# the password manager can offer/create credentials on the sites it visits.
 google-chrome \
     --user-data-dir="$PROFILE_DIR" \
+    --profile-directory=Default \
+    --password-store=basic \
     --remote-debugging-address=0.0.0.0 \
     --remote-debugging-port=9222 \
     --no-first-run \

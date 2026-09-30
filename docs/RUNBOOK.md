@@ -32,20 +32,42 @@ make install
 .venv/bin/mnemosyne serve    # API (dans un autre terminal)
 ```
 
-## 3. Connecter le Gmail de l'agent
+## 3. Connecter le Chrome à Google (Gmail + gestionnaire de mots de passe)
 
 Le Chrome du conteneur est exposé en VNC + CDP :
 
 1. Ouvre **http://localhost:6080** (noVNC) dans un navigateur.
-2. Va sur `https://mail.google.com` et connecte-toi avec le **compte Gmail dédié**.
-   Tu fais cette étape **une fois** : le profil persiste dans
-   `data/chrome-profile/` (volume monté).
-3. Le heartbeat (P2) réutilisera cette session pour lire les codes de vérification
-   et envoyer les mails de demande d'accès. Le même noVNC sert à résoudre un
-   captcha/phone-verify à la main quand Telegram t'alerte.
+2. **Connecte-toi à Chrome** (pas seulement Gmail) avec le **compte Google dédié** :
+   icône profil en haut à droite → « Se connecter à Chrome ». C'est cette étape qui
+   lie le profil au compte : Chrome gère alors l'**ouverture de session Gmail
+   automatique** et le **gestionnaire de mots de passe**.
+3. Dans `chrome://settings/passwords`, active « Proposer d'enregistrer les mots de
+   passe » et « Connexion automatique ». Chrome pourra ainsi **créer et stocker
+   des mots de passe** de façon automatisée côté navigateur.
+4. Tu fais tout ça **une seule fois** : le profil persiste dans
+   `data/chrome-profile/` (volume monté), et le flag `--password-store=basic` garde
+   les mots de passe dans le profil (pas de keyring OS dans le conteneur).
+
+Le heartbeat (P2) réutilise cette session pour lire les codes de vérification et
+envoyer les mails de demande d'accès. Le même noVNC sert à résoudre un
+captcha/phone-verify à la main quand Telegram t'alerte.
 
 > Le CDP est sur `http://localhost:9222` — c'est là que browser-use se connecte
 > (`MNEMOSYNE_CDP_URL`).
+
+## 3bis. Transparence & mémoire
+
+- **Transparence** : tout mail / formulaire inclut une phrase d'identité + l'URL du
+  repo, construite depuis `config.identity` (`src/mnemosyne/identity.py`). Exemple :
+  « Je suis mnemosyne, un agent logiciel autonome qui développe un projet de
+  recherche ouvert… Open source : https://github.com/Antonio-Faure/mnemosyne ».
+- **Mémoire bornée** : l'agent ne renvoie jamais tout son historique au modèle
+  ($$$). `src/mnemosyne/memory.py` conserve les N derniers messages + un **résumé
+  roulant** ; au-delà d'un seuil, les anciens messages sont résumés par le LLM puis
+  supprimés de la base (compaction). Réglages dans `config.memory`.
+- **Pas de `max_tokens`** : les appels n'imposent pas de plafond de sortie (laisse
+  le provider décider), ce qui évite les `content` vides des modèles à
+  raisonnement. L'`usage` (tokens) est capturé à chaque appel pour suivre le coût.
 
 ## 4. Surveiller & orienter l'agent
 

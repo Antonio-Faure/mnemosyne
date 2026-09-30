@@ -18,11 +18,17 @@ one unified API.
    provider, account creation, outbound email) go through `reputation.governor`.
    Never bypass it; on 403/429/captcha the whole system slows down.
 5. **Lawful & transparent.** Respect robots.txt and provider ToS. Throttle per
-   domain. The agent acts in its own name and references this public repository in
-   outreach. Human-in-the-loop is mandatory for anything irreversible or legally
-   binding.
+   domain. The agent acts in its own name and **every email / contact form states
+   who it is and links this repository** (build the text with
+   `identity.disclosure()`, never hand-roll it). Human-in-the-loop is mandatory for
+   anything irreversible or legally binding.
 6. **Every asset carries provenance.** No image enters the store without its source,
    canonical page URL, license/rights and retrieval timestamp.
+7. **Bounded memory.** Long-running conversations must go through
+   `memory.Memory`: recent messages verbatim + a rolling summary, older turns
+   compacted (summarized then pruned). Never resend an unbounded history to the
+   LLM. Do not set an output `max_tokens` by default (reasoning models return empty
+   `content` when the budget is exhausted); record `usage` to track cost.
 
 ## Connector contract
 

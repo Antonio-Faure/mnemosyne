@@ -52,6 +52,16 @@ CREATE TABLE IF NOT EXISTS kv (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS memory (
+    session TEXT NOT NULL,
+    seq     INTEGER NOT NULL,
+    role    TEXT NOT NULL,
+    content TEXT NOT NULL,
+    ts      TEXT NOT NULL,
+    PRIMARY KEY (session, seq)
+);
+CREATE INDEX IF NOT EXISTS idx_memory_session ON memory(session, seq);
 """
 
 
@@ -267,6 +277,47 @@ class Database:
                 "SELECT value FROM counters WHERE key = ?", (key,)
             ).fetchone()
         return int(row["value"]) if row else 0
+
+    # ── memory (conversation store, pruned by compaction) ────────────────
+    def memory_append(self, session: str, role: str, content: str) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COALESCE(MAX(seq), 0) AS m FROM memory WHERE session = ?", (session,)
+            ).fetchone()
+            seq = int(row["m"]) + 1
+            self._conn.execute(
+                "INSERT INTO memory (session, seq, role, content, ts) VALUES (?, ?, ?, ?, ?)",
+                (session, seq, role, content, utcnow_iso()),
+            )
+            self._conn.commit()
+        return seq
+
+    def memory_messages(self, session: str, after_seq: int = 0) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT seq, role, content, ts FROM memory
+                   WHERE session = ? AND seq > ? ORDER BY seq ASC""",
+                (session, after_seq),
+            ).fetchall()
+        return [
+            {"seq": r["seq"], "role": r["role"], "content": r["content"], "ts": r["ts"]}
+            for r in rows
+        ]
+
+    def memory_count(self, session: str) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM memory WHERE session = ?", (session,)
+            ).fetchone()
+        return int(row["n"]) if row else 0
+
+    def memory_prune(self, session: str, upto_seq: int) -> int:
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM memory WHERE session = ? AND seq <= ?", (session, upto_seq)
+            )
+            self._conn.commit()
+            return cur.rowcount
 
     def set_kv(self, key: str, value: Any) -> None:
         with self._lock:

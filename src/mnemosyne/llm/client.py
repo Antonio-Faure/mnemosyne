@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -80,6 +81,7 @@ class LlmClient:
         session: str | None = None,
         vault_get=None,
         timeout: float = 120.0,
+        usage_recorder: Callable[[dict], None] | None = None,
     ):
         name = provider or config.llm.default
         prov = config.llm.providers.get(name)
@@ -92,6 +94,8 @@ class LlmClient:
         self.api_key, self.auth_source = resolve_api_key(prov, vault_get)
         self.session = session or f"mnemosyne-{uuid.uuid4().hex[:12]}"
         self._timeout = timeout
+        self._usage_recorder = usage_recorder
+        self.last_usage: dict[str, Any] = {}
 
     @property
     def available(self) -> bool:
@@ -112,9 +116,16 @@ class LlmClient:
         messages: list[dict[str, Any]],
         *,
         model: str | None = None,
-        max_tokens: int = 1024,
+        max_tokens: int | None = None,
         temperature: float = 0.3,
     ) -> str:
+        """Send a chat completion.
+
+        By default no ``max_tokens`` is sent: the provider decides the output
+        budget (important for reasoning models, which otherwise return an empty
+        ``content`` when the budget is exhausted by reasoning). Pass an explicit
+        value only when you really need to cap the cost of one call.
+        """
         if not self.api_key:
             raise RuntimeError(
                 "No LLM API key. Set OPENCODE_API_KEY, store it in the vault "
@@ -127,16 +138,20 @@ class LlmClient:
             "User-Agent": USER_AGENT,
             "x-opencode-session": self.session,
         }
-        payload = {
+        payload: dict[str, Any] = {
             "model": model or self.model,
             "messages": messages,
-            "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
+        self.last_usage = dict(data.get("usage") or {})
+        if self._usage_recorder is not None and self.last_usage:
+            self._usage_recorder(self.last_usage)
         return _extract_content(data)
 
     async def complete(

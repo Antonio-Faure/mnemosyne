@@ -72,13 +72,12 @@ def _cmd_llm_test(args: argparse.Namespace) -> int:
 
     async def run() -> int:
         try:
-            reply = await client.complete(
-                "Réponds uniquement par le mot: OK", max_tokens=1024, temperature=0.0
-            )
+            reply = await client.complete("Réponds uniquement par le mot: OK", temperature=0.0)
         except Exception as exc:  # noqa: BLE001
             print(f"LLM call failed: {exc}")
             return 1
         print("reply:", reply.strip()[:200] or "(vide)")
+        print("usage:", client.last_usage or "(non fourni par le provider)")
         return 0
 
     return asyncio.run(run())
