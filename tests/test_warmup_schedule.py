@@ -6,6 +6,7 @@ from mnemosyne.agents.warmup_schedule import (
     daily_session_target,
     goal_weights,
     pick_goal,
+    seconds_until_next_slot,
     seconds_until_next_window,
 )
 
@@ -26,6 +27,18 @@ def test_seconds_until_next_window_before_and_after():
     assert 0 < wait_after <= 24 * 3600
     # after the window, the next slot is tomorrow -> more than ~8h away
     assert wait_after > 8 * 3600
+
+
+def test_next_slot_stays_inside_the_window():
+    now = datetime(2026, 9, 30, 10, 0, 0)
+    wait = seconds_until_next_slot(now, 8, 23)
+    assert 45 * 60 <= wait <= 180 * 60
+
+
+def test_next_slot_falls_back_to_tomorrow_when_no_room():
+    now = datetime(2026, 9, 30, 22, 30, 0)  # only 30 min of room left
+    wait = seconds_until_next_slot(now, 8, 23)
+    assert wait > 45 * 60
 
 
 def test_goals_well_formed():

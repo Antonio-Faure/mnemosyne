@@ -102,6 +102,7 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     from mnemosyne.agents.warmup_schedule import (
         daily_session_target,
         pick_goal,
+        seconds_until_next_slot,
         seconds_until_next_window,
     )
 
@@ -122,7 +123,11 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     # humans don't do it on schedule every single time
     if random.random() < cfg.agents.warmup_skip_probability:
         ctx.journal.append("warmup : session sautée (au hasard)", source="warmup")
-        return {"interval_s": random.randint(30 * 60, 120 * 60)}
+        return {
+            "interval_s": seconds_until_next_slot(
+                now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
+            )
+        }
 
     if not await _browser_ready(ctx):
         ctx.journal.append("warmup : Chrome injoignable, reporté", level="warn", source="warmup")
@@ -141,8 +146,12 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     ctx.journal.append(
         f"warmup « {goal['name']} » terminé — {result.finish or 'ok'}", source="warmup"
     )
-    # next session later, at a random human hour
-    return {"interval_s": random.randint(60 * 60, 3 * 60 * 60)}
+    # next session later, still inside today's human window if possible
+    return {
+        "interval_s": seconds_until_next_slot(
+            now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
+        )
+    }
 
 
 @handler("onboard")

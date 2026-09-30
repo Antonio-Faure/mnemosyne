@@ -75,6 +75,14 @@ def create_app() -> FastAPI:
         assets = _apply_filters(assets, year_from, year_to, license_contains)
         return {"query": q, "count": len(assets), "results": [_serialize(a) for a in assets]}
 
+    @app.get("/history")
+    async def history(top: Annotated[int, Query(ge=1, le=100)] = 15) -> dict:
+        from mnemosyne.browser.history import read_history
+
+        engine: Engine = app.state.engine
+        path = engine.config.data_path / "chrome-profile" / "Default" / "History"
+        return read_history(path, top=top)
+
     @app.get("/asset/{asset_id}")
     async def asset(asset_id: str) -> dict:
         engine: Engine = app.state.engine

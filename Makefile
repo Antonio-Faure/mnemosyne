@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal services service status say doctor token develop egress cdp vnc chrome-reset clean
+.PHONY: help install lint test run serve up down logs journal history services service status say doctor token develop egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -35,6 +35,9 @@ logs:  ## follow container logs
 
 journal:  ## print today's journal
 	$(PY)/mnemosyne journal
+
+history:  ## report the agent Chrome history (warmup growth)
+	$(PY)/mnemosyne history --top $(or $(TOP),15)
 
 services:  ## list per-service journals
 	$(PY)/mnemosyne journal --services

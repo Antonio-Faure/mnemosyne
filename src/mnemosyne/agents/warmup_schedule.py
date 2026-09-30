@@ -162,3 +162,23 @@ def seconds_until_next_window(now: datetime, start_hour: int) -> int:
     if target <= now:
         target += timedelta(days=1)
     return max(60, int((target - now).total_seconds()))
+
+
+def seconds_until_next_slot(
+    now: datetime,
+    start_hour: int,
+    end_hour: int,
+    min_gap_min: int = 45,
+    max_gap_min: int = 180,
+) -> int:
+    """Random delay for the next session, kept *inside* the daily window.
+
+    Falls back to the next day's window when there is no room left today.
+    """
+    end = now.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+    room = int((end - now).total_seconds()) - 600  # 10 min margin
+    lo = min_gap_min * 60
+    if room < lo:
+        return seconds_until_next_window(now, start_hour)
+    hi = max(lo, min(max_gap_min * 60, room))
+    return random.randint(lo, hi)
