@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal status say doctor egress cdp clean
+.PHONY: help install lint test run serve up down logs journal services service status say doctor egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -36,6 +36,12 @@ logs:  ## follow container logs
 journal:  ## print today's journal
 	$(PY)/mnemosyne journal
 
+services:  ## list per-service journals
+	$(PY)/mnemosyne journal --services
+
+service:  ## show one service journal: make service SERVICE=acme
+	$(PY)/mnemosyne journal --service "$(SERVICE)"
+
 status:  ## catalog + governor status
 	$(PY)/mnemosyne status
 
@@ -51,6 +57,16 @@ egress:  ## verify the agent's traffic does not transit Tailscale
 cdp:  ## check the Chrome DevTools endpoint (shared namespace)
 	docker run --rm --network container:mnemosyne-chrome-1 curlimages/curl:latest \
 		-s http://127.0.0.1:9222/json/version
+
+vnc:  ## print the noVNC URL (open it to sign Chrome into Google)
+	@echo "Open http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale"
+	@echo "(remote: ssh -L 6080:127.0.0.1:6080 -L 8080:127.0.0.1:8080 <user>@<host>)"
+
+chrome-reset:  ## wipe the Chrome profile (removes Google login) and restart it
+	docker compose rm -sf chrome
+	rm -rf data/chrome-profile
+	docker compose up -d chrome
+	@echo "fresh profile — reconnect Chrome to Google via make vnc"
 
 clean:  ## remove caches
 	rm -rf .pytest_cache .ruff_cache

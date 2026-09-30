@@ -83,7 +83,12 @@ descriptor never loses lifecycle progress.
     compose subnet is pinned so a host policy route can force the physical NIC.
     `scripts/check-egress.sh` (aka `make egress`) asserts host and container
     egress IPs match.
-15. **Stirrup for cognition, home-made for control.** The heartbeat stays a
+15. **One dated journal per service.** Besides the daily journal, each provider the
+    agent wants to access has its own markdown (`journal/services/<id>.md`), every
+    entry timestamped `YYYY-MM-DD HH:MM:SS`. It records the full access history of
+    that provider (attempts, key obtained, email sent, blocks, escalations), so the
+    operator can audit a single service without scanning the global log.
+16. **Stirrup for cognition, home-made for control.** The heartbeat stays a
     deterministic durable scheduler. The per-task agentic loop (onboarding,
     outreach) uses **Stirrup** with **browser-use** over CDP, exposing a small set
     of deterministic business tools rather than the DOM. Same pattern as

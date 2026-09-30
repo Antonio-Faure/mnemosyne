@@ -10,6 +10,7 @@ steers it through two plain files it can edit by hand:
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -18,9 +19,20 @@ from mnemosyne.util import ensure_dir
 
 log = get_logger("journal")
 
+_SAFE_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+
 
 def _today() -> date:
     return datetime.now().date()
+
+
+def _stamp(when: datetime | None = None) -> str:
+    # Full date + time: every journal entry is timestamped.
+    return (when or datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _safe(text: str) -> str:
+    return _SAFE_RE.sub("_", text).strip("_") or "unknown"
 
 
 class Journal:
@@ -40,11 +52,10 @@ class Journal:
         when: datetime | None = None,
     ) -> None:
         path = self.path_for()
-        stamp = (when or datetime.now()).strftime("%H:%M:%S")
         if not path.exists():
             header = f"# mnemosyne — journal {_today().isoformat()}\n\n"
             path.write_text(header, encoding="utf-8")
-        line = f"- {stamp} [{level}] {source}: {text}\n"
+        line = f"- {_stamp(when)} [{level}] {source}: {text}\n"
         try:
             with open(path, "a", encoding="utf-8") as fh:
                 fh.write(line)
@@ -58,6 +69,45 @@ class Journal:
     def latest(self) -> Path | None:
         files = sorted(self.dir.glob("*.md"))
         return files[-1] if files else None
+
+    # ── per-service journals (one md per provider the agent wants to access) ──
+    @property
+    def services_dir(self) -> Path:
+        return self.dir / "services"
+
+    def service_path(self, service_id: str) -> Path:
+        return self.services_dir / f"{_safe(service_id)}.md"
+
+    def append_service(
+        self,
+        service_id: str,
+        text: str,
+        *,
+        title: str | None = None,
+        level: str = "info",
+        source: str = "agent",
+        when: datetime | None = None,
+    ) -> None:
+        path = self.service_path(service_id)
+        ensure_dir(path.parent)
+        if not path.exists():
+            header = f"# Journal de service — {title or service_id}\n\n"
+            path.write_text(header, encoding="utf-8")
+        line = f"- {_stamp(when)} [{level}] {source}: {text}\n"
+        try:
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(line)
+        except OSError as exc:  # journal must never crash the heartbeat
+            log.warning("cannot write service journal: %s", exc)
+
+    def read_service(self, service_id: str) -> str:
+        path = self.service_path(service_id)
+        return path.read_text(encoding="utf-8") if path.exists() else ""
+
+    def list_services(self) -> list[str]:
+        if not self.services_dir.exists():
+            return []
+        return sorted(p.stem for p in self.services_dir.glob("*.md"))
 
 
 class Control:

@@ -43,6 +43,21 @@ def _cmd_vault_list(args: argparse.Namespace) -> int:
 def _cmd_journal(args: argparse.Namespace) -> int:
     cfg = get_config()
     journal = Journal(cfg.journal_path)
+    if getattr(args, "services", False):
+        services = journal.list_services()
+        if not services:
+            print("(aucun journal de service)")
+            return 0
+        for service in services:
+            print(service)
+        return 0
+    if getattr(args, "service", None):
+        text = journal.read_service(args.service)
+        if not text:
+            print(f"(aucun journal pour le service '{args.service}')")
+            return 0
+        print(text)
+        return 0
     if args.date:
         from datetime import date
 
@@ -251,8 +266,10 @@ def build_parser() -> argparse.ArgumentParser:
     pst = sub.add_parser("status", help="catalog + governor status")
     pst.set_defaults(func=_cmd_status)
 
-    pj = sub.add_parser("journal", help="show the daily journal")
+    pj = sub.add_parser("journal", help="show the daily journal or a service journal")
     pj.add_argument("--date", default=None, help="YYYY-MM-DD (default: today)")
+    pj.add_argument("--service", default=None, help="show the journal of one service")
+    pj.add_argument("--services", action="store_true", help="list service journals")
     pj.set_defaults(func=_cmd_journal)
 
     psay = sub.add_parser("say", help="send a message/instruction to the agent")

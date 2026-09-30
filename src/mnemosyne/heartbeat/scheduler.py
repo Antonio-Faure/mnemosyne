@@ -64,20 +64,29 @@ class Heartbeat:
                         payload={"source_id": d.id, "interval_s": HARVEST_INTERVAL_S, "limit": 20},
                         priority=50)
                 )
-            # Providers that need access are onboarded by the browser agent.
-            if (
-                d.auth != AuthKind.NONE
-                and self.engine.catalog.state(d.id)
-                in {SourceState.DISCOVERED, SourceState.RESEARCHED, SourceState.DEGRADED}
-                and not self.engine.db.has_open_job("onboard", d.id)
-            ):
-                self.engine.db.enqueue(
-                    Job(
-                        kind="onboard",
-                        payload={"source_id": d.id, "interval_s": ONBOARD_INTERVAL_S},
-                        priority=5,
+            # Providers that need access are onboarded by the browser agent, and
+            # get their own dated journal (`journal/services/<id>.md`).
+            if d.auth != AuthKind.NONE:
+                if not self.journal.service_path(d.id).exists():
+                    self.journal.append_service(
+                        d.id,
+                        f"objectif : obtenir l'accès (auth={d.auth.value}, "
+                        f"portail {d.base_url})",
+                        title=d.name,
+                        source="bootstrap",
                     )
-                )
+                if (
+                    self.engine.catalog.state(d.id)
+                    in {SourceState.DISCOVERED, SourceState.RESEARCHED, SourceState.DEGRADED}
+                    and not self.engine.db.has_open_job("onboard", d.id)
+                ):
+                    self.engine.db.enqueue(
+                        Job(
+                            kind="onboard",
+                            payload={"source_id": d.id, "interval_s": ONBOARD_INTERVAL_S},
+                            priority=5,
+                        )
+                    )
         warmup = self.config.reputation.account_created_at
         if warmup and not self.engine.db.has_open_job("warmup", "-"):
             self.engine.db.enqueue(

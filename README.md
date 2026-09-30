@@ -100,10 +100,17 @@ steered at any time:
 
 ```bash
 mnemosyne journal                    # today's journal
+mnemosyne journal --services         # list per-service journals
+mnemosyne journal --service acme     # one md per provider, dated actions
 mnemosyne say "priorise Lacq"        # one-off message → control/inbox.md
 mnemosyne status                     # providers, assets, governor pressure
 mnemosyne doctor                     # config, vault, LLM auth, Chrome health
 ```
+
+Besides the daily journal, the agent keeps **one markdown file per service it wants
+to access** (`journal/services/<id>.md`), each entry timestamped
+(`YYYY-MM-DD HH:MM:SS`): access attempts, API key obtained, email sent, blocks,
+escalations.
 
 Edit `control/directives.md` for standing instructions (re-read on start). Telegram
 alerts fire on hard blockers (captcha, phone verify, refusal, permanent failures).

@@ -9,6 +9,7 @@ from mnemosyne.agents.prompts import outreach_system, outreach_task
 from mnemosyne.agents.tools import OutreachToolProvider
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
+from mnemosyne.journal import Journal
 from mnemosyne.models import SourceDescriptor
 from mnemosyne.notify import Notifier
 from mnemosyne.util import ensure_dir
@@ -22,12 +23,19 @@ async def run_outreach(
     contact_email: str | None = None,
     contact_form_url: str | None = None,
     vault_get=None,
+    journal: Journal | None = None,
 ) -> AgentOutcome:
     client = build_agent_client(
         config, session=f"outreach-{descriptor.id}", vault_get=vault_get
     )
     notifier = Notifier(config.notify.telegram)
-    provider = OutreachToolProvider(vault_path=config.vault_file, notifier=notifier)
+    provider = OutreachToolProvider(
+        vault_path=config.vault_file,
+        notifier=notifier,
+        journal=journal,
+        service_id=descriptor.id,
+        service_title=descriptor.name,
+    )
 
     agent = Agent(
         client=client,

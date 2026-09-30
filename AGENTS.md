@@ -58,6 +58,10 @@ Never leak a provider's raw shape into `Asset`: normalize at the connector bound
 
 - **Journal**: `journal/YYYY-MM-DD.md`, one file per day, append-only. Written by
   the heartbeat (`mnemosyne journal` to read). Git-ignored.
+- **Service journals**: `journal/services/<id>.md`, one markdown per provider the
+  agent wants to access. Every entry is a dated action (`YYYY-MM-DD HH:MM:SS`):
+  access attempt, API key obtained, email sent, block, escalation. Read with
+  `mnemosyne journal --service <id>`.
 - **Steering**: `control/directives.md` (standing instructions, re-read on start)
   and `control/inbox.md` (one-off messages via `mnemosyne say`). Git-ignored.
 - **Alerts**: Telegram (`notify/`) for hard blockers.

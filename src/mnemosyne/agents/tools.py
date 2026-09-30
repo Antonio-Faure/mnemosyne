@@ -124,10 +124,14 @@ class BrowserToolProvider(ToolProvider):
         vault_path: str | Path,
         notifier: Notifier,
         journal: Journal | None = None,
+        service_id: str | None = None,
+        service_title: str | None = None,
     ):
         self._vault_path = Path(vault_path)
         self._notifier = notifier
         self._journal = journal
+        self._service_id = service_id
+        self._service_title = service_title
         self._session = None
         self._page = None
         self.finish: str | None = None
@@ -179,6 +183,14 @@ class BrowserToolProvider(ToolProvider):
         )
         if self._journal is not None:
             self._journal.append(f"escalade humaine : {reason}", level="warn", source="agent")
+            if self._service_id:
+                self._journal.append_service(
+                    self._service_id,
+                    f"escalade humaine : {reason}",
+                    title=self._service_title,
+                    level="warn",
+                    source="agent",
+                )
         return message
 
     # ── tool builders ────────────────────────────────────────────────────

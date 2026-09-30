@@ -62,6 +62,15 @@ captcha/phone-verify à la main quand Telegram t'alerte.
 > réseau** et joint le CDP en `127.0.0.1:9222` (`MNEMOSYNE_CDP_URL`). Pour
 > vérifier : `make cdp`.
 
+### Si Chrome affiche « Chrome n'est pas stable / Rétablir »
+
+C'était dû à un arrêt non propre (conteneur redémarré plusieurs fois) laissant des
+verrous dans le profil. Corrigé : le conteneur supprime les `Singleton*`, passe
+`--hide-crash-restore-bubble` / `--disable-session-crashed-bubble`, et gère l'arrêt
+proprement (`--disable-gpu`, `--disable-dev-shm-usage`). Pour repartir d'un profil
+vierge (efface la connexion Google) : `make chrome-reset`, puis reconnecte via
+`make vnc`.
+
 ## 3bis. Transparence & mémoire
 
 - **Transparence** : tout mail / formulaire inclut une phrase d'identité + l'URL du
@@ -102,7 +111,8 @@ sudo tailscale set --accept-routes=false
 
 | Canal | Usage |
 |---|---|
-| **Journal** | `mnemosyne journal` ou `journal/YYYY-MM-DD.md` — un fichier par jour, append-only. |
+| **Journal quotidien** | `mnemosyne journal` ou `journal/YYYY-MM-DD.md` — un fichier par jour, append-only. |
+| **Journal par service** | `mnemosyne journal --service <id>` ou `journal/services/<id>.md` — un md par fournisseur auquel l'agent veut accéder, avec **dates complètes** de chaque action. Lister : `mnemosyne journal --services`. |
 | **Message ponctuel** | `mnemosyne say "priorise Lacq et Pechelbronn"` — déposé dans `control/inbox.md`, lu au tick suivant. |
 | **Directives** | `control/directives.md` — consignes permanentes, relues au démarrage. |
 | **Statut** | `mnemosyne status` — providers, assets, pression du gouverneur. |

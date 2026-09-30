@@ -5,7 +5,7 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates wget gnupg \
-        xvfb x11vnc novnc websockify \
+        xvfb x11-utils x11vnc novnc websockify \
         fonts-liberation fonts-noto \
         procps \
     && wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \

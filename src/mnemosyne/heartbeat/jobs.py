@@ -124,7 +124,15 @@ async def handle_onboard(ctx: JobContext, job: Job) -> dict | None:
 
     ctx.engine.catalog.set_state(source_id, SourceState.ONBOARDING)
     ctx.journal.append(f"onboarding `{source_id}` démarré (agent navigateur)")
-    result = await run_onboarding(ctx.config, descriptor, vault_get=_vault_get(ctx))
+    ctx.journal.append_service(
+        source_id,
+        f"début de la tentative d'accès via {descriptor.base_url}",
+        title=descriptor.name,
+        source="onboard",
+    )
+    result = await run_onboarding(
+        ctx.config, descriptor, vault_get=_vault_get(ctx), journal=ctx.journal
+    )
     ctx.engine.governor.record("onboard")
 
     outcome = result.outcome or {}
@@ -139,6 +147,12 @@ async def handle_onboard(ctx: JobContext, job: Job) -> dict | None:
         ctx.engine.catalog.set_state(source_id, SourceState.DEGRADED)
         note = f"onboarding `{source_id}` : échec — {result.finish or 'sans détail'}"
     ctx.journal.append(note)
+    ctx.journal.append_service(
+        source_id,
+        note + (f" — {result.finish}" if result.finish else ""),
+        level="warn" if "échec" in note else "info",
+        source="onboard",
+    )
     log.info(note)
     return None
 
@@ -164,6 +178,12 @@ async def handle_outreach(ctx: JobContext, job: Job) -> dict | None:
         "Comment obtenir un accès API ou une autorisation pour indexer une partie "
         "de vos collections ? Je cite et relie systématiquement la source."
     )
+    ctx.journal.append_service(
+        source_id,
+        "préparation d'un message de demande d'accès",
+        title=descriptor.name,
+        source="outreach",
+    )
     result = await run_outreach(
         ctx.config,
         descriptor,
@@ -171,10 +191,17 @@ async def handle_outreach(ctx: JobContext, job: Job) -> dict | None:
         contact_email=job.payload.get("contact_email"),
         contact_form_url=job.payload.get("contact_form_url"),
         vault_get=_vault_get(ctx),
+        journal=ctx.journal,
     )
     ctx.engine.governor.record("outbound")
     note = f"outreach `{source_id}` : {result.finish or 'terminé'}"
     ctx.journal.append(note)
+    ctx.journal.append_service(
+        source_id,
+        f"message de demande d'accès : {result.finish or 'envoyé'}",
+        title=descriptor.name,
+        source="outreach",
+    )
     await ctx.notifier.send(note, "info")
     return None
 

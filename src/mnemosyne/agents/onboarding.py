@@ -10,6 +10,7 @@ from mnemosyne.agents.prompts import onboarding_system, onboarding_task
 from mnemosyne.agents.tools import BrowserToolProvider
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
+from mnemosyne.journal import Journal
 from mnemosyne.models import SourceDescriptor
 from mnemosyne.notify import Notifier
 from mnemosyne.util import ensure_dir
@@ -22,13 +23,23 @@ class AgentOutcome:
 
 
 async def run_onboarding(
-    config: Config, descriptor: SourceDescriptor, *, vault_get=None
+    config: Config,
+    descriptor: SourceDescriptor,
+    *,
+    vault_get=None,
+    journal: Journal | None = None,
 ) -> AgentOutcome:
     client = build_agent_client(
         config, session=f"onboard-{descriptor.id}", vault_get=vault_get
     )
     notifier = Notifier(config.notify.telegram)
-    provider = BrowserToolProvider(vault_path=config.vault_file, notifier=notifier)
+    provider = BrowserToolProvider(
+        vault_path=config.vault_file,
+        notifier=notifier,
+        journal=journal,
+        service_id=descriptor.id,
+        service_title=descriptor.name,
+    )
 
     agent = Agent(
         client=client,
