@@ -85,6 +85,29 @@ vierge (efface la connexion Google) : `make chrome-reset`, puis reconnecte via
   le provider décider), ce qui évite les `content` vides des modèles à
   raisonnement. L'`usage` (tokens) est capturé à chaque appel pour suivre le coût.
 
+## 3quater. Accès depuis ton portable (config actuelle : tout via Tailscale)
+
+Toi = Lenovo Yoga (opencode desktop) connecté au serveur opencode sur `yggdrasil`.
+Le « Chrome de l'agent » tourne **sur yggdrasil** ; on le voit via **noVNC**.
+
+Rappel : les commandes serveur (`docker …`, `make …`, `mnemosyne …`) se lancent
+**sur yggdrasil** — tu peux simplement **les demander à l'agent** dans opencode.
+
+Pour la fenêtre du navigateur, trois voies (au choix) :
+
+1. **Remote access (le plus simple, déjà utilisé)** : ouvre ton accès distant à
+   `yggdrasil`, lance **Firefox sur yggdrasil**, va sur
+   `http://127.0.0.1:6080/vnc.html?autoconnect=1`.
+2. **Tunnel SSH depuis ton Lenovo** :
+   `ssh -L 6080:127.0.0.1:6080 odin@100.110.3.72` puis, sur le Lenovo,
+   `http://127.0.0.1:6080/vnc.html?autoconnect=1`.
+3. **Tailscale Serve** (URL privée directe, nécessite un `sudo` sur yggdrasil) :
+   `sudo tailscale serve --bg 6080` puis ouvre l'URL `https://yggdrasil.<tailnet>.ts.net/`
+   depuis ton Lenovo (réseau tailnet uniquement, rien sur le LAN).
+
+Dans la fenêtre Chrome : connexion Chrome → compte Gmail, puis
+`chrome://settings/passwords`.
+
 ## 3ter. Ne PAS passer par Tailscale
 
 L'agent doit naviguer avec l'**IP résidentielle réelle** de la machine. Tailscale
