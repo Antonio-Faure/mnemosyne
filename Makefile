@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal status say doctor egress clean
+.PHONY: help install lint test run serve up down logs journal status say doctor egress cdp clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -47,6 +47,10 @@ doctor:  ## diagnose config, vault, LLM auth, Chrome
 
 egress:  ## verify the agent's traffic does not transit Tailscale
 	./scripts/check-egress.sh
+
+cdp:  ## check the Chrome DevTools endpoint (shared namespace)
+	docker run --rm --network container:mnemosyne-chrome-1 curlimages/curl:latest \
+		-s http://127.0.0.1:9222/json/version
 
 clean:  ## remove caches
 	rm -rf .pytest_cache .ruff_cache

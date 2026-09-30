@@ -85,8 +85,9 @@ docker compose up -d          # mnemosyne + dedicated Chrome (Xvfb + VNC + CDP 9
 ```
 
 - API: http://localhost:8080
-- Chrome CDP: http://localhost:9222 (browser-use)
 - noVNC (human intervention): http://localhost:6080
+- Chrome CDP (browser-use) is internal: `mnemosyne` shares Chrome's network
+  namespace and reaches it at `127.0.0.1:9222`.
 
 The Chrome profile (holding the agent's own Google account) persists in a volume.
 Sign the profile into **Chrome** once over VNC: Gmail then logs in automatically

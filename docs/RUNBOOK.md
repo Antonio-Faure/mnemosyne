@@ -57,8 +57,10 @@ Le heartbeat (P2) réutilise cette session pour lire les codes de vérification 
 envoyer les mails de demande d'accès. Le même noVNC sert à résoudre un
 captcha/phone-verify à la main quand Telegram t'alerte.
 
-> Le CDP est sur `http://localhost:9222` — c'est là que browser-use se connecte
-> (`MNEMOSYNE_CDP_URL`).
+> Le CDP (9222) n'est **pas** exposé à l'hôte : Chrome 154 n'écoute que sur
+> `127.0.0.1` dans son conteneur. Le conteneur `mnemosyne` **partage son namespace
+> réseau** et joint le CDP en `127.0.0.1:9222` (`MNEMOSYNE_CDP_URL`). Pour
+> vérifier : `make cdp`.
 
 ## 3bis. Transparence & mémoire
 

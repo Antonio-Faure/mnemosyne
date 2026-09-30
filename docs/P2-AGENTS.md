@@ -12,7 +12,9 @@ handles agent sessions, the tool-calling loop, and interruption caching
 (`agent.session(...)`).
 
 The browser actuators are **browser-use** attached to the dedicated Chrome over
-CDP. Following the proven pattern, the agent is **not** given the DOM: it gets a
+CDP. In Docker, `mnemosyne` shares Chrome's network namespace (Chrome 154 only
+binds CDP to `127.0.0.1` inside its container), so it connects at
+`127.0.0.1:9222`. Following the proven pattern, the agent is **not** given the DOM: it gets a
 small set of **deterministic business tools**, which keeps tokens low and loops
 rare.
 
