@@ -77,7 +77,13 @@ descriptor never loses lifecycle progress.
     Chrome's built-in password manager (`--password-store=basic` keeps it inside
     the profile). The agent therefore does not need to store most site passwords
     itself.
-14. **Stirrup for cognition, home-made for control.** The heartbeat stays a
+14. **Egress never through Tailscale.** The agent must browse on the machine's
+    real residential IP. No exit node / accept-routes; containers use explicit
+    public DNS with a neutral search domain (no `tail*.ts.net` MagicDNS leak); the
+    compose subnet is pinned so a host policy route can force the physical NIC.
+    `scripts/check-egress.sh` (aka `make egress`) asserts host and container
+    egress IPs match.
+15. **Stirrup for cognition, home-made for control.** The heartbeat stays a
     deterministic durable scheduler. The per-task agentic loop (onboarding,
     outreach) uses **Stirrup** with **browser-use** over CDP, exposing a small set
     of deterministic business tools rather than the DOM. Same pattern as

@@ -10,6 +10,12 @@ services:
       MNEMOSYNE_BROWSER_ENABLED: "1"
       # Reuse the OpenCode Go token opencode caches after login (read-only mount).
       OPENCODE_AUTH_PATH: /opencode-auth/auth.json
+    # Never resolve through Tailscale MagicDNS (leaks the tailnet search domain).
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
+    dns_search:
+      - localdomain
     volumes:
       - ./data:/app/data
       - ./vault:/app/vault
@@ -31,9 +37,26 @@ services:
     environment:
       DISPLAY: ":99"
       CHROME_PROFILE_DIR: /profile
+    # Keep DNS off the tailnet (MagicDNS / search domain tail*.ts.net).
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
+    dns_search:
+      - localdomain
     volumes:
       - ./data/chrome-profile:/profile
     ports:
-      - "9222:9222"   # Chrome DevTools Protocol (browser-use)
-      - "6080:6080"   # noVNC — human intervention
+      # Bind to loopback only: the profile is logged into the agent's Google
+      # account and VNC has no password, so never expose these on the network.
+      - "127.0.0.1:9222:9222"   # Chrome DevTools Protocol (browser-use)
+      - "127.0.0.1:6080:6080"   # noVNC — human intervention
     restart: unless-stopped
+
+# Fixed subnet so a host policy route can force this traffic onto the physical
+# NIC (see scripts/check-egress.sh) and off any Tailscale exit node.
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

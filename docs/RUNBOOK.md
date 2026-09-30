@@ -74,6 +74,28 @@ captcha/phone-verify à la main quand Telegram t'alerte.
   le provider décider), ce qui évite les `content` vides des modèles à
   raisonnement. L'`usage` (tokens) est capturé à chaque appel pour suivre le coût.
 
+## 3ter. Ne PAS passer par Tailscale
+
+L'agent doit naviguer avec l'**IP résidentielle réelle** de la machine. Tailscale
+reste OK pour l'admin (SSH), mais un **exit node** ou l'acceptation de routes
+ferait transiter tout le trafic par le tailnet (mauvaise réputation Google/IP).
+
+Mesures en place :
+- Aucun exit node par défaut ; les conteneurs forcent leur **DNS** sur
+  `1.1.1.1`/`9.9.9.9` avec `dns_search: localdomain` → plus de domaine de recherche
+  `tail*.ts.net` (vérifié : `ExtServers: [1.1.1.1 9.9.9.9]`, `search localdomain`).
+- Le sous-réseau compose est fixé (`172.28.0.0/16`) pour permettre une politique
+  de routage hôte si besoin.
+- Vérification : `make egress` (compare l'IP de sortie hôte ↔ conteneur et lit
+  les préférences Tailscale). Sortie attendue : *egress is on the physical
+  network, not Tailscale*.
+
+Si tu veux à tout moment désactiver un exit node :
+```bash
+sudo tailscale set --exit-node=
+sudo tailscale set --accept-routes=false
+```
+
 ## 4. Surveiller & orienter l'agent
 
 | Canal | Usage |

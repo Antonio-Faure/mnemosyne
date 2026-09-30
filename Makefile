@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal status say doctor clean
+.PHONY: help install lint test run serve up down logs journal status say doctor egress clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -44,6 +44,9 @@ say:  ## send a message to the agent: make say SAY="priorise Lacq"
 
 doctor:  ## diagnose config, vault, LLM auth, Chrome
 	$(PY)/mnemosyne doctor
+
+egress:  ## verify the agent's traffic does not transit Tailscale
+	./scripts/check-egress.sh
 
 clean:  ## remove caches
 	rm -rf .pytest_cache .ruff_cache
