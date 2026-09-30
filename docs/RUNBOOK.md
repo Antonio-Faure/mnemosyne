@@ -68,6 +68,8 @@ Ce message venait de `--no-sandbox` (Chrome refusait le sandbox car lancé en ro
 et d'arrêts non propres. Corrigé :
 - Chrome tourne désormais en **utilisateur non-root `chrome`, sandbox activé** —
   plus de `--no-sandbox`, plus de message d'avertissement ;
+- l'infobar déclenchée par `--disable-blink-features=AutomationControlled` (gardé
+  pour l'anti-détection) est coupée par `--test-type` ;
 - pour cela, le conteneur dédié relâche le **seccomp** de Docker
   (`security_opt: seccomp=unconfined`) : sans ça le sandbox Chrome ne peut pas
   créer ses namespaces. Trade-off assumé : conteneur dédié, sans réseau exposé

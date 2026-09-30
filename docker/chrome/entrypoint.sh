@@ -28,6 +28,8 @@ done
 
 echo "[chrome] launching Google Chrome as user 'chrome' (sandbox enabled)"
 # --password-store=basic keeps the password manager inside the persistent profile.
+# --test-type suppresses the "unsupported command-line flag" infobar that
+# --disable-blink-features=AutomationControlled (kept for anti-detection) triggers.
 # Crash/session flags suppress the "not stable / restore" bubble.
 HOME=/home/chrome gosu chrome google-chrome \
     --user-data-dir="$PROFILE_DIR" \
@@ -38,6 +40,7 @@ HOME=/home/chrome gosu chrome google-chrome \
     --no-first-run \
     --no-default-browser-check \
     --noerrdialogs \
+    --test-type \
     --hide-crash-restore-bubble \
     --disable-session-crashed-bubble \
     --disable-dev-shm-usage \
