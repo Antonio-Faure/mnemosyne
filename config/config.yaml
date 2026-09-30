@@ -1,0 +1,50 @@
+# mnemosyne global configuration.
+# Secrets live in .env, never here.
+
+app:
+  data_dir: data
+  vault_path: vault/vault.enc
+  log_level: INFO
+
+api:
+  host: 0.0.0.0
+  port: 8080
+
+heartbeat:
+  tick_seconds: 15
+  max_workers: 4
+  job_timeout_s: 300
+  stale_lock_s: 600
+
+reputation:
+  # Set to the ISO date the agent's own account was created to enable warmup.
+  # null => no warmup (trusted/aged account).
+  account_created_at: null
+  domain_min_interval_s: 1.0
+  block_cooldown_s: 300
+  warmup:
+    - until_day: 3
+      outbound_per_day: 0
+      harvest_per_day: 50
+    - until_day: 10
+      outbound_per_day: 3
+      harvest_per_day: 150
+    - until_day: null
+      outbound_per_day: 20
+      harvest_per_day: 1000
+
+llm:
+  default: zen
+  providers:
+    zen:
+      base_url: https://opencode.ai/zen/go/v1
+      api_key_env: OPENCODE_API_KEY
+      model: deepseek-v4.1-flash
+
+notify:
+  telegram:
+    enabled: false
+    bot_token_env: MNEMOSYNE_TELEGRAM_BOT_TOKEN
+    chat_id_env: MNEMOSYNE_TELEGRAM_CHAT_ID
+
+sources_dir: config/sources

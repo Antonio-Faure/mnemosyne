@@ -1,0 +1,17 @@
+id: internet_archive
+name: Internet Archive
+institution: Internet Archive
+country: US
+protocol: rest
+base_url: https://archive.org/advancedsearch.php
+auth: none
+license: varies
+rights: "Per-item; many public domain"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [aggregator, keyless, books, images]
+seeds:
+  - "oil industry 1900"
+  - "factory workers historical"
+  - "petroleum refinery vintage"
+notes: "mediatype:image; originals via metadata/{id}."

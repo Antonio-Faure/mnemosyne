@@ -1,0 +1,19 @@
+id: gallica
+name: Gallica (BnF)
+institution: Bibliothèque nationale de France
+country: FR
+protocol: sru
+base_url: https://gallica.bnf.fr/SRU
+auth: none
+license: varies
+rights: "BnF — check per record (public domain / licensed)"
+rate_limit_per_s: 0.5
+priority: 10
+tags: [national-library, france, iiif, keyless]
+seeds:
+  - "photographie industrie 1900"
+  - "puits de pétrole"
+  - "usine métallurgie"
+  - "chemin de fer vapeur"
+  - "mine charbon France"
+notes: "SRU returns Dublin Core records; images exposed via IIIF."

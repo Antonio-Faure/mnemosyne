@@ -1,0 +1,18 @@
+id: wikidata
+name: Wikidata
+institution: Wikimedia Foundation
+country: INTL
+protocol: sparql
+base_url: https://query.wikidata.org/sparql
+auth: none
+license: CC0
+rights: "CC0 (data); images follow their Commons license"
+rate_limit_per_s: 0.5
+priority: 20
+tags: [knowledge-graph, keyless, entity-linking]
+seeds:
+  - "Lacq"
+  - "Pechelbronn"
+  - "Compagnie française des pétroles"
+  - "Jean Monnet"
+notes: "P18 (image) and P373 (Commons category) drive canonical/entity images."

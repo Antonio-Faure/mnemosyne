@@ -1,0 +1,16 @@
+id: openverse
+name: Openverse
+institution: WordPress Foundation
+country: INTL
+protocol: rest
+base_url: https://api.openverse.org/v1
+auth: none
+license: varies
+rights: "CC-licensed only"
+rate_limit_per_s: 0.5
+priority: 50
+tags: [aggregator, creative-commons, keyless]
+seeds:
+  - "industrial revolution"
+  - "oil well historical"
+notes: "Anonymous access works for basic queries; register for higher quota later."

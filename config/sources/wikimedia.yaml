@@ -1,0 +1,17 @@
+id: wikimedia
+name: Wikimedia Commons
+institution: Wikimedia Foundation
+country: INTL
+protocol: rest
+base_url: https://commons.wikimedia.org/w/api.php
+auth: none
+license: varies
+rights: "Per-file Commons license (CC BY-SA, CC0, PD…)"
+rate_limit_per_s: 0.5
+priority: 30
+tags: [media, keyless]
+seeds:
+  - "oil derrick 1900"
+  - "steel mill 19th century"
+  - "coal miners historical"
+notes: "Use a descriptive User-Agent with contact; maxlag=5."

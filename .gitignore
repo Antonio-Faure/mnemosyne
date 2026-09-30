@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Secrets & runtime state  (NEVER commit)
+.env
+vault/
+data/
+*.enc
+*.key
+chrome-profile/
+.chrome-profile/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+.idea/
+.vscode/

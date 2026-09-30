@@ -1,0 +1,34 @@
+services:
+  mnemosyne:
+    build: .
+    image: mnemosyne:local
+    env_file:
+      - .env
+    environment:
+      MNEMOSYNE_CONFIG: /app/config/config.yaml
+      MNEMOSYNE_CDP_URL: http://chrome:9222
+      MNEMOSYNE_BROWSER_ENABLED: "1"
+    volumes:
+      - ./data:/app/data
+      - ./vault:/app/vault
+      - ./config:/app/config:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - chrome
+    restart: unless-stopped
+    command: ["mnemosyne", "run"]
+
+  chrome:
+    build: docker/chrome
+    image: mnemosyne-chrome:local
+    shm_size: "1gb"
+    environment:
+      DISPLAY: ":99"
+      CHROME_PROFILE_DIR: /profile
+    volumes:
+      - ./data/chrome-profile:/profile
+    ports:
+      - "9222:9222"   # Chrome DevTools Protocol (browser-use)
+      - "6080:6080"   # noVNC — human intervention
+    restart: unless-stopped

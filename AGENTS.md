@@ -1,0 +1,67 @@
+# AGENTS.md — mnemosyne
+
+Autonomous heartbeat agent that aggregates historical image archive providers into
+one unified API.
+
+## Golden rules
+
+1. **Never commit secrets.** API keys, logins, cookies and sessions live in the
+   encrypted vault (`vault/`, git-ignored) or in `.env` (git-ignored). Never hardcode
+   one. `.env.example` is the only file allowed to mention variable *names*.
+2. **Atomic writes.** Every file write (JSON, DB export, image, credential) goes
+   through `<path>.tmp` → `os.replace(tmp, path)`. A killed process must never
+   corrupt a final artifact. Orphan `.tmp` files are cleaned on startup.
+3. **The heartbeat is the product.** Anything the agent must do "forever" is a
+   durable job in the job store, never a bare `while True` in a one-off script.
+   State must survive a crash and resume.
+4. **Respect the governor.** All rate-limited / sensitive actions (HTTP calls to a
+   provider, account creation, outbound email) go through `reputation.governor`.
+   Never bypass it; on 403/429/captcha the whole system slows down.
+5. **Lawful & transparent.** Respect robots.txt and provider ToS. Throttle per
+   domain. The agent acts in its own name and references this public repository in
+   outreach. Human-in-the-loop is mandatory for anything irreversible or legally
+   binding.
+6. **Every asset carries provenance.** No image enters the store without its source,
+   canonical page URL, license/rights and retrieval timestamp.
+
+## Connector contract
+
+Each provider is a `Connector` subclass in `src/mnemosyne/sources/`, registered and
+described by a YAML descriptor in `config/sources/`. A connector implements:
+
+```python
+async def search(self, query: str, limit: int = 20, **filters) -> list[Asset]
+async def fetch(self, asset: Asset) -> bytes            # optional (lazy)
+def provenance(self, asset: Asset) -> dict
+```
+
+Descriptor fields: `id`, `name`, `institution`, `country`, `protocol`, `base_url`,
+`auth` (`none` | `api_key` | `account` | `oauth`), `key_env`, `license`, `rate_limit`,
+`priority`, `tags`, `enabled`.
+
+Never leak a provider's raw shape into `Asset`: normalize at the connector boundary.
+
+## Adding a provider
+
+1. Add `config/sources/<id>.yaml`.
+2. Implement / reuse a connector in `src/mnemosyne/sources/`.
+3. Register it in `src/mnemosyne/sources/__init__.py`.
+4. Add a test in `tests/` (mock HTTP; never hit the network in tests).
+
+## Dev
+
+```bash
+pip install -e '.[dev]'
+ruff check .
+pytest
+```
+
+## Token / cost sobriety (when an AI works on this repo)
+
+- Prefer `Glob`/`Grep` over full reads; read by slices.
+- Keep LLM calls batched; do not re-run harvest/analysis when valid artifacts exist.
+- Summarize logs with `tail`/`grep ERROR`, never dump full output.
+
+## Decision log
+
+Architecture-critical decisions and their rationale are recorded in `docs/`.
