@@ -12,7 +12,9 @@ RUN pip install -r requirements.txt
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY config ./config
-RUN pip install -e .
+# The browser extra pulls in stirrup[browser] (agent loop) + openai.
+# browser-use drives the *existing* Chrome over CDP, so no browser download here.
+RUN pip install -e '.[browser]'
 
 EXPOSE 8080
 

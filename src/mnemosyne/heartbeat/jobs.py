@@ -12,10 +12,32 @@ from mnemosyne.config import Config
 from mnemosyne.engine import Engine
 from mnemosyne.journal import Control, Journal
 from mnemosyne.logger import get_logger
-from mnemosyne.models import Job, SourceState
+from mnemosyne.models import AuthKind, Job, SourceState
 from mnemosyne.notify import Notifier
+from mnemosyne.vault import Vault
 
 log = get_logger("heartbeat")
+
+
+def _vault_get(ctx: JobContext):
+    if not ctx.config.vault_file.exists():
+        return None
+    vault = Vault(ctx.config.vault_file)
+    return vault.get
+
+
+async def _browser_ready(ctx: JobContext) -> bool:
+    """True when the dedicated Chrome CDP endpoint responds."""
+    import httpx
+
+    from mnemosyne.browser import cdp_url
+
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(cdp_url().rstrip("/") + "/json/version")
+        return resp.status_code == 200
+    except Exception:  # noqa: BLE001
+        return False
 
 
 @dataclass
@@ -84,11 +106,76 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
 
 @handler("onboard")
 async def handle_onboard(ctx: JobContext, job: Job) -> dict | None:
-    # P2: browser-use agent signs up / requests an API key / sends the email.
+    """Run the Stirrup onboarding agent to obtain access to a provider."""
     source_id = job.payload["source_id"]
-    log.info("onboard requested for %s (P2 — not yet implemented)", source_id)
+    descriptor = ctx.engine.catalog.get(source_id)
+    if descriptor is None or descriptor.auth == AuthKind.NONE:
+        return None
+    if not ctx.engine.governor.allowed("onboard"):
+        log.info("onboard cap reached; skipping %s", source_id)
+        return None
+    if not await _browser_ready(ctx):
+        msg = "Chrome CDP unreachable; cannot run onboarding"
+        log.warning(msg)
+        ctx.journal.append(msg, level="warn", source="onboard")
+        return None
+
+    from mnemosyne.agents.onboarding import run_onboarding
+
     ctx.engine.catalog.set_state(source_id, SourceState.ONBOARDING)
-    ctx.journal.append(f"onboarding demandé pour `{source_id}` (P2)")
+    ctx.journal.append(f"onboarding `{source_id}` démarré (agent navigateur)")
+    result = await run_onboarding(ctx.config, descriptor, vault_get=_vault_get(ctx))
+    ctx.engine.governor.record("onboard")
+
+    outcome = result.outcome or {}
+    if outcome.get("api_key"):
+        ctx.engine.catalog.set_state(source_id, SourceState.CREDENTIALED)
+        note = f"onboarding `{source_id}` : accès obtenu, clé stockée"
+        await ctx.notifier.send(note, "info")
+    elif outcome.get("contact_email") or outcome.get("contact_form_url"):
+        ctx.engine.catalog.set_state(source_id, SourceState.PENDING)
+        note = f"onboarding `{source_id}` : accès à demander par email/formulaire"
+    else:
+        ctx.engine.catalog.set_state(source_id, SourceState.DEGRADED)
+        note = f"onboarding `{source_id}` : échec — {result.finish or 'sans détail'}"
+    ctx.journal.append(note)
+    log.info(note)
+    return None
+
+
+@handler("outreach")
+async def handle_outreach(ctx: JobContext, job: Job) -> dict | None:
+    """Run the Stirrup outreach agent (email / contact form) for a provider."""
+    source_id = job.payload["source_id"]
+    descriptor = ctx.engine.catalog.get(source_id)
+    if descriptor is None:
+        return None
+    if not ctx.engine.governor.allowed("outbound"):
+        log.info("outbound cap reached; skipping outreach to %s", source_id)
+        return None
+    if not await _browser_ready(ctx):
+        log.warning("Chrome CDP unreachable; cannot run outreach")
+        return None
+
+    from mnemosyne.agents.outreach import run_outreach
+
+    ask = job.payload.get("ask") or (
+        "Je construis un index ouvert d'images d'archives historiques. "
+        "Comment obtenir un accès API ou une autorisation pour indexer une partie "
+        "de vos collections ? Je cite et relie systématiquement la source."
+    )
+    result = await run_outreach(
+        ctx.config,
+        descriptor,
+        ask,
+        contact_email=job.payload.get("contact_email"),
+        contact_form_url=job.payload.get("contact_form_url"),
+        vault_get=_vault_get(ctx),
+    )
+    ctx.engine.governor.record("outbound")
+    note = f"outreach `{source_id}` : {result.finish or 'terminé'}"
+    ctx.journal.append(note)
+    await ctx.notifier.send(note, "info")
     return None
 
 

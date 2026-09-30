@@ -20,7 +20,7 @@ with a heartbeat.
 | `api` | FastAPI unified search. |
 | `vault` | encrypted credentials (Fernet). |
 | `notify` | Telegram HITL alerts. |
-| `browser`/`agents`/`email` | P2: real Chrome over CDP for onboarding/outreach. |
+| `browser`/`agents` | P2: Stirrup agent loop + browser-use over CDP, with deterministic tools. |
 
 ## Provider state machine
 
@@ -77,6 +77,11 @@ descriptor never loses lifecycle progress.
     Chrome's built-in password manager (`--password-store=basic` keeps it inside
     the profile). The agent therefore does not need to store most site passwords
     itself.
+14. **Stirrup for cognition, home-made for control.** The heartbeat stays a
+    deterministic durable scheduler. The per-task agentic loop (onboarding,
+    outreach) uses **Stirrup** with **browser-use** over CDP, exposing a small set
+    of deterministic business tools rather than the DOM. Same pattern as
+    `youtube-shorts-pipeline/research/histoire_industrie`. See `docs/P2-AGENTS.md`.
 
 ## Milestones
 

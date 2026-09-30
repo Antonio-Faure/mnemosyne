@@ -70,6 +70,18 @@ Never leak a provider's raw shape into `Asset`: normalize at the connector bound
 entry `opencode-go`). It always sends a clean `User-Agent` and a stable
 `x-opencode-session` header (required by Zen).
 
+## Agentic layer (Stirrup)
+
+The heartbeat is the deterministic control plane; the per-task LLM loop uses
+**Stirrup** with **browser-use** over CDP (`docs/P2-AGENTS.md`). Give agents
+deterministic business tools (`agents/tools.py`), never the raw DOM. Stirrup and
+browser-use imports must stay inside `agents/*` / `browser/*` so the core runs
+without the `browser` extra. Browser work needs the extra:
+
+```bash
+pip install -e '.[browser]'
+```
+
 ## Dev
 
 ```bash

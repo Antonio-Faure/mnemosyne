@@ -137,7 +137,9 @@ mnemosyne llm test     # one round-trip
 - **P0+P1 (this repo)**: heartbeat, catalog, governor, 5 keyless providers
   (Gallica, Wikidata, Wikimedia Commons, Internet Archive, Openverse),
   normalization/dedup/provenance, unified API.
-- **P2**: browser-use onboarding agent + Gmail-via-browser + warmup → keyed providers.
+- **P2 (in progress)**: Stirrup agent loop + browser-use over CDP, deterministic
+  tools, onboarding & outreach agents, Gmail-via-browser, governed by warmup.
+  Install with `pip install -e '.[browser]'`. See `docs/P2-AGENTS.md`.
 - **P3**: autonomous discovery (GLAM SPARQL, directories).
 - **P4**: connector self-repair, dashboard, scale to hundreds of sources.
 

@@ -27,10 +27,15 @@ de `~/.local/share/opencode` → `/opencode-auth`).
 
 ```bash
 make install
+.venv/bin/pip install -e '.[browser]'   # P2 : Stirrup + browser-use
 .venv/bin/mnemosyne vault init
 .venv/bin/mnemosyne run      # heartbeat
 .venv/bin/mnemosyne serve    # API (dans un autre terminal)
 ```
+
+Les agents navigateur (P2) nécessitent un Chrome joignable en CDP : lance
+`docker compose up -d chrome` (ou un Chrome local avec `--remote-debugging-port`)
+et règle `MNEMOSYNE_CDP_URL`.
 
 ## 3. Connecter le Chrome à Google (Gmail + gestionnaire de mots de passe)
 

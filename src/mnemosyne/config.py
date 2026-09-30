@@ -79,6 +79,16 @@ class IdentityConfig(BaseModel):
     language: str = "fr"
 
 
+class AgentsConfig(BaseModel):
+    """Stirrup agent loop settings (browser onboarding / outreach)."""
+
+    max_turns: int = 40
+    #: per-turn generation budget required by the Stirrup chat client.
+    max_tokens: int = 8192
+    context_window_tokens: int = 128000
+    output_dir: str = "data/agent-runs"
+
+
 class MemoryConfig(BaseModel):
     """Bounds the LLM context (and therefore the cost) of long-running agents."""
 
@@ -112,6 +122,7 @@ class Config(BaseModel):
     reputation: ReputationConfig = Field(default_factory=ReputationConfig)
     llm: LlmConfig = Field(default_factory=LlmConfig)
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
+    agents: AgentsConfig = Field(default_factory=AgentsConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     notify: NotifyConfig = Field(default_factory=NotifyConfig)
     sources_dir: str = "config/sources"

@@ -55,6 +55,13 @@ identity:
   agent_email: null
   language: fr
 
+# Stirrup agent loop (browser onboarding / outreach), P2.
+agents:
+  max_turns: 40
+  max_tokens: 8192
+  context_window_tokens: 128000
+  output_dir: data/agent-runs
+
 # Bounds the LLM context (and therefore the cost) of long-running agents.
 memory:
   max_recent_messages: 12

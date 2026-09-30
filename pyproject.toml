@@ -28,8 +28,8 @@ dependencies = [
 
 [project.optional-dependencies]
 browser = [
-    "browser-use>=0.2",
-    "playwright>=1.45",
+    "stirrup[browser]",
+    "openai>=1.40",
 ]
 media = [
     "Pillow>=10.4",
