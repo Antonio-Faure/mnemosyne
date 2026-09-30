@@ -2,8 +2,7 @@
 
 Stirrup's `ChatCompletionsClient` cannot inject custom HTTP headers, but Zen
 requires a clean `User-Agent` and a stable `x-opencode-session`. We subclass it
-and rebuild the underlying `AsyncOpenAI` with those headers, exactly like
-`research/histoire_industrie/zen_client.py` in the sibling repo.
+and rebuild the underlying `AsyncOpenAI` with those headers.
 """
 
 from __future__ import annotations

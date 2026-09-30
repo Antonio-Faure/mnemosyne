@@ -1,9 +1,8 @@
 """Deterministic Stirrup tools backing the browser agents.
 
-Following the `research/histoire_industrie` pattern: instead of exposing dozens of
-low-level DOM tools (expensive and fragile), the agent gets a small set of
-business-level, deterministic tools. Extraction, persistence and wall detection
-are done by code.
+Instead of exposing dozens of low-level DOM tools (expensive and fragile), the
+agent gets a small set of business-level, deterministic tools. Extraction,
+persistence and wall detection are done by code.
 """
 
 from __future__ import annotations

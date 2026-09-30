@@ -97,8 +97,7 @@ descriptor never loses lifecycle progress.
 17. **Stirrup for cognition, home-made for control.** The heartbeat stays a
     deterministic durable scheduler. The per-task agentic loop (onboarding,
     outreach) uses **Stirrup** with **browser-use** over CDP, exposing a small set
-    of deterministic business tools rather than the DOM. Same pattern as
-    `youtube-shorts-pipeline/research/histoire_industrie`. See `docs/P2-AGENTS.md`.
+    of deterministic business tools rather than the DOM. See `docs/P2-AGENTS.md`.
 
 ## Milestones
 

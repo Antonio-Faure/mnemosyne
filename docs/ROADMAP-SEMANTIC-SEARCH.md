@@ -59,11 +59,14 @@ puis monter.
 - Dédup avant embedding (pHash) pour ne pas payer deux fois la même image.
 - Étages progressifs (voir plus bas).
 
-## Droits & éthique
+## Provenance (pas un problème de droits)
 
-- Indexer ≠ mirroir : conserver l'attribution, la licence et le lien canonique.
-- Ne pas recopier le full-res d'œuvres sous droits réservés ; vignette + métadonnées.
-- La provenance (`Asset.provenance()`) est déjà là — l'étendre au stockage des vecteurs.
+Indexer n'est pas rediffuser : on stocke un **vecteur** (donnée non expressive),
+des **métadonnées** et un **lien**, pas l'œuvre. Puisqu'on **supprime le contenu**,
+il n'y a pas de question de droits côté stockage. On garde attribution + licence +
+lien canonique **par utilité** (affichage, crédit, retrouver la source), pas par
+contrainte. Seule vraie limite : **rediffuser publiquement du full-res sous
+droits** — ce qu'on ne fait pas.
 
 ## Intégration dans le projet
 

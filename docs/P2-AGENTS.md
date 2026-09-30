@@ -6,9 +6,8 @@ The heartbeat (control plane) stays home-made: durable jobs, crash recovery,
 governor. It is deterministic and must not be an LLM loop.
 
 For the **cognition/action** layer (obtain access, contact providers) we use
-**Stirrup** (Artificial Analysis), the same framework already used in
-`youtube-shorts-pipeline/research/histoire_industrie`. It is lightweight and
-handles agent sessions, the tool-calling loop, and interruption caching
+**Stirrup** (Artificial Analysis), a lightweight agent framework. It handles
+agent sessions, the tool-calling loop, and interruption caching
 (`agent.session(...)`).
 
 The browser actuators are **browser-use** attached to the dedicated Chrome over
