@@ -51,7 +51,12 @@ say:  ## send a message to the agent: make say SAY="priorise Lacq"
 doctor:  ## diagnose config, vault, LLM auth, Chrome
 	$(PY)/mnemosyne doctor
 
-token:  ## store the GitHub token in the vault (hidden prompt, no shell history)
+token:  ## store the GitHub token in the vault (run ALONE, then paste when prompted)
+	@if [ -n "$(filter-out token,$(MAKECMDGOALS))" ]; then \
+		echo "ATTENTION : n'ajoute rien apres 'make token' (le token finirait dans l'historique)."; \
+		echo "Lance 'make token' SEUL, puis colle le token quand c'est demande."; \
+		exit 2; \
+	fi
 	@read -s -p "GitHub token (fine-grained): " T; echo; $(PY)/mnemosyne vault set github_token "$$T"; unset T
 
 develop:  ## self-extension: make develop TASK="Add the Europeana connector"
