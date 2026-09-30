@@ -19,9 +19,10 @@ heartbeat:
   stale_lock_s: 600
 
 reputation:
-  # Set to the ISO date the agent's own account was created to enable warmup.
+  # ISO date the agent's own Google account was created — enables the warmup
+  # phases (0 outbound for the first 3 days, then a gentle ramp-up).
   # null => no warmup (trusted/aged account).
-  account_created_at: null
+  account_created_at: "2026-09-30"
   domain_min_interval_s: 1.0
   block_cooldown_s: 300
   warmup:
