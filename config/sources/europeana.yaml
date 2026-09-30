@@ -1,0 +1,23 @@
+id: europeana
+name: Europeana
+institution: Europeana Foundation
+country: EU
+protocol: rest
+base_url: https://api.europeana.eu/record/v2/search.json
+auth: api_key
+key_env: EUROPEANA_API_KEY
+license: varies
+rights: "Per-record; Europeana rights statements (public domain / CC / rights reserved)"
+rate_limit_per_s: 0.5
+priority: 60
+tags: [aggregator, europe, glam, cultural-heritage]
+seeds:
+  - "photographie industrie 1900"
+  - "puits de pétrole"
+  - "usine métallurgie"
+  - "chemin de fer vapeur"
+  - "mine charbon"
+notes: >-
+  Search API v2 needs a wskey (EUROPEANA_API_KEY, request one at
+  https://pro.europeana.eu/page/get-api). Images from edmIsShownBy, thumbnails
+  from edmPreview; keyless calls return no results.

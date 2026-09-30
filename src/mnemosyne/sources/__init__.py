@@ -5,6 +5,7 @@ from __future__ import annotations
 from mnemosyne.connectors.base import Connector
 from mnemosyne.http import HttpClient
 from mnemosyne.models import SourceDescriptor
+from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
 from mnemosyne.sources.openverse import OpenverseConnector
@@ -17,6 +18,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "wikimedia": WikimediaConnector,
     "internet_archive": InternetArchiveConnector,
     "openverse": OpenverseConnector,
+    "europeana": EuropeanaConnector,
 }
 
 
