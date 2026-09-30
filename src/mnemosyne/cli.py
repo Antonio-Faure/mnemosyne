@@ -129,6 +129,30 @@ def _cmd_develop(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_history(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.browser.history import read_history
+
+    path = cfg.data_path / "chrome-profile" / "Default" / "History"
+    report = read_history(path, top=args.top)
+    if not report.get("exists"):
+        print(f"pas d'historique Chrome à {report['path']}")
+        return 1
+    print(f"URLs distinctes : {report['urls']}")
+    print(f"visites         : {report['visits']}")
+    print(f"domaines        : {report['domains_count']}")
+    if report.get("first_seen"):
+        print(f"période         : {report['first_seen']} -> {report['last_seen']}")
+    print("\ntop domaines :")
+    for domain, n in report["top_domains"]:
+        print(f"  {n:5}  {domain}")
+    print("\ncibles warmup :")
+    for probe, n in report["probes"].items():
+        if n:
+            print(f"  {n:5}  {probe}")
+    return 0
+
+
 def _cmd_warmup(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.agents.warmup import run_warmup
@@ -379,6 +403,10 @@ def build_parser() -> argparse.ArgumentParser:
     lsub = pllm.add_subparsers(dest="llm_command", required=True)
     lt = lsub.add_parser("test", help="check auth + one round-trip")
     lt.set_defaults(func=_cmd_llm_test)
+
+    phist = sub.add_parser("history", help="report the agent Chrome history (warmup growth)")
+    phist.add_argument("--top", type=int, default=15)
+    phist.set_defaults(func=_cmd_history)
 
     pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
     pw.add_argument("--minutes", type=float, default=5.0)
