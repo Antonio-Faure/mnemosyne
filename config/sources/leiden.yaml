@@ -1,0 +1,29 @@
+id: leiden
+name: Leiden University Libraries Digital Collections
+institution: Leiden University Libraries (Universiteitsbibliotheek Leiden)
+country: NL
+protocol: iiif
+base_url: https://digitalcollections.universiteitleiden.nl
+auth: none
+license: varies
+rights: "Leiden University Libraries — check per record (public domain / licensed)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [university-library, netherlands, manuscripts, iiif, keyless]
+seeds:
+  - "manuscript"
+  - "map"
+  - "print"
+  - "photograph"
+notes: >-
+  IIIF Presentation v3 manifests are proxied through
+  https://iiif-endpoint.universiteitleiden.nl (e.g.
+  https://digitalcollections.universiteitleiden.nl/iiif_manifest/item%3A1684659/manifest).
+  The public HTML site is behind an F5 bot-protection challenge and probes for an
+  aggregate Collection manifest returned errors
+  (.../iiif_manifest/collection/manifest -> HTTP 400,
+  .../iiif_manifest/collection%3A1/manifest -> HTTP 404), so a single manifest
+  entry point is used. Metadata carries Title/Author/Creator/Shelfmark/Date and the
+  first canvas image is served via the IIIF Image API.
+extra:
+  manifest: https://digitalcollections.universiteitleiden.nl/iiif_manifest/item%3A1684659/manifest
