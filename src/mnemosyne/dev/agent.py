@@ -84,6 +84,7 @@ async def run_dev_agent(
             task=task,
         ),
         tools=[provider],
+        finish_tool=provider.finish_tool(),
         max_turns=config.dev.max_turns,
     )
     out_dir = config.root / config.agents.output_dir

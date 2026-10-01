@@ -15,7 +15,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 from stirrup import Agent
-from stirrup.core.models import EmptyParams, Tool
+from stirrup.core.models import (
+    EmptyParams,
+    Tool,
+    ToolResult,
+    ToolUseCountMetadata,
+)
 
 from mnemosyne.agents.outcome import AgentOutcome
 from mnemosyne.agents.tools import BrowserToolProvider, _fail, _ok
@@ -188,10 +193,6 @@ class WarmupToolProvider(BrowserToolProvider):
             await asyncio.sleep(seconds)
             return _ok(f"attendu {seconds:.0f}s. {self._budget_msg()}")
 
-        async def done_exec(p: DoneParam):
-            self.finish = p.summary
-            return _ok("session terminée")
-
         return [
             Tool(name="sites_list", description="List the history/archive sites.",
                  parameters=EmptyParams, executor=sites_exec),
@@ -207,9 +208,20 @@ class WarmupToolProvider(BrowserToolProvider):
                  parameters=ClickParam, executor=click_exec),
             Tool(name="wait", description="Dwell a few seconds.",
                  parameters=WaitParam, executor=wait_exec),
-            Tool(name="task_done", description="Finish the session.",
-                 parameters=DoneParam, executor=done_exec),
         ]
+
+    async def finish_task(self, p: DoneParam) -> ToolResult[ToolUseCountMetadata]:
+        self.finish = p.summary
+        return _ok("session terminée")
+
+    def finish_tool(self) -> Tool:
+        """Stirrup's finish tool: calling it really ends the session."""
+        return Tool(
+            name="task_done",
+            description="Finish the session.",
+            parameters=DoneParam,
+            executor=self.finish_task,
+        )
 
 
 async def run_warmup(
@@ -236,6 +248,7 @@ async def run_warmup(
         name="warmup_browse",
         system_prompt=_SYSTEM.format(name=config.identity.name),
         tools=[provider],
+        finish_tool=provider.finish_tool(),
         max_turns=config.agents.warmup_max_turns,
     )
     out_dir = config.root / config.agents.output_dir

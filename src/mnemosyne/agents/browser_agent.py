@@ -276,12 +276,6 @@ class BrowserAgentToolProvider(ToolProvider):
                 return _fail(f"vault write failed: {exc}")
             return _ok(f"stored '{p.key}' in the vault")
 
-        async def done_exec(p: DoneParams):
-            self.finish = p.summary
-            if self.journal:
-                self.journal.append(f"navigateur — {p.summary}", source="browser")
-            return _ok("done")
-
         return [
             Tool(name="browser", description="Run Python against Chrome via browser-harness.",
                  parameters=BrowserCodeParams, executor=browser_exec),
@@ -297,9 +291,22 @@ class BrowserAgentToolProvider(ToolProvider):
                  parameters=RememberParams, executor=remember_exec),
             Tool(name="send_message", description="Message the coder agent.",
                  parameters=SendMessageParams, executor=send_exec),
-            Tool(name="task_done", description="Finish with a factual summary.",
-                 parameters=DoneParams, executor=done_exec),
         ]
+
+    async def finish_task(self, p: DoneParams) -> ToolResult[ToolUseCountMetadata]:
+        self.finish = p.summary
+        if self.journal:
+            self.journal.append(f"navigateur — {p.summary}", source="browser")
+        return _ok("done")
+
+    def finish_tool(self) -> Tool:
+        """Stirrup's finish tool: calling it really ends the session."""
+        return Tool(
+            name="task_done",
+            description="Finish with a factual summary.",
+            parameters=DoneParams,
+            executor=self.finish_task,
+        )
 
 
 async def run_browser_agent(
@@ -325,6 +332,7 @@ async def run_browser_agent(
             skills=skills,
         ),
         tools=[provider],
+        finish_tool=provider.finish_tool(),
         max_turns=config.agents.max_turns,
     )
     out_dir = config.root / config.agents.output_dir

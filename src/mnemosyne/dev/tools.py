@@ -294,10 +294,6 @@ class DevToolProvider(ToolProvider):
                 return _fail(str(exc))
             return _ok(f"message #{mid} sent to {p.to}")
 
-        async def done_exec(p: DoneParam):
-            self.finish = p.summary
-            return _ok("done")
-
         tools = [
             Tool(name="list_files", description="List files in a directory.",
                  parameters=DirParam, executor=list_exec),
@@ -323,8 +319,6 @@ class DevToolProvider(ToolProvider):
                  parameters=EmptyParams, executor=push_exec),
             Tool(name="open_pr", description="Open a pull request for the branch.",
                  parameters=PrParam, executor=pr_exec),
-            Tool(name="task_done", description="Finish.",
-                 parameters=DoneParam, executor=done_exec),
         ]
         if self.mailbox is not None:
             tools.append(
@@ -336,6 +330,19 @@ class DevToolProvider(ToolProvider):
                 )
             )
         return tools
+
+    async def finish_task(self, p: DoneParam) -> ToolResult[ToolUseCountMetadata]:
+        self.finish = p.summary
+        return _ok("done")
+
+    def finish_tool(self) -> Tool:
+        """Stirrup's finish tool: calling it really ends the session."""
+        return Tool(
+            name="task_done",
+            description="Finish.",
+            parameters=DoneParam,
+            executor=self.finish_task,
+        )
 
 
 def _writable(rel: str, config: DevConfig) -> bool:
