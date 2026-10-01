@@ -222,6 +222,10 @@ Réglages `config.agents` : `warmup_per_day_min/max`, `warmup_window_start/end`,
 `warmup_max_turns`. Le budget horaire de job est `heartbeat.job_timeout_s`
 (1800s).
 
+Enregistrer l'écran de l'agent (vidéo) : `make record SECONDS=120` (ffmpeg
+`x11grab` dans le conteneur Chrome) → `data/agent-recording.mp4`. Lance une
+session (warmup/onboarding) pendant l'enregistrement.
+
 Lancer **manuellement** une session (debug) : `mnemosyne warmup --minutes 8`
 (ou `make`-style dans le conteneur). Les sessions auto se voient dans le journal
 (`warmup « <cible> » ~N min (session i/total)`) et dans les logs (avec le

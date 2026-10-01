@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal history services service status say doctor token develop connect-next install-timer egress cdp vnc chrome-reset clean
+.PHONY: help install lint test run serve up down logs journal history services service status say doctor token develop connect-next install-timer record egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -67,6 +67,9 @@ develop:  ## self-extension: make develop TASK="Add the Europeana connector"
 
 connect-next:  ## connect the next discovered provider now (dev agent -> PR)
 	$(PY)/mnemosyne connect-next
+
+record:  ## record the agent Chrome screen: make record SECONDS=60
+	./scripts/record-agent.sh $(or $(SECONDS),60)
 
 install-timer:  ## install + enable the daily connect systemd user timer
 	mkdir -p ~/.config/systemd/user
