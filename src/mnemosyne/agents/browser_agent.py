@@ -20,7 +20,7 @@ from stirrup import Agent
 from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, ToolUseCountMetadata
 
 from mnemosyne.agents.mailbox import Mailbox
-from mnemosyne.agents.onboarding import AgentOutcome
+from mnemosyne.agents.outcome import AgentOutcome
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.dev.git_ops import Git, GitError
@@ -29,6 +29,7 @@ from mnemosyne.identity import disclosure
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.util import atomic_write_text, ensure_dir, finish_text, load_prompt
+from mnemosyne.vault import Vault
 
 log = get_logger("browser_agent")
 
@@ -62,6 +63,15 @@ class SendMessageParams(BaseModel):
 
 class DoneParams(BaseModel):
     summary: str = Field(description="Short factual summary of what was done")
+
+
+class RememberParams(BaseModel):
+    key: str = Field(description="Vault key, e.g. 'europeana_api_key'")
+    value: str = Field(description="Secret value to store (never sent in a message)")
+
+
+#: vault entries only the operator may set
+_RESERVED_VAULT_KEYS = frozenset({"github_token", "opencode_api_key"})
 
 
 def _ok(content: str) -> ToolResult[ToolUseCountMetadata]:
@@ -198,6 +208,15 @@ class BrowserAgentToolProvider(ToolProvider):
                 return _fail(str(exc))
             return _ok(f"message #{mid} sent to {p.to}")
 
+        async def remember_exec(p: RememberParams):
+            if p.key in _RESERVED_VAULT_KEYS:
+                return _fail(f"'{p.key}' is reserved; ask the operator instead")
+            try:
+                Vault(self.config.vault_file).set(p.key, p.value)
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"vault write failed: {exc}")
+            return _ok(f"stored '{p.key}' in the vault")
+
         async def done_exec(p: DoneParams):
             self.finish = p.summary
             if self.journal:
@@ -215,6 +234,8 @@ class BrowserAgentToolProvider(ToolProvider):
                  parameters=WriteHelperParams, executor=write_exec),
             Tool(name="publish_helpers", description="Commit+push helpers and open a PR.",
                  parameters=PublishParams, executor=publish_exec),
+            Tool(name="remember", description="Store a secret in the encrypted vault.",
+                 parameters=RememberParams, executor=remember_exec),
             Tool(name="send_message", description="Message the coder agent.",
                  parameters=SendMessageParams, executor=send_exec),
             Tool(name="task_done", description="Finish with a factual summary.",

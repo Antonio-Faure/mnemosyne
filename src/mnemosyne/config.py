@@ -176,22 +176,6 @@ class DevConfig(BaseModel):
     )
 
 
-class MemoryConfig(BaseModel):
-    """Bounds the LLM context (and therefore the cost) of long-running agents."""
-
-    #: how many of the most recent messages are always sent verbatim
-    max_recent_messages: int = 12
-    #: compact once the stored history exceeds this many messages
-    compact_after_messages: int = 24
-    #: a rolling summary is kept per session; instruct the model to stay concise
-    summary_instruction: str = (
-        "Résume la conversation ci-dessus en puces factuelles et durables "
-        "(décisions, faits, accès obtenus, tâches en cours, échecs). "
-        "Conserve les identifiants, URLs et clés de données (jamais les secrets). "
-        "Sois concis : au plus 200 mots."
-    )
-
-
 class TelegramConfig(BaseModel):
     enabled: bool = False
     bot_token_env: str = "MNEMOSYNE_TELEGRAM_BOT_TOKEN"
@@ -212,7 +196,6 @@ class Config(BaseModel):
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     dev: DevConfig = Field(default_factory=DevConfig)
-    memory: MemoryConfig = Field(default_factory=MemoryConfig)
     notify: NotifyConfig = Field(default_factory=NotifyConfig)
     sources_dir: str = "config/sources"
 

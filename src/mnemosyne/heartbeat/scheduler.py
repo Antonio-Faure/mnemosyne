@@ -10,7 +10,7 @@ from mnemosyne.engine import Engine
 from mnemosyne.heartbeat.jobs import HANDLERS, JobContext
 from mnemosyne.journal import Control, Journal
 from mnemosyne.logger import get_logger
-from mnemosyne.models import AuthKind, Job, JobState, SourceState
+from mnemosyne.models import AuthKind, Job, JobState
 from mnemosyne.notify import Notifier
 from mnemosyne.reputation import GovernorBlocked
 from mnemosyne.sources import build_connector
@@ -22,7 +22,6 @@ HARVEST_INTERVAL_S = 1800
 VERIFY_INTERVAL_S = 21600
 WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
-ONBOARD_INTERVAL_S = 43200  # retry onboarding twice a day at most
 AGENCY_INTERVAL_S = 120  # check the bi-agent mailbox every 2 minutes (idle = free)
 
 
@@ -82,18 +81,6 @@ class Heartbeat:
                         f"portail {d.base_url})",
                         title=d.name,
                         source="bootstrap",
-                    )
-                if (
-                    self.engine.catalog.state(d.id)
-                    in {SourceState.DISCOVERED, SourceState.RESEARCHED, SourceState.DEGRADED}
-                    and not self.engine.db.has_open_job("onboard", d.id)
-                ):
-                    self.engine.db.enqueue(
-                        Job(
-                            kind="onboard",
-                            payload={"source_id": d.id, "interval_s": ONBOARD_INTERVAL_S},
-                            priority=5,
-                        )
                     )
         warmup = self.config.reputation.account_created_at
         if warmup and not self.engine.db.has_open_job("warmup"):

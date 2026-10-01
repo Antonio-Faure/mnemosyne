@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from stirrup import Agent
 from stirrup.core.models import EmptyParams, Tool
 
-from mnemosyne.agents.onboarding import AgentOutcome
+from mnemosyne.agents.outcome import AgentOutcome
 from mnemosyne.agents.tools import BrowserToolProvider, _fail, _ok
 from mnemosyne.agents.warmup_schedule import pick_goal
 from mnemosyne.browser.stirrup_client import build_agent_client

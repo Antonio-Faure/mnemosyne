@@ -1,9 +1,10 @@
-"""Autonomous Stirrup agents (browser + tools).
+"""Autonomous agents.
 
-* ``onboarding`` — create a free account / request an API key (browser-use).
-* ``outreach``   — contact a provider by email or contact form, transparently.
-* ``discovery``  — (P3) find new providers (GLAM SPARQL, directories).
+* ``mailbox`` / ``supervisor`` — durable messages + deterministic turn-taking.
+* ``browser_agent`` — the Stirrup browser agent (Chrome via browser-harness).
+* ``dev`` (package)      — the coder agent (repo, tests, git/PR).
+* ``warmup``             — human-like browsing that ages the account.
 
-The Stirrup / browser-use imports live in these modules, so the core (heartbeat,
-API) works without the ``browser`` extra installed.
+Stirrup / browser-harness imports stay inside these modules so the core
+(heartbeat, API) works without the ``browser`` extra.
 """

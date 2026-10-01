@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -137,37 +136,8 @@ def _cmd_discover(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_browse(args: argparse.Namespace) -> int:
-    """Run a generic browser agent on an arbitrary task."""
-    cfg = get_config()
-    from mnemosyne.agents.browse import run_browse
-
-    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
-    outcome = asyncio.run(
-        run_browse(
-            cfg,
-            args.task,
-            journal=Journal(cfg.journal_path),
-            vault_get=vault.get if vault else None,
-        )
-    )
-    print("success:", outcome.success)
-    print("usage:", outcome.usage)
-    print("finish:", outcome.finish or "(pas de résumé)")
-    return 0
 
 
-def _agent_worktree(cfg) -> Path:
-    """A throwaway git worktree based on the base branch (never touch main)."""
-    from mnemosyne.dev.worktree import add_worktree
-
-    return add_worktree(cfg.root, Path(cfg.data_path) / "agent-worktree", cfg.dev.base_branch)
-
-
-def _cleanup_worktree(cfg, path) -> None:
-    from mnemosyne.dev.worktree import remove_worktree
-
-    remove_worktree(cfg.root, path)
 
 
 def _cmd_agency(args: argparse.Namespace) -> int:
@@ -223,10 +193,10 @@ def _cmd_discoveries(args: argparse.Namespace) -> int:
 
 
 def _cmd_connect_next(args: argparse.Namespace) -> int:
-    """Connect the next discovered provider: dev agent researches it and opens a PR."""
+    """Connect the next discovered provider through the bi-agent loop."""
     cfg = get_config()
+    from mnemosyne.agents.supervisor import run_agency
     from mnemosyne.db import Database
-    from mnemosyne.dev.agent import run_dev_agent
 
     db = Database(cfg.db_file())
     pending = db.list_discoveries(status="new")
@@ -254,21 +224,14 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
     )
     vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
     try:
-        worktree = _agent_worktree(cfg)
-    except Exception as exc:  # noqa: BLE001
-        db = Database(cfg.db_file())
-        db.set_discovery_status(record.id, "new")
-        db.close()
-        print(f"échec worktree pour {record.host}: {exc}")
-        return 1
-    try:
-        outcome = asyncio.run(
-            run_dev_agent(
+        result = asyncio.run(
+            run_agency(
                 cfg,
                 task,
-                vault_get=vault.get if vault else None,
+                start="coder",
+                max_handoffs=6,
                 journal=Journal(cfg.journal_path),
-                repo=worktree,
+                vault_get=vault.get if vault else None,
             )
         )
     except Exception as exc:  # noqa: BLE001 - dirty tree, missing token, etc.
@@ -277,15 +240,14 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
         db.close()
         print(f"échec pour {record.host}: {exc}")
         return 1
-    finally:
-        _cleanup_worktree(cfg, worktree)
 
-    # Trust only a branch that is actually ahead of the base (a real commit/PR).
+    repo = Path(cfg.dev.repo_path or cfg.root)
+    branch = next((t.get("branch") for t in result.turns if t.get("branch")), None)
     status = "failed"
-    if outcome.branch:
+    if branch:
         res = subprocess.run(
-            ["git", "rev-list", "--count", f"{cfg.dev.base_branch}..{outcome.branch}"],
-            cwd=cfg.root,
+            ["git", "rev-list", "--count", f"{cfg.dev.base_branch}..{branch}"],
+            cwd=repo,
             capture_output=True,
             text=True,
         )
@@ -294,116 +256,11 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
     db = Database(cfg.db_file())
     db.set_discovery_status(record.id, status)
     db.close()
-    print(f"{record.host}: {status} | branch={outcome.branch} | {outcome.finish or ''}")
+    print(
+        f"{record.host}: {status} | stop={result.stop_reason} "
+        f"| branch={branch or '(aucune)'}"
+    )
     return 0 if status == "connected" else 1
-
-
-def _cmd_onboard(args: argparse.Namespace) -> int:
-    """Manually run the onboarding agent on a provider (operator override)."""
-    cfg = get_config()
-    from mnemosyne.agents.onboarding import run_onboarding
-    from mnemosyne.catalog import Catalog
-    from mnemosyne.db import Database
-
-    db = Database(cfg.db_file())
-    try:
-        catalog = Catalog(cfg.sources_path, db)
-        catalog.sync()
-        descriptor = catalog.get(args.source)
-    finally:
-        db.close()
-    if descriptor is None:
-        print(f"source inconnue : {args.source}")
-        return 1
-    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
-    outcome = asyncio.run(
-        run_onboarding(
-            cfg,
-            descriptor,
-            vault_get=vault.get if vault else None,
-            journal=Journal(cfg.journal_path),
-        )
-    )
-    print("finish:", outcome.finish or "(pas de résumé)")
-    print("outcome:", outcome.outcome)
-    return 0
-
-
-def _cmd_outreach(args: argparse.Namespace) -> int:
-    """Manually run the outreach agent (email / contact form) on a provider."""
-    cfg = get_config()
-    from mnemosyne.agents.outreach import run_outreach
-    from mnemosyne.catalog import Catalog
-    from mnemosyne.db import Database
-
-    db = Database(cfg.db_file())
-    try:
-        catalog = Catalog(cfg.sources_path, db)
-        catalog.sync()
-        descriptor = catalog.get(args.source)
-    finally:
-        db.close()
-    if descriptor is None:
-        print(f"source inconnue : {args.source}")
-        return 1
-    ask = args.ask or (
-        "Je construis un index ouvert d'images d'archives historiques. Comment "
-        "obtenir un accès API ou une autorisation pour indexer une partie de vos "
-        "collections ? Je cite et relie systématiquement la source."
-    )
-    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
-    outcome = asyncio.run(
-        run_outreach(
-            cfg,
-            descriptor,
-            ask,
-            contact_email=args.email,
-            contact_form_url=args.form,
-            vault_get=vault.get if vault else None,
-            journal=Journal(cfg.journal_path),
-        )
-    )
-    print("finish:", outcome.finish or "(pas de résumé)")
-    print("outcome:", outcome.outcome)
-    return 0
-
-
-def _cmd_develop(args: argparse.Namespace) -> int:
-    cfg = get_config()
-    if not cfg.dev.enabled:
-        print("self-extension is disabled (config.dev.enabled=false)")
-        return 1
-    from mnemosyne.dev.agent import run_dev_agent
-
-    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
-    vault_get = vault.get if vault else None
-    token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
-    if not token:
-        print("Aucun jeton GitHub (vault 'github_token' ou env GITHUB_TOKEN).")
-        print("L'agent pourra éditer/tester en local mais pas pousser. Stocke-le avec :")
-        print("  make token")
-        print("  # ou : .venv/bin/mnemosyne vault set github_token <token>")
-
-    try:
-        worktree = _agent_worktree(cfg)
-    except Exception as exc:
-        print(f"échec worktree: {exc}")
-        return 1
-    try:
-        outcome = asyncio.run(
-            run_dev_agent(
-                cfg,
-                args.task,
-                vault_get=vault_get,
-                journal=Journal(cfg.journal_path),
-                repo=worktree,
-            )
-        )
-    finally:
-        _cleanup_worktree(cfg, worktree)
-    print("finish:", outcome.finish or "(pas de résumé)")
-    print("branch:", outcome.branch or "(aucune)")
-    return 0
 
 
 def _cmd_history(args: argparse.Namespace) -> int:
@@ -701,10 +558,6 @@ def build_parser() -> argparse.ArgumentParser:
     pmsgs.add_argument("--limit", type=int, default=50)
     pmsgs.set_defaults(func=_cmd_messages)
 
-    pbrowse = sub.add_parser("browse", help="run a generic browser agent on a task")
-    pbrowse.add_argument("task", help="what to do in the browser")
-    pbrowse.set_defaults(func=_cmd_browse)
-
     pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")
     pdis.add_argument("--limit", type=int, default=100)
     pdis.add_argument("--top", type=int, default=20)
@@ -714,23 +567,8 @@ def build_parser() -> argparse.ArgumentParser:
     pdisc.add_argument("--status", default=None, help="filter: new/connecting/connected/failed")
     pdisc.set_defaults(func=_cmd_discoveries)
 
-    pcn = sub.add_parser("connect-next", help="connect the next discovery (dev agent -> PR)")
+    pcn = sub.add_parser("connect-next", help="connect the next discovery (via the bi-agent)")
     pcn.set_defaults(func=_cmd_connect_next)
-
-    pon = sub.add_parser("onboard", help="manually run the onboarding agent on a provider")
-    pon.add_argument("source", help="source id, e.g. europeana")
-    pon.set_defaults(func=_cmd_onboard)
-
-    pour = sub.add_parser("outreach", help="manually run the outreach agent on a provider")
-    pour.add_argument("source", help="source id")
-    pour.add_argument("--ask", default=None, help="the request to send")
-    pour.add_argument("--email", default=None, help="contact email")
-    pour.add_argument("--form", default=None, help="contact form URL")
-    pour.set_defaults(func=_cmd_outreach)
-
-    pdev = sub.add_parser("develop", help="self-extension: add a provider via PR")
-    pdev.add_argument("task", help="what to build, e.g. 'Add the Europeana connector'")
-    pdev.set_defaults(func=_cmd_develop)
 
     ptg = sub.add_parser("telegram", help="Telegram bot utilities")
     tg = ptg.add_subparsers(dest="telegram_command", required=True)

@@ -42,6 +42,25 @@ def test_run_agency_handoff(config, monkeypatch):
     assert result.stop_reason == "no_pending"
 
 
+def test_run_agency_injects_standing_directives(config, monkeypatch):
+    seen: list[str] = []
+
+    async def capture(cfg, task, mailbox, journal, vault_get):
+        seen.append(task)
+        return _Outcome(finish="ok")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", capture)
+
+    from mnemosyne.journal import Control
+
+    Control(config.control_path).directives_path.write_text(
+        "# Directives\n\n- toujours citer la source\n", encoding="utf-8"
+    )
+    asyncio.run(run_agency(config, "tâche", start="coder"))
+
+    assert "toujours citer la source" in seen[0]
+
+
 def test_run_agency_marks_review_without_finish(config, monkeypatch):
     """An agent that stops without task_done is not reported as done."""
 

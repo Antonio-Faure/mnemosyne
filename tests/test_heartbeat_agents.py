@@ -1,12 +1,13 @@
-"""The heartbeat agents must import lazily: core works without the browser extra."""
+"""The heartbeat drives the bi-agent background turn (agency job)."""
 
 import pytest
-import yaml
 
+from mnemosyne.agents import supervisor
+from mnemosyne.agents.outcome import AgentOutcome
 from mnemosyne.engine import Engine
-from mnemosyne.heartbeat.jobs import JobContext, handle_onboard
+from mnemosyne.heartbeat.jobs import JobContext, handle_agency
 from mnemosyne.journal import Control, Journal
-from mnemosyne.models import AuthKind, Job
+from mnemosyne.models import Job
 from mnemosyne.notify import Notifier
 
 
@@ -23,36 +24,29 @@ def _ctx(config) -> JobContext:
 
 
 @pytest.mark.asyncio
-async def test_onboard_skips_keyless_provider(config):
-    ctx = _ctx(config)  # gallica is auth=none
+async def test_agency_idle_is_free(config):
+    ctx = _ctx(config)
     try:
-        result = await handle_onboard(ctx, Job(kind="onboard", payload={"source_id": "gallica"}))
-        assert result is None
+        assert await handle_agency(ctx, Job(kind="agency", payload={})) is None
     finally:
         await ctx.engine.aclose()
 
 
 @pytest.mark.asyncio
-async def test_onboard_skips_when_browser_unreachable(config, sources_dir):
-    (sources_dir / "acme.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "acme_archives",
-                "name": "Acme Archives",
-                "protocol": "email",
-                "base_url": "https://archives.acme.example",
-                "auth": "api_key",
-            }
-        ),
-        encoding="utf-8",
-    )
+async def test_agency_runs_one_pending_message(config, monkeypatch):
+    calls: list[str] = []
+
+    async def fake_browser(cfg, task, mailbox, journal, vault_get):
+        calls.append(task)
+        return AgentOutcome(finish="rapport ok")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
     ctx = _ctx(config)
     try:
-        assert ctx.engine.catalog.get("acme_archives").auth == AuthKind.API_KEY
-        # No Chrome available in tests -> handler must bail out without importing stirrup.
-        result = await handle_onboard(
-            ctx, Job(kind="onboard", payload={"source_id": "acme_archives"})
-        )
-        assert result is None
+        ctx.engine.db.post_message("operator", "browser", "fais le warmup")
+        await handle_agency(ctx, Job(kind="agency", payload={}))
+        assert calls == ["fais le warmup"]
+        assert ctx.engine.db.list_messages()[-1]["status"] == "handled"
     finally:
         await ctx.engine.aclose()

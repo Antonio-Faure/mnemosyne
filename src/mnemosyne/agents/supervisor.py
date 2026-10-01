@@ -82,6 +82,32 @@ async def _run_browser(config: Config, task: str, mailbox: Mailbox, journal, vau
 
 _RUNNERS = {"coder": _run_coder, "browser": _run_browser}
 
+#: a browser session may run long; hold the Chrome lease for an hour
+BROWSER_LEASE_S = 3600
+
+
+def _task_with_directives(config: Config, task: str) -> str:
+    """Append the operator's standing directives (control/directives.md)."""
+    try:
+        from mnemosyne.journal import Control
+
+        directives = (Control(config.control_path).directives() or "").strip()
+    except Exception:  # noqa: BLE001 - directives must never block a turn
+        directives = ""
+    if not directives:
+        return task
+    return f"{task}\n\n---\nCONSIGNES PERMANENTES DE L'OPÉRATEUR :\n{directives}"
+
+
+def _acquire_browser_lease(db: Database, agent: str) -> bool | None:
+    """True = lease held, False = not needed, None = needed but taken."""
+    if agent != "browser":
+        return False
+    if db.try_lease("browser", ttl_s=BROWSER_LEASE_S):
+        return True
+    log.info("browser lease held elsewhere; skipping this turn")
+    return None
+
 
 async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> str | None:
     """Background turn: run ONE agent for the oldest pending message (if any).
@@ -93,11 +119,15 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
 
     db = Database(config.db_file())
     mailbox = Mailbox(db)
+    held: bool | None = False
     try:
         pending = mailbox.pending_recipients()
         if not pending:
             return None
         agent = pending[0]
+        held = _acquire_browser_lease(db, agent)
+        if held is None:
+            return None
         message = mailbox.claim_for(agent, owner=f"heartbeat:{os.getpid()}")
         if message is None:
             return None
@@ -106,7 +136,9 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
         if journal:
             journal.append(note, source="agency")
         try:
-            outcome = await _RUNNERS[agent](config, message["body"], mailbox, journal, vault_get)
+            outcome = await _RUNNERS[agent](
+                config, _task_with_directives(config, message["body"]), mailbox, journal, vault_get
+            )
             finish = finish_text(getattr(outcome, "finish", None)) or ""
             if finish:
                 mailbox.mark(message["id"], "handled", finish[:200])
@@ -119,6 +151,8 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
             mailbox.mark(message["id"], "failed", str(exc)[:200])
         return agent
     finally:
+        if held:
+            db.release_lease("browser")
         db.close()
 
 
@@ -147,35 +181,52 @@ async def run_agency(
                 result.stop_reason = "no_pending"
                 break
             agent = pending[0]
-            message = mailbox.claim_for(agent, owner=f"cli:{os.getpid()}")
-            if message is None:
-                result.stop_reason = "busy"
+            held = _acquire_browser_lease(db, agent)
+            if held is None:
+                result.stop_reason = "browser_busy"
                 break
-            note = f"superviseur → agent {agent} : {message['body'][:200]}"
-            log.info(note)
-            if journal:
-                journal.append(note, source="agency")
             try:
-                outcome = await _RUNNERS[agent](
-                    config, message["body"], mailbox, journal, vault_get
-                )
-                finish = finish_text(getattr(outcome, "finish", None)) or ""
-                if finish:
-                    mailbox.mark(message["id"], "handled", finish[:200])
-                else:
-                    mailbox.mark(
-                        message["id"], "review", "agent stopped without task_done"
+                message = mailbox.claim_for(agent, owner=f"cli:{os.getpid()}")
+                if message is None:
+                    result.stop_reason = "busy"
+                    break
+                note = f"superviseur → agent {agent} : {message['body'][:200]}"
+                log.info(note)
+                if journal:
+                    journal.append(note, source="agency")
+                try:
+                    outcome = await _RUNNERS[agent](
+                        config,
+                        _task_with_directives(config, message["body"]),
+                        mailbox,
+                        journal,
+                        vault_get,
                     )
-                result.turns.append(
-                    {"agent": agent, "message_id": message["id"], "finish": finish}
-                )
-            except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
-                failures += 1
-                log.error("agent %s failed: %s", agent, exc)
-                mailbox.mark(message["id"], "failed", str(exc)[:200])
-                result.turns.append(
-                    {"agent": agent, "message_id": message["id"], "error": str(exc)}
-                )
+                    finish = finish_text(getattr(outcome, "finish", None)) or ""
+                    if finish:
+                        mailbox.mark(message["id"], "handled", finish[:200])
+                    else:
+                        mailbox.mark(
+                            message["id"], "review", "agent stopped without task_done"
+                        )
+                    result.turns.append(
+                        {
+                            "agent": agent,
+                            "message_id": message["id"],
+                            "finish": finish,
+                            "branch": getattr(outcome, "branch", None),
+                        }
+                    )
+                except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
+                    failures += 1
+                    log.error("agent %s failed: %s", agent, exc)
+                    mailbox.mark(message["id"], "failed", str(exc)[:200])
+                    result.turns.append(
+                        {"agent": agent, "message_id": message["id"], "error": str(exc)}
+                    )
+            finally:
+                if held:
+                    db.release_lease("browser")
             last = agent
         else:
             result.stop_reason = "max_handoffs"

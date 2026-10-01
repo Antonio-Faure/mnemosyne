@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -76,15 +77,6 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
 
-CREATE TABLE IF NOT EXISTS memory (
-    session TEXT NOT NULL,
-    seq     INTEGER NOT NULL,
-    role    TEXT NOT NULL,
-    content TEXT NOT NULL,
-    ts      TEXT NOT NULL,
-    PRIMARY KEY (session, seq)
-);
-CREATE INDEX IF NOT EXISTS idx_memory_session ON memory(session, seq);
 """
 
 
@@ -490,6 +482,37 @@ class Database:
             self._conn.commit()
             return cur.rowcount
 
+    # ── cross-process leases (single browser driver) ─────────────────────
+    def try_lease(self, name: str, ttl_s: float) -> bool:
+        """Acquire `name` for `ttl_s` seconds. False if someone else holds it.
+
+        Leases are intentional and coarse: only one process may drive Chrome at
+        a time (bi-agent browser turn, warmup session, picture/video work).
+        """
+        key = f"lease:{name}"
+        now = time.time()
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE kv SET value = ? WHERE key = ? AND CAST(value AS REAL) < ?",
+                (str(now + ttl_s), key, now),
+            )
+            if cur.rowcount == 0:
+                try:
+                    self._conn.execute(
+                        "INSERT INTO kv (key, value) VALUES (?, ?)",
+                        (key, str(now + ttl_s)),
+                    )
+                except sqlite3.IntegrityError:
+                    self._conn.commit()
+                    return False
+            self._conn.commit()
+            return True
+
+    def release_lease(self, name: str) -> None:
+        with self._lock:
+            self._conn.execute("DELETE FROM kv WHERE key = ?", (f"lease:{name}",))
+            self._conn.commit()
+
     def list_messages(self, status: str | None = None, limit: int = 50) -> list[dict]:
         with self._lock:
             if status:
@@ -527,48 +550,6 @@ class Database:
             else:
                 row = self._conn.execute("SELECT COUNT(*) AS n FROM messages").fetchone()
         return int(row["n"]) if row else 0
-
-    # ── memory (conversation store, pruned by compaction) ────────────────
-    def memory_append(self, session: str, role: str, content: str) -> int:
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT COALESCE(MAX(seq), 0) AS m FROM memory WHERE session = ?", (session,)
-            ).fetchone()
-            seq = int(row["m"]) + 1
-            self._conn.execute(
-                "INSERT INTO memory (session, seq, role, content, ts) VALUES (?, ?, ?, ?, ?)",
-                (session, seq, role, content, utcnow_iso()),
-            )
-            self._conn.commit()
-        return seq
-
-    def memory_messages(self, session: str, after_seq: int = 0) -> list[dict]:
-        with self._lock:
-            rows = self._conn.execute(
-                """SELECT seq, role, content, ts FROM memory
-                   WHERE session = ? AND seq > ? ORDER BY seq ASC""",
-                (session, after_seq),
-            ).fetchall()
-        return [
-            {"seq": r["seq"], "role": r["role"], "content": r["content"], "ts": r["ts"]}
-            for r in rows
-        ]
-
-    def memory_count(self, session: str) -> int:
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT COUNT(*) AS n FROM memory WHERE session = ?", (session,)
-            ).fetchone()
-        return int(row["n"]) if row else 0
-
-    def memory_prune(self, session: str, upto_seq: int) -> int:
-        with self._lock:
-            cur = self._conn.execute(
-                "DELETE FROM memory WHERE session = ? AND seq <= ?", (session, upto_seq)
-            )
-            self._conn.commit()
-            return cur.rowcount
-
     def set_kv(self, key: str, value: Any) -> None:
         with self._lock:
             self._conn.execute(
