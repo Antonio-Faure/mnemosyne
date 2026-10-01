@@ -24,8 +24,11 @@ class Mailbox:
         return "browser" if agent == "coder" else "coder"
 
     def post(self, sender: str, recipient: str, body: str) -> int:
-        if recipient not in AGENTS and recipient != "operator":
+        """Post a message between the two agents (operator channel disabled)."""
+        if recipient not in AGENTS:
             raise ValueError(f"unknown recipient '{recipient}' (use {AGENTS})")
+        if sender == recipient:
+            raise ValueError("cannot message yourself")
         message_id = self.db.post_message(sender, recipient, body.strip())
         log.info("mail #%s %s → %s: %s", message_id, sender, recipient, body.strip()[:160])
         return message_id

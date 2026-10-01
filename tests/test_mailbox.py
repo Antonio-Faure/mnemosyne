@@ -35,6 +35,15 @@ def test_invalid_recipient(config):
     db.close()
 
 
+def test_operator_channel_is_disabled(config):
+    db, mb = _mailbox(config)
+    with pytest.raises(ValueError):
+        mb.post("browser", "operator", "rapport")  # disabled for now
+    with pytest.raises(ValueError):
+        mb.post("coder", "coder", "self")  # no self-messages
+    db.close()
+
+
 def test_other_and_pending(config):
     db, mb = _mailbox(config)
     assert Mailbox.other("coder") == "browser"

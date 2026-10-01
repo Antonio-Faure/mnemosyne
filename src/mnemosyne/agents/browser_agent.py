@@ -56,7 +56,7 @@ class PublishParams(BaseModel):
 
 
 class SendMessageParams(BaseModel):
-    to: str = Field(description="Recipient: 'coder' or 'operator'")
+    to: str = Field(description="Recipient: 'coder'")
     body: str = Field(description="Message (never include secrets — use vault references)")
 
 
@@ -215,7 +215,7 @@ class BrowserAgentToolProvider(ToolProvider):
                  parameters=WriteHelperParams, executor=write_exec),
             Tool(name="publish_helpers", description="Commit+push helpers and open a PR.",
                  parameters=PublishParams, executor=publish_exec),
-            Tool(name="send_message", description="Message the coder or the operator.",
+            Tool(name="send_message", description="Message the coder agent.",
                  parameters=SendMessageParams, executor=send_exec),
             Tool(name="task_done", description="Finish with a factual summary.",
                  parameters=DoneParams, executor=done_exec),

@@ -59,16 +59,12 @@ class PrParam(BaseModel):
 
 
 class SendMessageParam(BaseModel):
-    to: str = Field(description="Recipient: 'browser' or 'operator'")
+    to: str = Field(description="Recipient: 'browser'")
     body: str = Field(description="Message (never include secrets — use vault references)")
 
 
 class DoneParam(BaseModel):
     summary: str = Field(description="What was done")
-
-
-class QuestionParam(BaseModel):
-    message: str = Field(description="Question for the operator (Telegram)")
 
 
 def _ok(content: str) -> ToolResult[ToolUseCountMetadata]:
@@ -273,10 +269,6 @@ class DevToolProvider(ToolProvider):
                 self.journal.append(f"self-dev PR : {url}", source="dev")
             return _ok(f"PR opened: {url}")
 
-        async def ask_exec(p: QuestionParam):
-            await self._escalate(p.message)
-            return _ok("question sent to the operator on Telegram")
-
         async def send_exec(p: SendMessageParam):
             if self.mailbox is None:
                 return _fail("no mailbox configured")
@@ -315,8 +307,6 @@ class DevToolProvider(ToolProvider):
                  parameters=EmptyParams, executor=push_exec),
             Tool(name="open_pr", description="Open a pull request for the branch.",
                  parameters=PrParam, executor=pr_exec),
-            Tool(name="ask_operator", description="Ask the operator on Telegram.",
-                 parameters=QuestionParam, executor=ask_exec),
             Tool(name="task_done", description="Finish.",
                  parameters=DoneParam, executor=done_exec),
         ]
@@ -324,7 +314,7 @@ class DevToolProvider(ToolProvider):
             tools.append(
                 Tool(
                     name="send_message",
-                    description="Message the browser agent or the operator.",
+                    description="Message the browser agent.",
                     parameters=SendMessageParam,
                     executor=send_exec,
                 )
