@@ -33,6 +33,7 @@ _FALLBACK = (
 class DevOutcome:
     finish: str | None
     branch: str | None
+    turns: int = 0
 
 
 def _ensure_clean(repo: Path) -> None:
@@ -90,9 +91,12 @@ async def run_dev_agent(
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
-        finish, _history, _metadata = await session.run(task)
+        finish, history, _metadata = await session.run(task)
     usage = client.usage.summary()
-    log.info("dev agent usage (cache-aware): %s", usage)
+    turns = len(history)
+    log.info("dev agent usage (cache-aware): %s (turns=%d)", usage, turns)
     if journal:
         journal.append(f"dev agent usage: {usage}", source="dev")
-    return DevOutcome(finish=finish_text(finish), branch=provider.branch)
+    return DevOutcome(
+        finish=finish_text(finish), branch=provider.branch, turns=turns
+    )

@@ -209,8 +209,17 @@ async def _execute_turn(
         status, note = "review", "agent stopped without calling finish"
     for message in messages:
         mailbox.mark(message["id"], status, note)
+    turns = getattr(outcome, "turns", None)
+    log.info(
+        "agent %s terminé : %d message(s), %s tours, statut=%s",
+        agent,
+        len(messages),
+        turns if turns is not None else "?",
+        status,
+    )
     return {
         "agent": agent,
+        "turns": getattr(outcome, "turns", None),
         "message_ids": [m["id"] for m in messages],
         "message_id": messages[0]["id"],
         "batch": note_prefix,

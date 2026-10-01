@@ -321,12 +321,13 @@ async def run_browser_agent(
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
-        finish, _history, _metadata = await session.run(task)
+        finish, history, _metadata = await session.run(task)
     usage = client.usage.summary()
-    log.info("browser agent usage: %s", usage)
+    turns = len(history)
+    log.info("browser agent usage: %s (turns=%d)", usage, turns)
     summary = finish_text(finish)
     if journal:
         journal.append(f"navigateur usage: {usage}", source="browser")
         if summary:
             journal.append(f"navigateur — {summary}", source="browser")
-    return AgentOutcome(finish=summary, outcome={"usage": usage})
+    return AgentOutcome(finish=summary, outcome={"usage": usage, "turns": turns})
