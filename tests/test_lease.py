@@ -156,3 +156,27 @@ def test_lease_of_the_current_process_is_respected(tmp_path):
     held = _json.loads(row["value"])
     assert held["pid"] == os.getpid() and held["started"] == _proc_start_time()
     db.close()
+
+
+def test_recover_stale_messages_runs_even_with_an_empty_queue(tmp_path):
+    """A killed turn must be retried even when nothing else is pending."""
+    import json as _json
+
+    db = _db(tmp_path)
+    mid = db.post_message("operator", "browser", "mission")
+    db.claim_messages("browser", owner="battery")
+    assert db.claim_messages("browser", owner="battery2") == []  # turn busy
+
+    # the claimer died mid-turn
+    db._conn.execute(
+        "UPDATE messages SET claimed_by = ? WHERE id = ?",
+        (
+            _json.dumps({"who": "cli", "pid": 4_000_000, "host": socket.gethostname()}),
+            mid,
+        ),
+    )
+    db._conn.commit()
+
+    assert db.recover_stale_messages(stale_after_s=99999) == 1
+    assert db.list_messages(status="pending")[0]["id"] == mid
+    db.close()

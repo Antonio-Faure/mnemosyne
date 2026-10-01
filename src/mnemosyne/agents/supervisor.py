@@ -230,6 +230,9 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
     mailbox = Mailbox(db)
     held: bool | None = False
     try:
+        released = db.recover_stale_messages()
+        if released:
+            log.warning("released %d message(s) stuck in running", released)
         pending = mailbox.pending_recipients()
         if not pending:
             return None
@@ -267,6 +270,7 @@ async def run_agency(
     """Post the operator task, then run agents turn-by-turn until the mailbox drains."""
     db = Database(config.db_file())
     mailbox = Mailbox(db)
+    db.recover_stale_messages()
     target = start or pick_agent(task)
     mailbox.post("operator", target, task)
     result = AgencyResult(start=target)

@@ -552,6 +552,45 @@ class Database:
         )
         return claimed[0] if claimed else None
 
+    def _release_stuck_messages(self, stale_iso: str) -> int:
+        """Release RUNNING messages that are old or whose claimer is dead."""
+        released = 0
+        running = self._conn.execute(
+            "SELECT id, claimed_at, claimed_by FROM messages WHERE status = 'running'"
+        ).fetchall()
+        for row in running:
+            if (
+                row["claimed_at"] is None
+                or row["claimed_at"] < stale_iso
+                or _owner_is_dead(row["claimed_by"])
+            ):
+                released += self._conn.execute(
+                    """UPDATE messages
+                       SET status = 'pending', claimed_at = NULL, claimed_by = NULL
+                       WHERE id = ? AND status = 'running'""",
+                    (row["id"],),
+                ).rowcount
+        return released
+
+    def recover_stale_messages(self, stale_after_s: float = 18000) -> int:
+        """Give back messages stuck RUNNING (crashed/killed session).
+
+        Called on every heartbeat tick, so a killed turn is retried even when
+        the mailbox is otherwise empty.
+        """
+        stale_iso = (
+            datetime.now(UTC) - timedelta(seconds=stale_after_s)
+        ).replace(microsecond=0).isoformat()
+        with self._lock:
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                released = self._release_stuck_messages(stale_iso)
+                self._conn.commit()
+            except Exception:
+                self._conn.rollback()
+                raise
+        return released
+
     def claim_messages(
         self,
         recipient: str,
@@ -576,23 +615,7 @@ class Database:
         with self._lock:
             try:
                 self._conn.execute("BEGIN IMMEDIATE")
-                running = self._conn.execute(
-                    "SELECT id, claimed_at, claimed_by FROM messages"
-                    " WHERE status = 'running'"
-                ).fetchall()
-                for row in running:
-                    if (
-                        row["claimed_at"] is None
-                        or row["claimed_at"] < stale_iso
-                        or _owner_is_dead(row["claimed_by"])
-                    ):
-                        self._conn.execute(
-                            """UPDATE messages
-                               SET status = 'pending', claimed_at = NULL,
-                                   claimed_by = NULL
-                               WHERE id = ?""",
-                            (row["id"],),
-                        )
+                self._release_stuck_messages(stale_iso)
                 busy = self._conn.execute(
                     "SELECT 1 FROM messages WHERE status = 'running' LIMIT 1"
                 ).fetchone()
