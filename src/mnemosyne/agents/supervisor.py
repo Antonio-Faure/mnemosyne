@@ -155,6 +155,17 @@ def _split_turn_cap(messages: list[dict]) -> tuple[list[dict], int | None]:
     return cleaned, cap
 
 
+def _turns_of(outcome: object) -> int | None:
+    """Turn count of a finished session (attribute or outcome dict)."""
+    turns = _turns_of(outcome)
+    if isinstance(turns, int):
+        return turns
+    extra = getattr(outcome, "outcome", None)
+    if isinstance(extra, dict) and isinstance(extra.get("turns"), int):
+        return extra["turns"]
+    return None
+
+
 def _batched_task(messages: list[dict]) -> str:
     """One task out of several pending messages (a report then an update...)."""
     if len(messages) == 1:
@@ -209,7 +220,7 @@ async def _execute_turn(
         status, note = "review", "agent stopped without calling finish"
     for message in messages:
         mailbox.mark(message["id"], status, note)
-    turns = getattr(outcome, "turns", None)
+    turns = _turns_of(outcome)
     log.info(
         "agent %s terminé : %d message(s), %s tours, statut=%s",
         agent,
@@ -219,7 +230,7 @@ async def _execute_turn(
     )
     return {
         "agent": agent,
-        "turns": getattr(outcome, "turns", None),
+        "turns": _turns_of(outcome),
         "message_ids": [m["id"] for m in messages],
         "message_id": messages[0]["id"],
         "batch": note_prefix,
