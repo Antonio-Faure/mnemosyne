@@ -13,8 +13,11 @@ descriptor (`config/sources/<id>.yaml`, field `key_env`, e.g.
 vault under the **lowercased name**:
 
 ```
-remember("europeana_api_key", "<value>")     # browser agent tool
+remember("europeana_api_key", "<value>")     # browser agent tool (real tool)
 ```
+
+The `remember` tool refuses the reserved keys (`github_token`,
+`opencode_api_key`): only the operator sets those.
 
 At startup, `Engine` runs `export_vault_secrets()`
 (`src/mnemosyne/secrets.py`): for every descriptor with a `key_env`, the matching
@@ -39,7 +42,6 @@ editing `.env`.
 | `github_token`     | coder agent (push + PR)          |
 | `opencode_api_key` | LLM client (fallback)            |
 | `<source>_api_key` | connectors (via the bridge)      |
-| `api_key`          | legacy onboarding tool output    |
 
 ## Rules
 

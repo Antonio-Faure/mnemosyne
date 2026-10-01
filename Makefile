@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal history services service status say doctor token develop connect-next install-timer record egress cdp vnc chrome-reset clean
+.PHONY: help install lint test run serve up down logs journal history services service status say doctor token agency connect-next install-timer record egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -24,7 +24,7 @@ run:  ## run the heartbeat locally (foreground)
 serve:  ## run the aggregation API locally
 	$(PY)/mnemosyne serve
 
-up:  ## docker compose up -d (heartbeat + chrome)
+up:  ## docker compose up -d (heartbeat + Chrome, one container)
 	docker compose up -d --build
 
 down:  ## stop containers
@@ -62,10 +62,10 @@ token:  ## store the GitHub token in the vault (run ALONE, then paste when promp
 	fi
 	@read -s -p "GitHub token (fine-grained): " T; echo; $(PY)/mnemosyne vault set github_token "$$T"; unset T
 
-develop:  ## self-extension: make develop TASK="Add the Europeana connector"
-	$(PY)/mnemosyne develop "$(TASK)"
+agency:  ## run the bi-agent: make agency TASK="Add the Europeana connector"
+	$(PY)/mnemosyne agency "$(TASK)"
 
-connect-next:  ## connect the next discovered provider now (dev agent -> PR)
+connect-next:  ## connect the next discovered provider now (bi-agent loop)
 	$(PY)/mnemosyne connect-next
 
 record:  ## record the agent Chrome screen: make record SECONDS=60
@@ -96,10 +96,9 @@ vnc:  ## print how to open the noVNC page (local desktop or SSH tunnel)
 	@echo "  puis ouvre http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale"
 	@echo "  (garde la session SSH ouverte pendant que tu utilises la page)"
 
-chrome-reset:  ## wipe the Chrome profile (removes Google login) and restart it
-	docker compose rm -sf chrome
+chrome-reset:  ## wipe the Chrome profile (removes Google login) and restart
 	rm -rf data/chrome-profile
-	docker compose up -d chrome
+	docker compose restart mnemosyne
 	@echo "fresh profile — reconnect Chrome to Google via make vnc"
 
 clean:  ## remove caches

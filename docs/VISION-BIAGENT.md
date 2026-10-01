@@ -47,12 +47,13 @@ Rôle : faire **le produit final** — l'API d'agrégation et ses connecteurs.
 Outils/permissions :
 - éditer le code du produit, tests, `git` (commit/push/PR) avec le **token
   GitHub** (vault) ;
-- **recherche doc** : websearch **et** webfetch (pour lire une doc, un dépôt
+- **recherche doc** : webfetch (`fetch_url`, pour lire une doc ou un dépôt
   GitHub) — **mais PAS le navigateur** ;
 - **il ne fait pas** de helpers pour l'agent navigateur, ni de navigation.
 
 Implémentation actuelle : `src/mnemosyne/dev/agent.py` (`run_dev_agent`),
-`src/mnemosyne/dev/tools.py`, lancé par `mnemosyne develop` / `connect-next`.
+`src/mnemosyne/dev/tools.py`, lancé par `mnemosyne agency --to coder` /
+`connect-next` (plus de commande `develop` séparée).
 Il travaille dans un **worktree git jetable** (`data/agent-worktree`) pour ne
 jamais changer la branche du dépôt principal.
 
@@ -72,18 +73,24 @@ Outils/permissions :
 
 ### 2.3 Communication entre les deux agents
 
-- **Boîte aux lettres durable** (fichier/table) : chaque message = `de`, `à`,
-  `corps`, `statut` (en attente/traité), horodatage. Un outil `send_message`
-  sur **chaque** agent écrit dedans.
+- **Boîte aux lettres durable** : chaque message = `de`, `à`, `corps`, statut
+  (`pending`/`running`/`handled`/`review`/`failed`), horodatage. Le **claim est
+  atomique** (un seul écrivain par message) et un message resté `running` après
+  un crash est repris automatiquement. Un outil `send_message` sur **chaque**
+  agent écrit dedans.
 - **Superviseur déterministe** (le heartbeat, PAS un LLM) : il lit la boîte,
   **lance l'agent destinataire quand l'émetteur s'est arrêté**, puis rend la
   main. Les agents ne se lancent **jamais** eux-mêmes.
 - **Un seul agent à la fois** (turn-taking) → un seul pilote Chrome.
 - **Secrets via le vault, jamais dans les messages** : l'agent navigateur
-  stocke la clé (`vault set europeana_api_key …`) et envoie une **référence** ;
-  le codeur la lit dans le vault.
-- **Bornes anti-boucle** : nombre max d'échanges, deadline ; « note du jour »
-  alimentée par chaque agent (journal).
+  stocke la clé (`remember("europeana_api_key", …)`, réservé aux clés non
+  critiques) et envoie une **référence** ; le moteur l'exporte en variable
+  d'environnement au démarrage (`docs/CREDENTIALS.md`).
+- **Canal opérateur désactivé** (stationné) : les agents ne s'écrivent qu'entre
+  eux ; un message adressé à `operator` est refusé. Les blocages se terminent par
+  un résumé factuel (`task_done`) et l'opérateur regarde le journal.
+- **Bornes anti-boucle** : nombre max d'échanges (`max_handoffs`) ; « note du
+  jour » alimentée par chaque agent (journal).
 - **Routage au lancement** : selon l'intention, on lance `agent codeur` (produit)
   ou `agent navigateur` (web). L'opérateur peut aussi déposer un message dans la
   boîte et laisser le superviseur router.
@@ -103,8 +110,9 @@ Outils/permissions :
    la **stocke dans le vault** → `send_message(à="codeur", corps="clé dispo :
    vault:europeana_api_key")` → commit/push des helpers → note du jour →
    **s'arrête**.
-5. **Superviseur** : relance l'**agent codeur** ; il lit la clé dans le vault,
-   teste, corrige, commit/push, note du jour, s'arrête.
+5. **Superviseur** : relance l'**agent codeur** ; la clé est exportée depuis le
+   vault en variable d'environnement (`EUROPEANA_API_KEY`) au démarrage du
+   moteur : il teste, corrige, commit/push, note du jour, s'arrête.
 
 ## 3. Navigateur & vidéo (browser-harness)
 
@@ -118,17 +126,15 @@ Outils/permissions :
   obligatoire, **narration « collante »** (ne la mettre que lorsqu'elle change).
 - Variable d'env : `BU_CDP_URL=http://127.0.0.1:9222`, `BH_HOME=/app/data/browser-harness`
   (les enregistrements persistent dans `data/`).
-- Pour l'agent « browse » générique, on utilise l'**agent browser-use natif**
-  (`src/mnemosyne/agents/browse.py`) — pas de micro-outils maison.
+- Un seul stack navigateur : **browser-harness** via l'agent navigateur du
+  bi-agent (plus d'agent browser-use générique).
 
 ## 4. Ce qui existe / ce qui reste
 
 **Existe (fait) :**
 - Version A (conteneur unique, Chrome sandboxé uid 1000, un seul CDP).
 - `browser-harness` opérationnel (record + export vidéo OK).
-- Agent navigateur générique `mnemosyne browse "<tâche>"` (browser-use natif ;
-  utilise l'agent pour les mails par ex.).
-- Agent codeur `mnemosyne develop` / `connect-next` (Stirrup, PR, worktree isolé).
+- Agent codeur via `agency` / `connect-next` (Stirrup, PR, worktree isolé).
 - Générateur de connecteurs IIIF générique (`src/mnemosyne/sources/iiif.py`) +
   découverte (`src/mnemosyne/discovery/`) + 1 connexion/jour (timer).
 - Warmup auto (1–2/jour, sites pondérés), vault, Telegram, journal.
@@ -160,22 +166,32 @@ Outils/permissions :
   `browser-use/browser-harness`, MIT) et injectés dans le prompt de l'agent
   navigateur.
 
+**Durcissement (fait) :**
+- Claim **atomique** des messages + reprise des `running` orphelins ; statut
+  `review` quand l'agent n'a pas dit `task_done` ; `stop_reason` honnête
+  (`failed` > `busy`/`max_handoffs` > `no_pending`).
+- Un seul pilote Chrome : **bail inter-processus** (`lease:browser`) tenu par le
+  tour navigateur et par le warmup (qui est reporté si le bi-agent tourne).
+- Legacy mono-agent **supprimé** (onboarding/outreach/browse/develop, job
+  `onboard` auto) ; `connect-next` passe par le superviseur.
+- Directives permanentes (`control/directives.md`) **injectées** dans chaque tour.
+- Mémoire morte supprimée ; plafond de sortie Stirrup gardé haut (32k) ;
+  environnement filtré pour `browser-harness` ; lectures du dépôt encadrées.
+
 **Reste :**
-- **Notification Telegram** des messages adressés à `operator` (différé : grands
-  projets en cours sur ce canal).
+- **Canal opérateur** : désactivé pour l'instant (l'opérateur réfléchit à une
+  nouvelle stratégie). L'ancien design « notification Telegram des messages →
+  `operator` » est stationné ; les anciens messages #2/#8 sont archivés.
 - Éventuellement : d'autres sources de skills, et l'enrichissement du vocabulaire
   de routage (`pick_agent`).
 
 ## 5. Conventions & garde-fous à respecter
 
-- **LLM** : Zen exige `User-Agent` propre + `x-opencode-session` (cache) ;
-  **pas de `max_tokens`** (jamais envoyé — modèles à raisonnement). Pour
-  browser-use : `dont_force_structured_output=True` +
-  `add_schema_to_system_prompt=True` (Zen refuse le `json_schema` strict).
-- **Vision forcée** : browser-use désactive la vision pour tout modèle nommé
-  « deepseek » (`agent/service.py`) ; `deepseek-v4.1-flash` a la vision native,
-  donc `config.agents.force_vision: true` remet `agent.settings.use_vision = True`
-  après construction (vérifié : les screenshots sont bien envoyés).
+- **LLM** : Zen exige `User-Agent` propre + `x-opencode-session` (cache).
+  Stirrup exige un plafond de sortie : il reste **haut**
+  (`agents.max_tokens`, 32k) pour ne jamais tronquer le raisonnement.
+- **Vision** : `deepseek-v4.1-flash` a la vision native — les captures sont
+  envoyées à l'agent navigateur (`config.agents.force_vision`).
 - **Vault** pour tous les secrets (`github_token`, clés API, logins).
 - **Token GitHub** fine-grained : `Contents` RW + `Pull requests` RW, un seul
   repo, pas d'Admin. Branches `agent/*`, PR, jamais de force-push/rm.
@@ -187,7 +203,7 @@ Outils/permissions :
 
 - `src/mnemosyne/heartbeat/` — superviseur (jobs durables) ; y ajouter le job agent.
 - `src/mnemosyne/dev/` — agent codeur + garde-fous + git.
-- `src/mnemosyne/agents/browse.py` — agent browser-use natif (navigateur).
+- `src/mnemosyne/agents/browser_agent.py` — agent navigateur (browser-harness).
 - `src/mnemosyne/agents/warmup.py` / `warmup_schedule.py` — warmup.
 - `src/mnemosyne/discovery/` — découverte de fournisseurs (P3).
 - `src/mnemosyne/sources/iiif.py` — connecteur IIIF générique (P4).

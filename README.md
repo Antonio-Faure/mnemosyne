@@ -34,7 +34,7 @@ src/mnemosyne/
 ├── catalog/      source registry, state machine, provenance
 ├── connectors/   protocol adapters: IIIF / SRU / OAI-PMH / SPARQL / REST / HTML
 ├── sources/      one connector per provider
-├── agents/       discovery · onboarding · outreach (browser-use)
+├── agents/       bi-agent (mailbox + supervisor + coder/browser) + warmup
 ├── browser/      dedicated real Chrome over CDP (Xvfb + VNC), anti-detect profile
 ├── email/        Gmail via the dedicated browser (account verification) + fallback forms
 ├── vault/        encrypted credentials (API keys, logins, sessions) — never in git
@@ -102,8 +102,10 @@ steered at any time:
 mnemosyne journal                    # today's journal
 mnemosyne journal --services         # list per-service journals
 mnemosyne journal --service acme     # one md per provider, dated actions
-mnemosyne say "priorise Lacq"        # one-off message → control/inbox.md
-mnemosyne develop "Add Europeana"    # self-extension: agent opens a PR
+mnemosyne say "priorise Lacq"        # one-off note → control/inbox.md (journal)
+mnemosyne agency "Add Europeana"     # run the bi-agent (coder + browser)
+mnemosyne messages                   # inter-agent mailbox
+mnemosyne connect-next               # connect the next discovery (bi-agent → PR)
 mnemosyne status                     # providers, assets, governor pressure
 mnemosyne doctor                     # config, vault, LLM auth, Chrome health
 ```
@@ -131,14 +133,14 @@ mnemosyne doctor       # shows auth_source
 mnemosyne llm test     # one round-trip
 ```
 
-## Memory, cost & transparency
+## Cost & transparency
 
-- **Bounded memory**: `src/mnemosyne/memory.py` keeps the last N messages verbatim
-  plus a rolling summary; older turns are summarized by the LLM and pruned
-  (compaction). The context never grows without bound, so long-running agents do
-  not blow up the token bill. Tune in `config.memory`.
-- **No output cap by default**: calls send no `max_tokens` (the provider decides),
-  and the returned `usage` is recorded to follow the cost.
+- **Bounded context**: an agent turn is a bounded Stirrup session (`agents.max_turns`),
+  tool outputs are truncated, and turns go through the durable mailbox instead of
+  replaying unbounded history. Cache usage is recorded on every session.
+- **Output ceiling**: Stirrup requires an explicit cap (`agents.max_tokens`, kept
+  high at 32k) so reasoning models are never truncated into empty answers; the
+  returned `usage` is recorded to follow the cost.
 - **Transparency**: every outbound email / contact form carries a one-line identity
   disclosure and the repository URL, generated from `config.identity`
   (`src/mnemosyne/identity.py`).

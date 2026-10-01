@@ -78,6 +78,17 @@ def check_writable(path: str, allow: list[str], deny: list[str]) -> str:
     return rel
 
 
+def check_readable(path: str, deny: list[str]) -> str:
+    """Refuse reads of secrets/denied paths (defense in depth: the agent runs
+    in a worktree that normally excludes them)."""
+    rel = normalize_rel(path)
+    if rel == ".env" or rel.endswith(".env") or rel.endswith(".key") or rel.endswith(".enc"):
+        raise DevGuardError(f"reading '{rel}' is forbidden")
+    if _hits(rel, deny):
+        raise DevGuardError(f"reading '{rel}' is forbidden")
+    return rel
+
+
 def check_git_args(args: list[str]) -> None:
     """Raise if the git command line contains a destructive operation."""
     joined = " ".join(args)

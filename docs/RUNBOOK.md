@@ -16,9 +16,9 @@ cp .env.example .env          # renseigne au moins MNEMOSYNE_CONTACT et Telegram
 docker compose up -d --build
 ```
 
-Conteneurs :
-- `mnemosyne` — heartbeat + API (`http://localhost:8080`).
-- `chrome` — Chrome dédié headful (Xvfb), profil persistant.
+Conteneur unique :
+- `mnemosyne` — heartbeat + API (`http://localhost:8080`), Chrome headful
+  (Xvfb) + browser-harness + CDP 9222, tout en uid 1000.
 
 Le conteneur `mnemosyne` lit aussi le token OpenCode caché (montage lecture seule
 de `~/.local/share/opencode` → `/opencode-auth`).
@@ -27,15 +27,15 @@ de `~/.local/share/opencode` → `/opencode-auth`).
 
 ```bash
 make install
-.venv/bin/pip install -e '.[browser]'   # P2 : Stirrup + browser-use
+.venv/bin/pip install -e '.[browser]'   # Stirrup + browser-harness
 .venv/bin/mnemosyne vault init
 .venv/bin/mnemosyne run      # heartbeat
 .venv/bin/mnemosyne serve    # API (dans un autre terminal)
 ```
 
-Les agents navigateur (P2) nécessitent un Chrome joignable en CDP : lance
-`docker compose up -d chrome` (ou un Chrome local avec `--remote-debugging-port`)
-et règle `MNEMOSYNE_CDP_URL`.
+Les agents navigateur nécessitent un Chrome joignable en CDP :
+`docker compose up -d mnemosyne` (ou un Chrome local avec
+`--remote-debugging-port`) et règle `MNEMOSYNE_CDP_URL`.
 
 ## 3. Connecter le Chrome à Google (Gmail + gestionnaire de mots de passe)
 
@@ -58,22 +58,21 @@ envoyer les mails de demande d'accès. Le même noVNC sert à résoudre un
 captcha/phone-verify à la main quand Telegram t'alerte.
 
 > Le CDP (9222) n'est **pas** exposé à l'hôte : Chrome 154 n'écoute que sur
-> `127.0.0.1` dans son conteneur. Le conteneur `mnemosyne` **partage son namespace
-> réseau** et joint le CDP en `127.0.0.1:9222` (`MNEMOSYNE_CDP_URL`). Pour
-> vérifier : `make cdp`.
+> `127.0.0.1` **dans le conteneur**. L'app y accède en `127.0.0.1:9222`
+> (`MNEMOSYNE_CDP_URL`). Pour vérifier : `make cdp`.
 
 ### Si Chrome affiche « Chrome n'est pas stable » / « stability and security will suffer »
 
 Ce message venait de `--no-sandbox` (Chrome refusait le sandbox car lancé en root)
 et d'arrêts non propres. Corrigé :
-- Chrome tourne désormais en **utilisateur non-root `chrome`, sandbox activé** —
-  plus de `--no-sandbox`, plus de message d'avertissement ;
+- Chrome tourne désormais en **uid 1000 non-root, sandbox activé** — plus de
+  `--no-sandbox`, plus de message d'avertissement ;
 - l'infobar déclenchée par `--disable-blink-features=AutomationControlled` (gardé
   pour l'anti-détection) est coupée par `--test-type` ;
-- pour cela, le conteneur dédié relâche le **seccomp** de Docker
+- pour cela le conteneur relâche le **seccomp** de Docker
   (`security_opt: seccomp=unconfined`) : sans ça le sandbox Chrome ne peut pas
-  créer ses namespaces. Trade-off assumé : conteneur dédié, sans réseau exposé
-  (CDP/nonVNC en loopback), et le sandbox Chrome reste actif ;
+  créer ses namespaces. Trade-off assumé : réseau exposé en loopback uniquement
+  (CDP/noVNC), et le sandbox Chrome reste actif ;
 - nettoyage des verrous (`Singleton*`, verrou X) et
   `--hide-crash-restore-bubble` / `--disable-session-crashed-bubble` ;
 - arrêt SIGTERM propre, `--disable-gpu`, `--disable-dev-shm-usage`.
@@ -87,13 +86,12 @@ puis reconnecte via `make vnc`.
   repo, construite depuis `config.identity` (`src/mnemosyne/identity.py`). Exemple :
   « Je suis mnemosyne, un agent logiciel autonome qui développe un projet de
   recherche ouvert… Open source : https://github.com/Antonio-Faure/mnemosyne ».
-- **Mémoire bornée** : l'agent ne renvoie jamais tout son historique au modèle
-  ($$$). `src/mnemosyne/memory.py` conserve les N derniers messages + un **résumé
-  roulant** ; au-delà d'un seuil, les anciens messages sont résumés par le LLM puis
-  supprimés de la base (compaction). Réglages dans `config.memory`.
-- **Pas de `max_tokens`** : les appels n'imposent pas de plafond de sortie (laisse
-  le provider décider), ce qui évite les `content` vides des modèles à
-  raisonnement. L'`usage` (tokens) est capturé à chaque appel pour suivre le coût.
+- **Contexte borné** : un tour d'agent est une session Stirrup bornée
+  (`agents.max_turns`), les sorties d'outils sont tronquées, et les tours passent
+  par la boîte aux lettres durable au lieu de rejouer tout l'historique.
+- **Plafond de sortie** : Stirrup exige un plafond explicite (`agents.max_tokens`,
+  gardé haut à 32k) pour ne jamais tronquer le raisonnement en `content` vide.
+  L'`usage` (tokens) est capturé à chaque appel pour suivre le coût.
 
 ## 3quater. Accès depuis ton portable (config actuelle : tout via Tailscale)
 
@@ -261,7 +259,7 @@ make token        # saisie masquée, pas d'historique shell
 
 **Lancer une extension :**
 ```bash
-mnemosyne develop "Add the Europeana connector"     # ou : make develop TASK="..."
+mnemosyne agency "Add the Europeana connector"      # ou : make agency TASK="..."
 ```
 
 **Coût** — le dev agent renvoie tout son transcript à chaque étape, donc le coût
@@ -297,12 +295,13 @@ mnemosyne doctor        # montre auth_source
 mnemosyne llm test      # un aller-retour ; doit répondre "OK"
 ```
 
-> `deepseek-v4.1-flash` est un modèle à raisonnement : prévoir `max_tokens >= 1024`,
-> sinon le `content` peut être vide.
+> `deepseek-v4.1-flash` est un modèle à raisonnement : garder un plafond de
+> sortie généreux (`agents.max_tokens`, 32k par défaut), sinon le `content`
+> peut être vide.
 
 ## 6. Dépannage
 
-- `chrome cdp: unreachable` → `docker compose up -d chrome` puis attendre ~5 s.
+- `chrome cdp: unreachable` → `docker compose restart mnemosyne` puis attendre ~5 s.
 - `No LLM API key` → vérifie `OPENCODE_AUTH_PATH` (montage) ou `mnemosyne vault set`.
 - Heartbeat qui boucle sur une source → regarder `mnemosyne status`, le gouverneur
   met la source en cooldown après un 403/429.

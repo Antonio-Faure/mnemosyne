@@ -17,7 +17,7 @@ from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, Too
 
 from mnemosyne.config import DevConfig
 from mnemosyne.dev.git_ops import Git, GitError
-from mnemosyne.dev.guard import DevGuardError, check_writable
+from mnemosyne.dev.guard import DevGuardError, check_readable, check_writable
 from mnemosyne.journal import Journal
 from mnemosyne.notify import Notifier
 from mnemosyne.util import atomic_write_text
@@ -107,10 +107,15 @@ class DevToolProvider(ToolProvider):
         return (self.repo / rel).resolve()
 
     def _check_inside(self, rel: str) -> Path:
-        target = self._abs(rel)
-        if not str(target).startswith(str(self.repo.resolve())):
+        repo = self.repo.resolve()
+        target = (repo / rel).resolve()
+        if not target.is_relative_to(repo):
             raise DevGuardError(f"path outside the repository: {rel}")
         return target
+
+    def _check_readable(self, rel: str) -> Path:
+        check_readable(rel, self.config.deny)
+        return self._check_inside(rel)
 
     def _run_cmd(self, args: list[str], timeout: int = 300) -> subprocess.CompletedProcess:
         # make lint/tests import the code from the working repo, not the installed copy
@@ -133,7 +138,10 @@ class DevToolProvider(ToolProvider):
     # ── tools ────────────────────────────────────────────────────────────
     def _tools(self) -> list[Tool]:
         async def list_exec(p: DirParam):
-            base = self._check_inside(p.directory or ".")
+            try:
+                base = self._check_readable(p.directory or ".")
+            except DevGuardError as exc:
+                return _fail(str(exc))
             if not base.is_dir():
                 return _fail(f"not a directory: {p.directory}")
             lines = []
@@ -145,7 +153,10 @@ class DevToolProvider(ToolProvider):
             return _ok("\n".join(lines[: self.config.list_max_entries]) or "(empty)")
 
         async def read_exec(p: PathParam):
-            target = self._check_inside(p.path)
+            try:
+                target = self._check_readable(p.path)
+            except DevGuardError as exc:
+                return _fail(str(exc))
             if not target.is_file():
                 return _fail(f"no such file: {p.path}")
             try:
@@ -157,6 +168,10 @@ class DevToolProvider(ToolProvider):
 
         async def grep_exec(p: GrepParam):
             # never scan .venv/.git/data: huge and irrelevant
+            try:
+                target = self._check_readable(p.path)
+            except DevGuardError as exc:
+                return _fail(str(exc))
             res = self._run_cmd(
                 [
                     "grep",
@@ -170,8 +185,9 @@ class DevToolProvider(ToolProvider):
                     "--exclude-dir=__pycache__",
                     "--exclude-dir=.pytest_cache",
                     "--exclude-dir=.ruff_cache",
+                    "--",
                     p.pattern,
-                    p.path,
+                    str(target),
                 ]
             )
             if res.returncode not in (0, 1):

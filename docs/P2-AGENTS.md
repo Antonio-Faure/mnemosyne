@@ -1,5 +1,11 @@
 # P2 — the agentic layer (Stirrup)
 
+> **Superseded (Oct 2026).** The agentic layer is now the **bi-agent** described
+> in `docs/VISION-BIAGENT.md`: coder + browser agents over a durable mailbox,
+> deterministic supervisor, Chrome via browser-harness. The legacy onboarding/
+> outreach agents this document describes have been removed; it is kept as
+> design history.
+
 ## Why Stirrup
 
 The heartbeat (control plane) stays home-made: durable jobs, crash recovery,

@@ -15,7 +15,7 @@ api:
 heartbeat:
   tick_seconds: 15
   max_workers: 4
-  # warmup/onboarding/outreach browser sessions can run several minutes
+  # browser sessions (bi-agent turn, warmup) can run several minutes
   job_timeout_s: 1800
   stale_lock_s: 3600
 
@@ -63,7 +63,7 @@ discovery:
   interval_s: 86400
   limit: 100
 
-# Self-extension dev agent (host side, `mnemosyne develop`).
+# Coder agent (bi-agent; also reachable via `mnemosyne agency --to coder`).
 dev:
   max_turns: 18
   read_max_chars: 3000
@@ -72,10 +72,11 @@ dev:
   fetch_max_chars: 3000
   # model: deepseek-v4.1-flash   # uncomment to use a cheaper model for dev
 
-# Stirrup agent loop (browser onboarding / outreach), P2.
+# Stirrup agent loop (bi-agent + warmup).
 agents:
   max_turns: 60
-  max_tokens: 8192
+  # required by Stirrup; kept high so reasoning is not truncated
+  max_tokens: 32768
   context_window_tokens: 128000
   output_dir: data/agent-runs
   warmup_max_turns: 40

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -72,6 +73,9 @@ class RememberParams(BaseModel):
 
 #: vault entries only the operator may set
 _RESERVED_VAULT_KEYS = frozenset({"github_token", "opencode_api_key"})
+
+#: env vars never handed to the harness subprocess (secrets stay in our process)
+_SECRET_ENV_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)", re.I)
 
 
 def _ok(content: str) -> ToolResult[ToolUseCountMetadata]:
@@ -149,10 +153,11 @@ class BrowserAgentToolProvider(ToolProvider):
     def _run_harness(self, code: str) -> str:
         exe = shutil.which("browser-harness")
         cmd = [exe] if exe else [sys.executable, "-m", "browser_harness.run"]
+        env = {k: v for k, v in os.environ.items() if not _SECRET_ENV_RE.search(k)}
         try:
             res = subprocess.run(
                 cmd, input=code, capture_output=True, text=True, timeout=300,
-                cwd=str(self.helpers_dir),
+                cwd=str(self.helpers_dir), env=env,
             )
         except subprocess.TimeoutExpired:
             return "[timeout] browser-harness exceeded 300s"

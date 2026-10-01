@@ -84,11 +84,12 @@ class IdentityConfig(BaseModel):
 
 
 class AgentsConfig(BaseModel):
-    """Stirrup agent loop settings (browser onboarding / outreach)."""
+    """Stirrup agent loop settings (bi-agent + warmup)."""
 
     max_turns: int = 40
-    #: per-turn generation budget required by the Stirrup chat client.
-    max_tokens: int = 8192
+    #: Stirrup requires an explicit output ceiling; keep it high so reasoning
+    #: models are never truncated (a small budget returns empty content).
+    max_tokens: int = 32768
     context_window_tokens: int = 128000
     output_dir: str = "data/agent-runs"
     #: warmup browsing: history/archive sites the agent wanders like a human
