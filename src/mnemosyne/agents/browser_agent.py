@@ -8,9 +8,11 @@ It cannot edit the product code; it reports to the coder through the mailbox.
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -21,6 +23,8 @@ from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.agents.onboarding import AgentOutcome
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
+from mnemosyne.dev.git_ops import Git, GitError
+from mnemosyne.dev.worktree import add_worktree
 from mnemosyne.identity import disclosure
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
@@ -29,6 +33,7 @@ from mnemosyne.util import atomic_write_text, ensure_dir, finish_text
 log = get_logger("browser_agent")
 
 _MAX_OUTPUT = 4000
+_SKILLS_MAX_CHARS = 12000
 
 _SYSTEM = """You are {name}, the BROWSER agent of an autonomous system that
 aggregates historical image archives. You own everything web-related: navigating
@@ -44,20 +49,27 @@ TOOLS:
   start_recording(name=None,title=None), stop_recording(), recording_dir(),
   js("..."), cdp("Method", key=val...). Print what you need to see.
 - list_helpers() / read_helper(name) / write_helper(name, code): your helper
-  toolbox (keep reusable functions there; they persist).
+  toolbox, versioned in the repo under harness/helpers/ (keep reusable functions
+  there so they persist across runs).
+- publish_helpers(summary): commit + push your helpers on a branch and open a PR
+  (helpers only — you cannot touch product code).
 - send_message(to, body): message the OTHER agent (to="coder") or the operator
   (to="operator"). Do this when you need code/decisions or when you finish.
 - task_done(summary): finish.
 
 TO VIDEO: start_recording() → do the session → stop_recording() → then use
 browser() to run `video init <dir>` / write edit-brief.json / `video review` /
-`video export --reviewed` (plan 2-5 items, privacy.reviewedFiles, narration only
+`video export --reviewed` (plan 2-5 items, privacy.reviewedFrames, narration only
 when it changes).
 
 RULES: never edit product code (you only write helpers). Never put secrets in a
 message — store them in the vault and send a reference. If blocked by a captcha
 you cannot pass, ask the operator. Keep going until the task is done, then
-task_done with a factual summary."""
+task_done with a factual summary.
+
+HARNESS INTERACTION SKILLS (how to handle tricky web interactions):
+{skills}
+"""
 
 
 class BrowserCodeParams(BaseModel):
@@ -71,6 +83,10 @@ class HelperNameParams(BaseModel):
 class WriteHelperParams(BaseModel):
     name: str = Field(description="Helper file name, e.g. 'europeana.py'")
     code: str = Field(description="Full Python content of the helper")
+
+
+class PublishParams(BaseModel):
+    summary: str = Field(description="Commit/PR message describing the helper change")
 
 
 class SendMessageParams(BaseModel):
@@ -90,14 +106,57 @@ def _fail(content: str) -> ToolResult[ToolUseCountMetadata]:
     return ToolResult(content=content, success=False, metadata=ToolUseCountMetadata())
 
 
+def _load_skills(repo: Path, limit: int = _SKILLS_MAX_CHARS) -> str:
+    skills_dir = repo / "harness" / "skills"
+    if not skills_dir.exists():
+        return "(no skills available)"
+    chunks: list[str] = []
+    total = 0
+    for path in sorted(skills_dir.glob("*.md")):
+        if path.name.upper().startswith("README"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+        if not text:
+            continue
+        block = f"### {path.stem}\n{text}\n"
+        if total + len(block) > limit:
+            break
+        chunks.append(block)
+        total += len(block)
+    return "\n".join(chunks) or "(no skills available)"
+
+
 class BrowserAgentToolProvider(ToolProvider):
-    def __init__(self, config: Config, mailbox: Mailbox, journal: Journal | None = None):
+    def __init__(
+        self,
+        config: Config,
+        mailbox: Mailbox,
+        *,
+        token: str | None = None,
+        journal: Journal | None = None,
+    ):
         self.config = config
         self.mailbox = mailbox
         self.journal = journal
-        self.helpers_dir = Path(config.data_path) / "agent-workspace" / "helpers"
+        self.repo = Path(config.dev.repo_path or config.root)
+        self.worktree = Path(config.data_path) / "agent-workspace" / "helpers-worktree"
+        self._ensure_worktree()
+        self.helpers_dir = self.worktree / "harness" / "helpers"
         ensure_dir(self.helpers_dir)
+        self.token = token
+        self.git = Git(self.worktree, token)
         self.finish: str | None = None
+
+    def _ensure_worktree(self) -> None:
+        if (self.worktree / ".git").exists():
+            return
+        try:
+            add_worktree(self.repo, self.worktree, self.config.dev.base_branch)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("helpers worktree unavailable (%s); using data dir", exc)
+            ensure_dir(self.worktree)
+            # make it a plain dir clone of the repo? fall back to no-git helpers
+            self.worktree = Path(self.config.data_path) / "agent-workspace" / "helpers-worktree"
 
     async def __aenter__(self):
         return self._tools()
@@ -126,8 +185,7 @@ class BrowserAgentToolProvider(ToolProvider):
 
     def _tools(self) -> list[Tool]:
         async def browser_exec(p: BrowserCodeParams):
-            out = await asyncio.to_thread(self._run_harness, p.code)
-            return _ok(out)
+            return _ok(await asyncio.to_thread(self._run_harness, p.code))
 
         async def list_exec(_: EmptyParams):
             names = sorted(f.name for f in self.helpers_dir.glob("*.py"))
@@ -140,9 +198,32 @@ class BrowserAgentToolProvider(ToolProvider):
             return _ok(path.read_text(encoding="utf-8")[:4000])
 
         async def write_exec(p: WriteHelperParams):
-            path = self._helper_path(p.name)
-            atomic_write_text(path, p.code)
-            return _ok(f"wrote helper {path.name}")
+            atomic_write_text(self._helper_path(p.name), p.code)
+            return _ok(f"wrote helper {p.name}")
+
+        async def publish_exec(p: PublishParams):
+            if not self.token:
+                return _fail("no GitHub token (vault github_token) — cannot publish helpers")
+            branch = f"agent/harness-helpers-{datetime.now():%Y%m%d-%H%M%S}"
+            try:
+                self.git.start_branch(branch)
+                files = self.git.changed_files()
+                keep = [f for f in files if f.replace("\\", "/").startswith("harness/helpers/")]
+                if not keep:
+                    return _ok("no helper changes to publish")
+                self.git.stage(keep)
+                self.git.commit(p.summary)
+                self.git.push(branch)
+                url = self.git.open_pr(
+                    title=f"harness helpers: {p.summary[:60]}",
+                    body=p.summary,
+                    head=branch,
+                    base=self.config.dev.base_branch,
+                    repo=self.config.dev.github_repo,
+                )
+            except GitError as exc:
+                return _fail(str(exc))
+            return _ok(f"helpers published: {url}")
 
         async def send_exec(p: SendMessageParams):
             try:
@@ -166,6 +247,8 @@ class BrowserAgentToolProvider(ToolProvider):
                  parameters=HelperNameParams, executor=read_exec),
             Tool(name="write_helper", description="Write/replace a helper file.",
                  parameters=WriteHelperParams, executor=write_exec),
+            Tool(name="publish_helpers", description="Commit+push helpers and open a PR.",
+                 parameters=PublishParams, executor=publish_exec),
             Tool(name="send_message", description="Message the coder or the operator.",
                  parameters=SendMessageParams, executor=send_exec),
             Tool(name="task_done", description="Finish with a factual summary.",
@@ -182,12 +265,14 @@ async def run_browser_agent(
     vault_get=None,
 ) -> AgentOutcome:
     client = build_agent_client(config, session="browser-agent", vault_get=vault_get)
-    provider = BrowserAgentToolProvider(config, mailbox, journal=journal)
+    token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
+    provider = BrowserAgentToolProvider(config, mailbox, token=token, journal=journal)
+    skills = _load_skills(provider.repo)
     agent = Agent(
         client=client,
         name="browser_agent",
         system_prompt=_SYSTEM.format(
-            name=config.identity.name, disclosure=disclosure(config.identity)
+            name=config.identity.name, disclosure=disclosure(config.identity), skills=skills
         ),
         tools=[provider],
         max_turns=config.agents.max_turns,

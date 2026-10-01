@@ -81,6 +81,41 @@ async def _run_browser(config: Config, task: str, mailbox: Mailbox, journal, vau
 _RUNNERS = {"coder": _run_coder, "browser": _run_browser}
 
 
+async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> str | None:
+    """Background turn: run ONE agent for the oldest pending message (if any).
+
+    Called by the heartbeat so the loop continues without the operator once the
+    initial task is posted. Idle (no pending message) => no agent, no cost.
+    """
+    from mnemosyne.util import finish_text
+
+    db = Database(config.db_file())
+    mailbox = Mailbox(db)
+    try:
+        pending = mailbox.pending_recipients()
+        if not pending:
+            return None
+        agent = pending[0]
+        message = mailbox.next_for(agent)
+        if message is None:
+            return None
+        mailbox.mark(message["id"], "running")
+        note = f"agency (fond) → agent {agent} : {message['body'][:160]}"
+        log.info(note)
+        if journal:
+            journal.append(note, source="agency")
+        try:
+            outcome = await _RUNNERS[agent](config, message["body"], mailbox, journal, vault_get)
+            finish = finish_text(getattr(outcome, "finish", None)) or ""
+            mailbox.mark(message["id"], "handled", finish[:200] or None)
+        except Exception as exc:  # noqa: BLE001
+            log.error("agency background: agent %s failed: %s", agent, exc)
+            mailbox.mark(message["id"], "failed", str(exc)[:200])
+        return agent
+    finally:
+        db.close()
+
+
 async def run_agency(
     config: Config,
     task: str,

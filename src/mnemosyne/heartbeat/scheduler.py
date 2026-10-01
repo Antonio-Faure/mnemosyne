@@ -23,6 +23,7 @@ VERIFY_INTERVAL_S = 21600
 WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
 ONBOARD_INTERVAL_S = 43200  # retry onboarding twice a day at most
+AGENCY_INTERVAL_S = 120  # check the bi-agent mailbox every 2 minutes (idle = free)
 
 
 class Heartbeat:
@@ -102,6 +103,10 @@ class Heartbeat:
         if not self.engine.db.has_open_job("journal"):
             self.engine.db.enqueue(
                 Job(kind="journal", payload={"interval_s": JOURNAL_INTERVAL_S}, priority=90)
+            )
+        if not self.engine.db.has_open_job("agency"):
+            self.engine.db.enqueue(
+                Job(kind="agency", payload={"interval_s": AGENCY_INTERVAL_S}, priority=30)
             )
         if self.config.discovery.enabled and not self.engine.db.has_open_job("discover"):
             self.engine.db.enqueue(

@@ -142,14 +142,24 @@ Outils/permissions :
 6. Le **codeur** tourne aussi dans le conteneur (dépôt monté sur `/repo`,
    `MNEMOSYNE_DEV_REPO=/repo`, worktree isolé) → `agency` fait tourner les deux.
 
+**Bi-agent — suite (fait) :**
+- **Autonomie heartbeat** : job `agency` (toutes les 2 min, coût nul s'il n'y a
+  rien) → `supervisor.run_pending_once()` exécute **un** message en attente
+  (codeur ou navigateur), turn-taking. Vérifié : un message posté est traité
+  seul par le heartbeat.
+- **Git des helpers** : l'agent navigateur écrit dans
+  `harness/helpers/` via un **worktree git dédié**
+  (`data/agent-workspace/helpers-worktree`) et `publish_helpers(summary)`
+  commit + push + PR (scopé `harness/helpers/` uniquement).
+- **Skills du harness** : vendored dans `harness/skills/*.md` (extraits de
+  `browser-use/browser-harness`, MIT) et injectés dans le prompt de l'agent
+  navigateur.
+
 **Reste :**
-- **Autonomie heartbeat** : un job qui exécute en continu les messages en attente
-  (turn-taking en arrière-plan), et une notification à l'opérateur pour les
-  messages adressés à `operator` (Telegram).
-- **Git des helpers** : le navigateur écrit des helpers ; reste à les committer
-  (branche/PR) avec son propre périmètre.
-- **Skill browser-harness** : injecter les `interaction-skills` utiles au prompt
-  de l'agent navigateur.
+- **Notification Telegram** des messages adressés à `operator` (différé : grands
+  projets en cours sur ce canal).
+- Éventuellement : d'autres sources de skills, et l'enrichissement du vocabulaire
+  de routage (`pick_agent`).
 
 ## 5. Conventions & garde-fous à respecter
 

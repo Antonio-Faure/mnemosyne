@@ -256,6 +256,17 @@ async def handle_outreach(ctx: JobContext, job: Job) -> dict | None:
     return None
 
 
+@handler("agency")
+async def handle_agency(ctx: JobContext, job: Job) -> dict | None:
+    """Background bi-agent turn: run one pending agent message (turn-taking)."""
+    from mnemosyne.agents.supervisor import run_pending_once
+
+    ran = await run_pending_once(ctx.config, journal=ctx.journal, vault_get=_vault_get(ctx))
+    if ran:
+        log.info("agency background ran agent: %s", ran)
+    return None
+
+
 @handler("discover")
 async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
     """P3: find candidate providers and store the new ones."""
