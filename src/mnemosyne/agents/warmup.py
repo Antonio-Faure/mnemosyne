@@ -18,8 +18,6 @@ from stirrup import Agent
 from stirrup.core.models import (
     EmptyParams,
     Tool,
-    ToolResult,
-    ToolUseCountMetadata,
 )
 
 from mnemosyne.agents.outcome import AgentOutcome
@@ -47,11 +45,11 @@ BEHAVIOUR (look human):
 - Spread your actions over the whole time budget. Never hammer actions.
 
 TOOLS: open_site(site) · scroll(screens) · read_page(max_chars) · type_search(query)
-· click_link(text) · wait(seconds) · sites_list() · task_done(summary).
+· click_link(text) · wait(seconds) · sites_list() · finish(reason, paths).
 
 RULES: no accounts, no forms, no emails — read-only browsing. If a page is a
 captcha/login wall, just move to another site. When the budget message appears
-(or you are asked to finish), call task_done.
+(or you are asked to finish), call finish.
 """
 
 
@@ -210,20 +208,6 @@ class WarmupToolProvider(BrowserToolProvider):
                  parameters=WaitParam, executor=wait_exec),
         ]
 
-    async def finish_task(self, p: DoneParam) -> ToolResult[ToolUseCountMetadata]:
-        self.finish = p.summary
-        return _ok("session terminée")
-
-    def finish_tool(self) -> Tool:
-        """Stirrup's finish tool: calling it really ends the session."""
-        return Tool(
-            name="task_done",
-            description="Finish the session.",
-            parameters=DoneParam,
-            executor=self.finish_task,
-        )
-
-
 async def run_warmup(
     config: Config,
     *,
@@ -248,7 +232,6 @@ async def run_warmup(
         name="warmup_browse",
         system_prompt=_SYSTEM.format(name=config.identity.name),
         tools=[provider],
-        finish_tool=provider.finish_tool(),
         max_turns=config.agents.warmup_max_turns,
     )
     out_dir = config.root / config.agents.output_dir
@@ -265,5 +248,5 @@ async def run_warmup(
     if journal:
         journal.append(f"warmup {minutes:.0f}min — LLM usage: {usage}", source="warmup")
     return AgentOutcome(
-        finish=provider.finish or finish_text(finish), outcome={"usage": usage}
+        finish=finish_text(finish), outcome={"usage": usage}
     )

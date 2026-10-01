@@ -14,6 +14,9 @@ log = get_logger("mailbox")
 
 AGENTS = ("coder", "browser")
 
+#: how many pending messages one agent turn may absorb
+MAX_BATCH = 5
+
 
 class Mailbox:
     def __init__(self, db: Database):
@@ -46,6 +49,22 @@ class Mailbox:
         """
         return self.db.claim_next_message(
             recipient, owner=owner, stale_after_s=stale_after_s
+        )
+
+    def claim_all_for(
+        self,
+        recipient: str,
+        owner: str = "agency",
+        *,
+        limit: int = MAX_BATCH,
+        stale_after_s: float = 18000,
+    ) -> list[dict]:
+        """Claim every pending message for `recipient` (up to `limit`) at once.
+
+        One turn per batch, not one turn per message.
+        """
+        return self.db.claim_messages(
+            recipient, owner=owner, limit=limit, stale_after_s=stale_after_s
         )
 
     def pending_recipients(self, prefer_exclude: str | None = None) -> list[str]:

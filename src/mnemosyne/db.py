@@ -416,14 +416,29 @@ class Database:
     def claim_next_message(
         self, recipient: str, owner: str, stale_after_s: float = 18000
     ) -> dict | None:
-        """Atomically claim the oldest PENDING message for `recipient`.
+        """Claim the oldest pending message for `recipient` (single)."""
+        claimed = self.claim_messages(
+            recipient, owner, limit=1, stale_after_s=stale_after_s
+        )
+        return claimed[0] if claimed else None
+
+    def claim_messages(
+        self,
+        recipient: str,
+        owner: str,
+        *,
+        limit: int = 5,
+        stale_after_s: float = 18000,
+    ) -> list[dict]:
+        """Atomically claim up to `limit` PENDING messages for `recipient`.
+
+        Batching matters: several messages posted back-to-back by the same agent
+        (a report then an update) must cost ONE turn, not one turn each.
 
         Global turn-taking is enforced: if a message is still RUNNING (claimed
-        less than `stale_after_s` ago), nothing is claimed — another process is
-        driving an agent. RUNNING messages older than that (crashed process) are
-        released to PENDING first, inside the same transaction.
-
-        Returns the claimed message (status `running`) or None.
+        less than `stale_after_s` ago), nothing is claimed. RUNNING messages
+        older than that (crashed process) are released first, in the same
+        transaction.
         """
         now = datetime.now(UTC).replace(microsecond=0)
         now_iso = now.isoformat()
@@ -443,33 +458,35 @@ class Database:
                 ).fetchone()
                 if busy is not None:
                     self._conn.commit()
-                    return None
-                row = self._conn.execute(
+                    return []
+                rows = self._conn.execute(
                     """SELECT * FROM messages
                        WHERE status = 'pending' AND recipient = ?
-                       ORDER BY id ASC LIMIT 1""",
-                    (recipient,),
-                ).fetchone()
-                if row is None:
-                    self._conn.commit()
-                    return None
-                cur = self._conn.execute(
-                    """UPDATE messages
-                       SET status = 'running', claimed_at = ?, claimed_by = ?
-                       WHERE id = ? AND status = 'pending'""",
-                    (now_iso, owner, row["id"]),
-                )
+                       ORDER BY id ASC LIMIT ?""",
+                    (recipient, max(1, limit)),
+                ).fetchall()
+                claimed: list[dict] = []
+                for row in rows:
+                    cur = self._conn.execute(
+                        """UPDATE messages
+                           SET status = 'running', claimed_at = ?, claimed_by = ?
+                           WHERE id = ? AND status = 'pending'""",
+                        (now_iso, owner, row["id"]),
+                    )
+                    if cur.rowcount:
+                        message = dict(row)
+                        message.update(
+                            status="running",
+                            claimed_at=now_iso,
+                            claimed_by=owner,
+                            handled_at=None,
+                        )
+                        claimed.append(message)
                 self._conn.commit()
             except Exception:
                 self._conn.rollback()
                 raise
-        if not cur.rowcount:
-            return None
-        message = dict(row)
-        message.update(
-            status="running", claimed_at=now_iso, claimed_by=owner, handled_at=None
-        )
-        return message
+        return claimed
 
     def archive_pending_messages(self, recipient: str, note: str | None = None) -> int:
         """Archive (stop processing) every pending message addressed to `recipient`."""

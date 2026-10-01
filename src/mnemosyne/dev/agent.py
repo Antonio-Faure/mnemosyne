@@ -84,7 +84,6 @@ async def run_dev_agent(
             task=task,
         ),
         tools=[provider],
-        finish_tool=provider.finish_tool(),
         max_turns=config.dev.max_turns,
     )
     out_dir = config.root / config.agents.output_dir
@@ -95,4 +94,4 @@ async def run_dev_agent(
     log.info("dev agent usage (cache-aware): %s", usage)
     if journal:
         journal.append(f"dev agent usage: {usage}", source="dev")
-    return DevOutcome(finish=provider.finish or finish_text(finish), branch=provider.branch)
+    return DevOutcome(finish=finish_text(finish), branch=provider.branch)

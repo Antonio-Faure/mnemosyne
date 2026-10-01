@@ -134,8 +134,8 @@ def gallica_search(query: str, n: int = 50, start: int = 1) -> list[dict]:
         if dc is None:
             continue
 
-        def vals(tag):
-            return [e.text for e in dc.findall(f"{_DC}{tag}") if e.text]
+        def vals(tag, _dc=dc):
+            return [e.text for e in _dc.findall(f"{_DC}{tag}") if e.text]
 
         d = {
             "title": (vals("title") or [""])[0],

@@ -110,14 +110,75 @@ def _acquire_browser_lease(db: Database, agent: str) -> bool | None:
     return None
 
 
+def _batched_task(messages: list[dict]) -> str:
+    """One task out of several pending messages (a report then an update...)."""
+    if len(messages) == 1:
+        return messages[0]["body"]
+    parts = [
+        f"Tu as {len(messages)} messages en attente. Traite-les en UNE seule passe "
+        "(le dernier peut être une mise à jour du précédent), puis termine par "
+        "finish avec un bilan unique.",
+        "",
+    ]
+    for index, message in enumerate(messages, 1):
+        parts.append(
+            f"--- message {index}/{len(messages)} — de {message['sender']} "
+            f"à {message['created_at']} ---"
+        )
+        parts.append(message["body"])
+        parts.append("")
+    return "\n".join(parts).strip()
+
+
+async def _execute_turn(
+    config: Config,
+    agent: str,
+    messages: list[dict],
+    mailbox: Mailbox,
+    journal,
+    vault_get,
+) -> dict:
+    """Run one agent turn for a batch of claimed messages, then mark them all."""
+    note_prefix = f"{len(messages)} message(s)"
+    outcome = None
+    error: str | None = None
+    try:
+        outcome = await _RUNNERS[agent](
+            config,
+            _task_with_directives(config, _batched_task(messages)),
+            mailbox,
+            journal,
+            vault_get,
+        )
+    except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
+        error = str(exc)
+        log.error("agent %s failed: %s", agent, exc)
+    finish = finish_text(getattr(outcome, "finish", None)) or ""
+    if error is not None:
+        status, note = "failed", error[:200]
+    elif finish:
+        status, note = "handled", finish[:200]
+    else:
+        status, note = "review", "agent stopped without calling finish"
+    for message in messages:
+        mailbox.mark(message["id"], status, note)
+    return {
+        "agent": agent,
+        "message_ids": [m["id"] for m in messages],
+        "message_id": messages[0]["id"],
+        "batch": note_prefix,
+        "finish": finish,
+        "branch": getattr(outcome, "branch", None),
+        "error": error,
+    }
+
+
 async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> str | None:
-    """Background turn: run ONE agent for the oldest pending message (if any).
+    """Background turn: run ONE agent for its pending messages (if any).
 
     Called by the heartbeat so the loop continues without the operator once the
     initial task is posted. Idle (no pending message) => no agent, no cost.
     """
-    from mnemosyne.util import finish_text
-
     db = Database(config.db_file())
     mailbox = Mailbox(db)
     held: bool | None = False
@@ -129,27 +190,17 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
         held = _acquire_browser_lease(db, agent)
         if held is None:
             return None
-        message = mailbox.claim_for(agent, owner=f"heartbeat:{os.getpid()}")
-        if message is None:
+        messages = mailbox.claim_all_for(agent, owner=f"heartbeat:{os.getpid()}")
+        if not messages:
             return None
-        note = f"agency (fond) → agent {agent} : {message['body'][:160]}"
+        note = (
+            f"agency (fond) → agent {agent} : {len(messages)} message(s) : "
+            f"{messages[0]['body'][:140]}"
+        )
         log.info(note)
         if journal:
             journal.append(note, source="agency")
-        try:
-            outcome = await _RUNNERS[agent](
-                config, _task_with_directives(config, message["body"]), mailbox, journal, vault_get
-            )
-            finish = finish_text(getattr(outcome, "finish", None)) or ""
-            if finish:
-                mailbox.mark(message["id"], "handled", finish[:200])
-            else:
-                mailbox.mark(
-                    message["id"], "review", "agent stopped without task_done"
-                )
-        except Exception as exc:  # noqa: BLE001
-            log.error("agency background: agent %s failed: %s", agent, exc)
-            mailbox.mark(message["id"], "failed", str(exc)[:200])
+        await _execute_turn(config, agent, messages, mailbox, journal, vault_get)
         return agent
     finally:
         if held:
@@ -187,44 +238,23 @@ async def run_agency(
                 result.stop_reason = "browser_busy"
                 break
             try:
-                message = mailbox.claim_for(agent, owner=f"cli:{os.getpid()}")
-                if message is None:
+                messages = mailbox.claim_all_for(agent, owner=f"cli:{os.getpid()}")
+                if not messages:
                     result.stop_reason = "busy"
                     break
-                note = f"superviseur → agent {agent} : {message['body'][:200]}"
+                note = (
+                    f"superviseur → agent {agent} : {len(messages)} message(s) : "
+                    f"{messages[0]['body'][:180]}"
+                )
                 log.info(note)
                 if journal:
                     journal.append(note, source="agency")
-                try:
-                    outcome = await _RUNNERS[agent](
-                        config,
-                        _task_with_directives(config, message["body"]),
-                        mailbox,
-                        journal,
-                        vault_get,
-                    )
-                    finish = finish_text(getattr(outcome, "finish", None)) or ""
-                    if finish:
-                        mailbox.mark(message["id"], "handled", finish[:200])
-                    else:
-                        mailbox.mark(
-                            message["id"], "review", "agent stopped without task_done"
-                        )
-                    result.turns.append(
-                        {
-                            "agent": agent,
-                            "message_id": message["id"],
-                            "finish": finish,
-                            "branch": getattr(outcome, "branch", None),
-                        }
-                    )
-                except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
+                turn = await _execute_turn(
+                    config, agent, messages, mailbox, journal, vault_get
+                )
+                if turn["error"]:
                     failures += 1
-                    log.error("agent %s failed: %s", agent, exc)
-                    mailbox.mark(message["id"], "failed", str(exc)[:200])
-                    result.turns.append(
-                        {"agent": agent, "message_id": message["id"], "error": str(exc)}
-                    )
+                result.turns.append(turn)
             finally:
                 if held:
                     db.release_lease("browser")

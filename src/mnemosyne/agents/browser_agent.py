@@ -177,7 +177,6 @@ class BrowserAgentToolProvider(ToolProvider):
         ensure_dir(self.helpers_dir)
         self.token = token
         self.git = Git(self.worktree, token)
-        self.finish: str | None = None
 
     def _ensure_worktree(self) -> None:
         if (self.worktree / ".git").exists():
@@ -293,22 +292,6 @@ class BrowserAgentToolProvider(ToolProvider):
                  parameters=SendMessageParams, executor=send_exec),
         ]
 
-    async def finish_task(self, p: DoneParams) -> ToolResult[ToolUseCountMetadata]:
-        self.finish = p.summary
-        if self.journal:
-            self.journal.append(f"navigateur — {p.summary}", source="browser")
-        return _ok("done")
-
-    def finish_tool(self) -> Tool:
-        """Stirrup's finish tool: calling it really ends the session."""
-        return Tool(
-            name="task_done",
-            description="Finish with a factual summary.",
-            parameters=DoneParams,
-            executor=self.finish_task,
-        )
-
-
 async def run_browser_agent(
     config: Config,
     task: str,
@@ -332,7 +315,6 @@ async def run_browser_agent(
             skills=skills,
         ),
         tools=[provider],
-        finish_tool=provider.finish_tool(),
         max_turns=config.agents.max_turns,
     )
     out_dir = config.root / config.agents.output_dir
@@ -341,8 +323,9 @@ async def run_browser_agent(
         finish, _history, _metadata = await session.run(task)
     usage = client.usage.summary()
     log.info("browser agent usage: %s", usage)
+    summary = finish_text(finish)
     if journal:
         journal.append(f"navigateur usage: {usage}", source="browser")
-    return AgentOutcome(
-        finish=provider.finish or finish_text(finish), outcome={"usage": usage}
-    )
+        if summary:
+            journal.append(f"navigateur — {summary}", source="browser")
+    return AgentOutcome(finish=summary, outcome={"usage": usage})

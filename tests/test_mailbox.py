@@ -81,6 +81,33 @@ def test_stale_running_is_recovered(config):
     db.close()
 
 
+def test_claim_all_batches_and_stays_exclusive(config):
+    db, mb = _mailbox(config)
+    mb.post("operator", "coder", "premier")
+    mb.post("operator", "coder", "deuxieme")
+    claimed = mb.claim_all_for("coder", owner="a")
+    assert [m["body"] for m in claimed] == ["premier", "deuxieme"]
+    assert all(m["status"] == "running" for m in claimed)
+    # global turn-taking: nobody else can start a turn meanwhile
+    assert mb.claim_all_for("coder", owner="b") == []
+    db.close()
+
+
+def test_claim_all_respects_the_batch_cap(config):
+    db, mb = _mailbox(config)
+    for i in range(7):
+        mb.post("operator", "browser", f"message {i}")
+    first = mb.claim_all_for("browser", owner="a")
+    assert len(first) == 5
+    # a second batch is impossible while a turn is running (turn-taking)
+    assert mb.claim_all_for("browser", owner="a") == []
+    for message in first:
+        mb.mark(message["id"], "handled", "ok")
+    # the overflow arrives on the next turn
+    assert len(mb.claim_all_for("browser", owner="a")) == 2
+    db.close()
+
+
 def test_archive_pending_messages(config):
     db, mb = _mailbox(config)
     db.post_message("browser", "operator", "rapport de mission")

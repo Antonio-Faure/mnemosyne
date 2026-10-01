@@ -144,6 +144,14 @@ Outils/permissions :
    `src/mnemosyne/agents/mailbox.py`.
 2. **Superviseur** déterministe : `src/mnemosyne/agents/supervisor.py`
    (`run_agency`) — un agent à la fois, hand-offs bornés, routage auto.
+4. **Une passe par lot** : plusieurs messages en attente pour le même agent sont
+   réclamés ensemble (`claim_messages`, plafond 5) et traités dans **un seul tour**
+   (le dernier message est souvent une mise à jour du précédent) — sinon un agent
+   qui poste deux fois fait tourner l'autre deux fois (deux PR identiques).
+5. **Fin de session native** : c'est l'outil `finish` de Stirrup qui termine un
+   tour (bilan dans `reason`, fichiers touchés dans `paths`). Aucun `task_done`
+   maison : un outil ordinaire ne termine pas la session (l'agent Rappelleait
+   `task_done` dix fois de suite en croyant avoir fini).
 3. **`send_message`** côté codeur (`DevToolProvider`) et côté navigateur.
 4. **Agent navigateur** : `src/mnemosyne/agents/browser_agent.py` (Stirrup) —
    outil `browser(code)` qui exécute browser-harness, édition **allowlist

@@ -61,6 +61,37 @@ def test_run_agency_injects_standing_directives(config, monkeypatch):
     assert "toujours citer la source" in seen[0]
 
 
+def test_pending_messages_are_batched_into_one_turn(config, monkeypatch):
+    """Two messages posted back-to-back cost ONE turn, not two."""
+    tasks: list[str] = []
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get):
+        mailbox.post("coder", "browser", "premier message")
+        mailbox.post("coder", "browser", "deuxieme message (mise a jour)")
+        return _Outcome(finish="coder ok")
+
+    async def fake_browser(cfg, task, mailbox, journal, vault_get):
+        tasks.append(task)
+        return _Outcome(finish="browser ok")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    result = asyncio.run(run_agency(config, "mission", start="coder", max_handoffs=3))
+
+    assert [t["agent"] for t in result.turns] == ["coder", "browser"]
+    assert len(tasks) == 1
+    assert "premier message" in tasks[0] and "deuxieme message" in tasks[0]
+    assert len(result.turns[1]["message_ids"]) == 2
+
+    from mnemosyne.db import Database
+
+    db = Database(config.db_file())
+    statuses = [m["status"] for m in db.list_messages() if m["recipient"] == "browser"]
+    db.close()
+    assert statuses == ["handled", "handled"]
+
+
 def test_run_agency_marks_review_without_finish(config, monkeypatch):
     """An agent that stops without task_done is not reported as done."""
 
@@ -78,7 +109,7 @@ def test_run_agency_marks_review_without_finish(config, monkeypatch):
     messages = db.list_messages()
     db.close()
     assert messages[-1]["status"] == "review"
-    assert "task_done" in messages[-1]["note"]
+    assert "finish" in messages[-1]["note"]
 
 
 def test_run_agency_reports_failure(config, monkeypatch):

@@ -31,7 +31,8 @@ connecteurs, ses tests. Ce fichier EST ton prompt système (éditable à chaud).
 ## FLUX
 
 `start_branch(<slug>)` → lire le code → écrire descripteur + connecteur + test →
-`run_lint` → `run_tests` → `commit` → `push` → `open_pr` → `task_done`.
+`run_lint` → `run_tests` → `commit` → `push` → `open_pr` →
+`finish(reason="bilan factuel", paths=[fichiers touchés])`.
 
 ## AUTRE AGENT & BOÎTE AUX LETTRES
 
@@ -42,7 +43,7 @@ puis termine ton tour (commit/push/note du jour) et **arrête-toi** : le supervi
 relancera l'agent navigateur. N'écris **pas** d'accusé de réception et ne réponds
 pas à un simple rapport : tu ne prends la plume que si tu as besoin de quelque
 chose ou si un vrai problème doit être corrigé. Si tu es bloqué, termine par
-`task_done` avec un résumé factuel du blocage (le journal s'en charge) — il n'y a
+`finish` avec un bilan factuel du blocage (le journal s'en charge) — il n'y a
 pas de canal opérateur pour l'instant.
 
 - **Jamais de secret dans un message** : stocke-le dans le vault et envoie une

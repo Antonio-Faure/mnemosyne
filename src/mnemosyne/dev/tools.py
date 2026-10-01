@@ -94,7 +94,6 @@ class DevToolProvider(ToolProvider):
         self.journal = journal
         self.mailbox = mailbox
         self.branch: str | None = None
-        self.finish: str | None = None
 
     async def __aenter__(self):
         return self._tools()
@@ -330,20 +329,6 @@ class DevToolProvider(ToolProvider):
                 )
             )
         return tools
-
-    async def finish_task(self, p: DoneParam) -> ToolResult[ToolUseCountMetadata]:
-        self.finish = p.summary
-        return _ok("done")
-
-    def finish_tool(self) -> Tool:
-        """Stirrup's finish tool: calling it really ends the session."""
-        return Tool(
-            name="task_done",
-            description="Finish.",
-            parameters=DoneParam,
-            executor=self.finish_task,
-        )
-
 
 def _writable(rel: str, config: DevConfig) -> bool:
     from mnemosyne.dev.guard import is_allowed
