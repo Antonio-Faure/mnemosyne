@@ -77,6 +77,58 @@ _RESERVED_VAULT_KEYS = frozenset({"github_token", "opencode_api_key"})
 #: env vars never handed to the harness subprocess (secrets stay in our process)
 _SECRET_ENV_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)", re.I)
 
+#: One canonical action path: `click_at_xy` for clicks, js()/cdp() for reading
+#: only. Prepended to every browser(code) snippet — executing in the harness
+#: process, where the helpers are already imported — so retrying a submission
+#: through another mechanism (or re-clicking the same spot) fails loudly instead
+#: of duplicating the action.
+_HARNESS_GUARD = '''
+# --- mnemosyne guard: one click path, observations only via js()/cdp() ---
+import re as _mn_re, time as _mn_time
+
+if all(name in globals() for name in ("click_at_xy", "js", "cdp")):
+    _mn_recent_clicks = []
+    _mn_real_click = click_at_xy
+
+    def click_at_xy(x, y, button="left", clicks=1):
+        now = _mn_time.monotonic()
+        while _mn_recent_clicks and now - _mn_recent_clicks[0][2] > 3.0:
+            _mn_recent_clicks.pop(0)
+        for px, py, _t in _mn_recent_clicks:
+            if abs(px - float(x)) <= 3 and abs(py - float(y)) <= 3:
+                raise RuntimeError(
+                    "mnemosyne: double clic refuse vers (%s, %s) — verifie l'etat "
+                    "de la page (capture_screenshot/read_page) au lieu de "
+                    "recliquer, ne resoumets jamais" % (x, y)
+                )
+        _mn_recent_clicks.append((float(x), float(y), now))
+        return _mn_real_click(x, y, button=button, clicks=clicks)
+
+    _mn_real_js = js
+    _mn_submit_js = _mn_re.compile(
+        r"\\.click\\s*\\(|requestSubmit|\\.submit\\s*\\(|MouseEvent", _mn_re.I
+    )
+
+    def js(expression, target_id=None):
+        if _mn_submit_js.search(expression or ""):
+            raise RuntimeError(
+                "mnemosyne: clic/soumission via js() interdit — js() sert a LIRE ; "
+                "clique avec click_at_xy (une seule fois, puis verifie)"
+            )
+        return _mn_real_js(expression, target_id=target_id)
+
+    _mn_real_cdp = cdp
+
+    def cdp(method, *args, **kwargs):
+        if method == "Input.dispatchMouseEvent":
+            raise RuntimeError(
+                "mnemosyne: clic via cdp() interdit — utilise click_at_xy ; "
+                "cdp() sert a observer"
+            )
+        return _mn_real_cdp(method, *args, **kwargs)
+# --- end guard ---
+'''
+
 
 def _ok(content: str) -> ToolResult[ToolUseCountMetadata]:
     return ToolResult(content=content, metadata=ToolUseCountMetadata())
@@ -166,7 +218,9 @@ class BrowserAgentToolProvider(ToolProvider):
 
     def _tools(self) -> list[Tool]:
         async def browser_exec(p: BrowserCodeParams):
-            return _ok(await asyncio.to_thread(self._run_harness, p.code))
+            return _ok(
+                await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code)
+            )
 
         async def list_exec(_: EmptyParams):
             names = sorted(f.name for f in self.helpers_dir.glob("*.py"))

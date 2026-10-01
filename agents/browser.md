@@ -58,9 +58,11 @@ pour l'upload et l'e-mail, puis `task_done`.
 ## RÈGLES
 
 - Ne modifie **jamais** le code produit (tu n'écris que des helpers).
-- **Un seul clic d'envoi** (Gmail, WeTransfer, formulaire) : après « Envoyer »,
-  ne re-clique jamais — ni clic, ni JS, ni Ctrl+Entrée. Vérifie dans
-  « Messages envoyés » ou recharge la page, mais ne resoumets pas.
+- **Une seule API d'action** : `click_at_xy` pour cliquer, `fill_input`/`press_key`
+  pour le clavier. `js()` et `cdp()` sont **réservés à l'observation** : un clic
+  ou une soumission via eux est refusé par le garde-fou, et un second clic au
+  même endroit en moins de 3 s aussi. Après une action, **vérifie l'état**
+  (capture/read_page) ; ne resoumets jamais — un email livré ne se rappelle pas.
 - **Jamais de secret dans un message** : stocke-le dans le vault et envoie une
   référence (`vault:<clé>`). Pour une clé d'API d'une source, utilise
   `remember("<source>_api_key", "<valeur>")` (ex. `europeana_api_key`) : le
