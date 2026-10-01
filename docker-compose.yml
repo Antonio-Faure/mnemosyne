@@ -13,6 +13,12 @@ services:
     # Chrome's sandbox needs user namespaces that Docker's default seccomp blocks.
     security_opt:
       - seccomp=unconfined
+    # explicit public resolvers: Docker's embedded DNS forwards to the host's
+    # (Tailscale-influenced) resolvers and intermittently fails on some domains
+    # (e.g. gallica.bnf.fr) while the host itself resolves them.
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
     env_file:
       - .env
     environment:
