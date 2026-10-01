@@ -157,7 +157,7 @@ def _split_turn_cap(messages: list[dict]) -> tuple[list[dict], int | None]:
 
 def _turns_of(outcome: object) -> int | None:
     """Turn count of a finished session (attribute or outcome dict)."""
-    turns = _turns_of(outcome)
+    turns = getattr(outcome, "turns", None)
     if isinstance(turns, int):
         return turns
     extra = getattr(outcome, "outcome", None)
