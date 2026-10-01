@@ -93,8 +93,8 @@ async def run_dev_agent(
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
         finish, history, _metadata = await session.run(task)
     usage = client.usage.summary()
-    turns = len(history)
-    log.info("dev agent usage (cache-aware): %s (turns=%d)", usage, turns)
+    turns = int(usage.get("calls") or 0) or len(history)
+    log.info("dev agent usage (cache-aware): %s (tours=%d)", usage, turns)
     if journal:
         journal.append(f"dev agent usage: {usage}", source="dev")
     return DevOutcome(

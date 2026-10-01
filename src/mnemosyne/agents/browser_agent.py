@@ -323,8 +323,9 @@ async def run_browser_agent(
     async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
         finish, history, _metadata = await session.run(task)
     usage = client.usage.summary()
-    turns = len(history)
-    log.info("browser agent usage: %s (turns=%d)", usage, turns)
+    # one generation per turn: the usage counter is the reliable turn count
+    turns = int(usage.get("calls") or 0) or len(history)
+    log.info("browser agent usage: %s (tours=%d)", usage, turns)
     summary = finish_text(finish)
     if journal:
         journal.append(f"navigateur usage: {usage}", source="browser")
