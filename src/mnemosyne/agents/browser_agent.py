@@ -173,10 +173,36 @@ class BrowserAgentToolProvider(ToolProvider):
         self.repo = Path(config.dev.repo_path or config.root)
         self.worktree = Path(config.data_path) / "agent-workspace" / "helpers-worktree"
         self._ensure_worktree()
+        self._refresh_worktree()
         self.helpers_dir = self.worktree / "harness" / "helpers"
         ensure_dir(self.helpers_dir)
         self.token = token
         self.git = Git(self.worktree, token)
+
+    def _refresh_worktree(self) -> None:
+        """Fast-forward the helpers worktree so newly published helpers are visible.
+
+        Never fails the turn: a worktree we cannot update is still usable.
+        """
+        if not self._worktree_is_usable():
+            return
+        for args in (
+            ["fetch", "--quiet", "origin", self.config.dev.base_branch],
+            ["merge", "--ff-only", "--quiet", "origin/" + self.config.dev.base_branch],
+        ):
+            try:
+                probe = subprocess.run(
+                    ["git", "-C", str(self.worktree), *args],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+            except Exception as exc:  # noqa: BLE001
+                log.debug("helpers worktree refresh failed (%s)", exc)
+                return
+            if probe.returncode != 0:
+                log.debug("helpers worktree refresh: %s", probe.stderr.strip()[:160])
+                return
 
     def _worktree_is_usable(self) -> bool:
         """A .git file is not enough: the gitdir it points at must exist.

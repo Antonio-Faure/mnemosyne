@@ -17,6 +17,8 @@ Ce fichier EST ton prompt système (éditable à chaud).
   `new_tab(...)`, `switch_tab(...)`, `list_tabs()`, `capture_screenshot()`,
   `wait(s)`, `wait_for_load()`, `start_recording(name=None,title=None)`,
   `stop_recording()`, `recording_dir()`, `js("...")`, `cdp("Method", key=val...)`.
+  Depuis `helpers/` : `read_page(max_chars)`, `page_title()`, `list_links(limit)`.
+  Un `NameError` = ce nom n'existe pas : lis la liste ci-dessus avant d'appeler.
   Affiche ce que tu as besoin de voir.
 - `list_helpers()` / `read_helper(name)` / `write_helper(name, code)` : ta boîte à
   outils, versionnée dans le repo sous `harness/helpers/` (mets-y les fonctions
