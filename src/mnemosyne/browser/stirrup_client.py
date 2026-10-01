@@ -21,8 +21,9 @@ log = get_logger("llm")
 #: injected in the agent's context when it works a long time without finishing
 TURN_TIP = (
     "Tip : Cela fait {turns} tours que tu travailles. Si tu n'arrives pas à faire "
-    "ce que tu cherches à faire, ne t'acharne pas : fais un bilan à la fin pour "
-    "signaler ton problème au Master."
+    "ce que tu cherches à faire, ne t'acharne pas : écris simplement ton problème "
+    "dans ta réponse (tes output tokens) et fais un bilan à la fin. Le Master "
+    "(l'humain ou une autre IA) lira ton message et corrigera le problème."
 )
 
 

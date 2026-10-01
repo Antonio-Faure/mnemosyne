@@ -178,8 +178,9 @@ Outils/permissions :
 - Mémoire morte supprimée ; plafond de sortie Stirrup gardé haut (32k) ;
   environnement filtré pour `browser-harness` ; lectures du dépôt encadrées.
 - Sessions navigateur : **200 tours** max ; à **75 tours** (puis tous les 50) un
-  **tip anti-acharnement** est injecté dans le contexte pour que l'agent
-  s'arrête et fasse un bilan ; timeouts alignés (job heartbeat 2 h, bail
+  **tip anti-acharnement** est injecté dans le contexte : l'agent peut écrire son
+  problème dans ses **output tokens** (bilan final) — le Master (l'humain ou une
+  autre IA) le lira et corrigera ; timeouts alignés (job heartbeat 2 h, bail
   navigateur 3 h, reprise des messages 3 h).
 
 **Reste :**

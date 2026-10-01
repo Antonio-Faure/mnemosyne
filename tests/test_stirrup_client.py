@@ -63,3 +63,6 @@ def test_no_tip_without_threshold():
 def test_tip_text_is_the_operator_wording():
     assert "ne t'acharne pas" in TURN_TIP
     assert "bilan" in TURN_TIP
+    # the problem can simply be written in the agent's own output
+    assert "output tokens" in TURN_TIP
+    assert "corrigera le problème" in TURN_TIP
