@@ -7,6 +7,7 @@ import asyncio
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from mnemosyne.config import get_config
 from mnemosyne.engine import Engine
@@ -156,6 +157,44 @@ def _cmd_browse(args: argparse.Namespace) -> int:
     return 0
 
 
+def _agent_worktree(cfg) -> Path:
+    """A throwaway git worktree based on the base branch.
+
+    The dev agent works here so it never switches the branch of the main
+    checkout (which used to disrupt the operator's working tree).
+    """
+    path = Path(cfg.data_path) / "agent-worktree"
+    subprocess.run(
+        ["git", "-C", str(cfg.root), "worktree", "remove", "--force", str(path)],
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(cfg.root), "fetch", "origin", cfg.dev.base_branch],
+        capture_output=True,
+        text=True,
+    )
+    res = subprocess.run(
+        [
+            "git", "-C", str(cfg.root), "worktree", "add", "--detach",
+            str(path), f"origin/{cfg.dev.base_branch}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if res.returncode != 0:
+        raise RuntimeError(f"git worktree add failed: {res.stderr.strip()[:200]}")
+    return path
+
+
+def _cleanup_worktree(cfg, path) -> None:
+    subprocess.run(
+        ["git", "-C", str(cfg.root), "worktree", "remove", "--force", str(path)],
+        capture_output=True,
+        text=True,
+    )
+
+
 def _cmd_discoveries(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.db import Database
@@ -201,12 +240,21 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
     )
     vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
     try:
+        worktree = _agent_worktree(cfg)
+    except Exception as exc:  # noqa: BLE001
+        db = Database(cfg.db_file())
+        db.set_discovery_status(record.id, "new")
+        db.close()
+        print(f"échec worktree pour {record.host}: {exc}")
+        return 1
+    try:
         outcome = asyncio.run(
             run_dev_agent(
                 cfg,
                 task,
                 vault_get=vault.get if vault else None,
                 journal=Journal(cfg.journal_path),
+                repo=worktree,
             )
         )
     except Exception as exc:  # noqa: BLE001 - dirty tree, missing token, etc.
@@ -215,6 +263,8 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
         db.close()
         print(f"échec pour {record.host}: {exc}")
         return 1
+    finally:
+        _cleanup_worktree(cfg, worktree)
 
     # Trust only a branch that is actually ahead of the base (a real commit/PR).
     status = "failed"
@@ -320,14 +370,23 @@ def _cmd_develop(args: argparse.Namespace) -> int:
         print("  make token")
         print("  # ou : .venv/bin/mnemosyne vault set github_token <token>")
 
-    outcome = asyncio.run(
-        run_dev_agent(
-            cfg,
-            args.task,
-            vault_get=vault_get,
-            journal=Journal(cfg.journal_path),
+    try:
+        worktree = _agent_worktree(cfg)
+    except Exception as exc:
+        print(f"échec worktree: {exc}")
+        return 1
+    try:
+        outcome = asyncio.run(
+            run_dev_agent(
+                cfg,
+                args.task,
+                vault_get=vault_get,
+                journal=Journal(cfg.journal_path),
+                repo=worktree,
+            )
         )
-    )
+    finally:
+        _cleanup_worktree(cfg, worktree)
     print("finish:", outcome.finish or "(pas de résumé)")
     print("branch:", outcome.branch or "(aucune)")
     return 0
