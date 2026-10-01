@@ -1,0 +1,165 @@
+# Vision — mnemosyne, bi-agent autonome
+
+> Document de référence (validé). À lire **avant toute reprise** du chantier
+> agent, notamment après une compaction de session : il contient la vision
+> complète et l'état exact de l'implémentation.
+
+## 0. Mission
+
+Trouver les **meilleures images d'archives historiques** pour une requête.
+Le goulot n'est pas la recherche mais **l'accès aux sources** (des centaines de
+fournisseurs hétérogènes). On délègue ce travail à un agent autonome, qui doit
+savoir **à la fois utiliser un navigateur ET écrire du code**.
+
+## 1. Architecture d'exécution — « Version A » (faite)
+
+**Un seul conteneur** (`mnemosyne`), pas de conteneur Chrome séparé. Dedans :
+l'appli, un **vrai Chrome** (headful sous Xvfb + noVNC + CDP `127.0.0.1:9222`),
+`browser-harness`, `ffmpeg`, `git`.
+
+Règles :
+- tout tourne en **uid 1000** → sandbox Chrome **activé** (jamais `--no-sandbox`),
+  chemins et permissions identiques entre l'agent, le navigateur et les fichiers ;
+- **un seul propriétaire du CDP** : une seule chose pilote Chrome à la fois
+  (sinon conflits — c'est l'erreur qui a motivé cette refonte) ;
+- `security_opt: seccomp=unconfined` (le sandbox Chrome a besoin des namespaces) ;
+- ports en **loopback** uniquement (6080 VNC, 9222 CDP, 8080 API) ;
+- le réseau sort par l'IP résidentielle, **jamais par Tailscale**
+  (`scripts/check-egress.sh`, `make egress`).
+
+Fichiers : `Dockerfile`, `docker/entrypoint.sh`, `docker-compose.yml`.
+Commandes : `make up|down|logs`, `make cdp`, `make vnc|record`, `make egress`.
+
+## 2. Le bi-agent (vision validée)
+
+**Deux sessions Stirrup distinctes**, même provider (OpenCode Go / Zen,
+`deepseek-v4.1-flash`), **un seul agent actif à la fois**.
+
+### 2.1 Agent CODEUR (le produit)
+
+Rôle : faire **le produit final** — l'API d'agrégation et ses connecteurs.
+
+Outils/permissions :
+- éditer le code du produit, tests, `git` (commit/push/PR) avec le **token
+  GitHub** (vault) ;
+- **recherche doc** : websearch **et** webfetch (pour lire une doc, un dépôt
+  GitHub) — **mais PAS le navigateur** ;
+- **il ne fait pas** de helpers pour l'agent navigateur, ni de navigation.
+
+Implémentation actuelle : `src/mnemosyne/dev/agent.py` (`run_dev_agent`),
+`src/mnemosyne/dev/tools.py`, lancé par `mnemosyne develop` / `connect-next`.
+Il travaille dans un **worktree git jetable** (`data/agent-worktree`) pour ne
+jamais changer la branche du dépôt principal.
+
+### 2.2 Agent NAVIGATEUR (le harness)
+
+Rôle : tout ce qui est **navigateur** — warmup, recherche précise nécessitant
+de naviguer, envoi de mails, remplissage de formulaires, obtention d'accès/clés,
+**et** l'amélioration de son propre harness (helpers) et **le film**.
+
+Outils/permissions :
+- **browser-harness** : helpers (`goto_url`, `scroll`, `type_text`, `click_at_xy`,
+  `upload_file`, `new_tab`, `switch_tab`, `capture_screenshot`, …), enregistrement
+  et **export vidéo** ; il ajoute des **helpers au fil de l'eau** ;
+- édition **limitée aux helpers** (allowlist : dossier des helpers), + `git`
+  (token GitHub) pour pousser les helpers ;
+- **il n'édite pas** le code du produit.
+
+### 2.3 Communication entre les deux agents
+
+- **Boîte aux lettres durable** (fichier/table) : chaque message = `de`, `à`,
+  `corps`, `statut` (en attente/traité), horodatage. Un outil `send_message`
+  sur **chaque** agent écrit dedans.
+- **Superviseur déterministe** (le heartbeat, PAS un LLM) : il lit la boîte,
+  **lance l'agent destinataire quand l'émetteur s'est arrêté**, puis rend la
+  main. Les agents ne se lancent **jamais** eux-mêmes.
+- **Un seul agent à la fois** (turn-taking) → un seul pilote Chrome.
+- **Secrets via le vault, jamais dans les messages** : l'agent navigateur
+  stocke la clé (`vault set europeana_api_key …`) et envoie une **référence** ;
+  le codeur la lit dans le vault.
+- **Bornes anti-boucle** : nombre max d'échanges, deadline ; « note du jour »
+  alimentée par chaque agent (journal).
+- **Routage au lancement** : selon l'intention, on lance `agent codeur` (produit)
+  ou `agent navigateur` (web). L'opérateur peut aussi déposer un message dans la
+  boîte et laisser le superviseur router.
+
+### 2.4 Exemple de référence (Europeana)
+
+1. Opérateur : « lance l'agent codeur pour avoir accès à Europeana ».
+2. **Codeur** : recherche la doc, explore le produit, écrit le connecteur ;
+   constate qu'il manque la **clé API** → `send_message(à="navigateur",
+   corps="j'ai besoin de la clé API Europeana")` → commit/push de ce qu'il a
+   fait → note du jour → **s'arrête**.
+3. **Superviseur** : lance l'**agent navigateur**.
+4. **Navigateur** : comprend le besoin, va sur Europeana, (crée un helper si
+   besoin), crée un **compte**, remplit l'e-mail, génère un **mot de passe
+   robuste** (gestionnaire de mots de passe de Chrome), confirme l'adresse via
+   **Gmail dans un autre onglet**, navigue jusqu'à la création de **clé API**,
+   la **stocke dans le vault** → `send_message(à="codeur", corps="clé dispo :
+   vault:europeana_api_key")` → commit/push des helpers → note du jour →
+   **s'arrête**.
+5. **Superviseur** : relance l'**agent codeur** ; il lit la clé dans le vault,
+   teste, corrige, commit/push, note du jour, s'arrête.
+
+## 3. Navigateur & vidéo (browser-harness)
+
+- Le **même Chrome** sert de moteur de rendu pour l'export vidéo : la page
+  `video.html` est ouverte dans le Chrome attaché, elle exporte un `.webm`
+  (téléchargement via CDP), puis `ffmpeg` produit le `.mp4`.
+- Pipeline : `start_recording()` → actions → `stop_recording()` →
+  `browser-harness video init <dir>` → écrire `edit-brief.json` →
+  `video review` → `video export --reviewed`.
+- Contraintes du brief (validateur) : `plan` **2–5** items, `privacy.reviewedFrames`
+  obligatoire, **narration « collante »** (ne la mettre que lorsqu'elle change).
+- Variable d'env : `BU_CDP_URL=http://127.0.0.1:9222`, `BH_HOME=/app/data/browser-harness`
+  (les enregistrements persistent dans `data/`).
+- Pour l'agent « browse » générique, on utilise l'**agent browser-use natif**
+  (`src/mnemosyne/agents/browse.py`) — pas de micro-outils maison.
+
+## 4. Ce qui existe / ce qui reste
+
+**Existe (fait) :**
+- Version A (conteneur unique, Chrome sandboxé uid 1000, un seul CDP).
+- `browser-harness` opérationnel (record + export vidéo OK).
+- Agent navigateur générique `mnemosyne browse "<tâche>"` (browser-use natif ;
+  utilise l'agent pour les mails par ex.).
+- Agent codeur `mnemosyne develop` / `connect-next` (Stirrup, PR, worktree isolé).
+- Générateur de connecteurs IIIF générique (`src/mnemosyne/sources/iiif.py`) +
+  découverte (`src/mnemosyne/discovery/`) + 1 connexion/jour (timer).
+- Warmup auto (1–2/jour, sites pondérés), vault, Telegram, journal.
+
+**Reste (le chantier bi-agent) :**
+1. **Boîte aux lettres** durable (table `messages` en SQLite + API/classe).
+2. **Superviseur** : job heartbeat qui route et lance l'agent cible (turn-taking,
+   bornes), en respectant le quota gouverneur.
+3. **Outil `send_message`** côté codeur (Stirrup `DevToolProvider`) **et** côté
+   navigateur.
+4. **Agent navigateur « Stirrup + harness »** : session dédiée, outils
+   `browser-harness` (exécuter des helpers), édition **allowlist helpers**,
+   git pour les helpers, `send_message`.
+5. **Routage au lancement** (`mnemosyne agent coder|browser "<tâche>"`).
+6. Tests + docs.
+
+## 5. Conventions & garde-fous à respecter
+
+- **LLM** : Zen exige `User-Agent` propre + `x-opencode-session` ; **pas de
+  `max_tokens`**. Pour browser-use, `dont_force_structured_output=True` +
+  `add_schema_to_system_prompt=True` (Zen refuse le `json_schema` strict).
+- **Vault** pour tous les secrets (`github_token`, clés API, logins).
+- **Token GitHub** fine-grained : `Contents` RW + `Pull requests` RW, un seul
+  repo, pas d'Admin. Branches `agent/*`, PR, jamais de force-push/rm.
+- **Écritures atomiques** `.tmp → os.replace`.
+- **Un seul pilote Chrome à la fois** ; agents sourds aux secrets en clair.
+- Le mode « chauffe » (warmup) plafonne les actions outbound les premiers jours.
+
+## 6. Cartographie rapide
+
+- `src/mnemosyne/heartbeat/` — superviseur (jobs durables) ; y ajouter le job agent.
+- `src/mnemosyne/dev/` — agent codeur + garde-fous + git.
+- `src/mnemosyne/agents/browse.py` — agent browser-use natif (navigateur).
+- `src/mnemosyne/agents/warmup.py` / `warmup_schedule.py` — warmup.
+- `src/mnemosyne/discovery/` — découverte de fournisseurs (P3).
+- `src/mnemosyne/sources/iiif.py` — connecteur IIIF générique (P4).
+- `src/mnemosyne/identity.py` — transparence (phrase + repo) pour mails/formulaires.
+- `src/mnemosyne/vault/` — coffre chiffré.
+- `docs/RUNBOOK.md`, `AGENTS.md` — exploitation et règles.

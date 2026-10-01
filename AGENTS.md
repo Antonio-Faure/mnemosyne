@@ -127,3 +127,5 @@ pytest
 ## Decision log
 
 Architecture-critical decisions and their rationale are recorded in `docs/`.
+**The agent architecture (validated) is in `docs/VISION-BIAGENT.md` — read it
+before any agent work (it is the reference for the two-agent design).**
