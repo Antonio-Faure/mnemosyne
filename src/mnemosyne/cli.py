@@ -136,6 +136,25 @@ def _cmd_discover(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_browse(args: argparse.Namespace) -> int:
+    """Run a generic browser agent on an arbitrary task."""
+    cfg = get_config()
+    from mnemosyne.agents.browse import run_browse
+
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    outcome = asyncio.run(
+        run_browse(
+            cfg,
+            args.task,
+            journal=Journal(cfg.journal_path),
+            vault_get=vault.get if vault else None,
+        )
+    )
+    print("finish:", outcome.finish or "(pas de résumé)")
+    print("usage:", outcome.outcome.get("usage"))
+    return 0
+
+
 def _cmd_discoveries(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.db import Database
@@ -595,6 +614,10 @@ def build_parser() -> argparse.ArgumentParser:
     pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
     pw.add_argument("--minutes", type=float, default=5.0)
     pw.set_defaults(func=_cmd_warmup)
+
+    pbrowse = sub.add_parser("browse", help="run a generic browser agent on a task")
+    pbrowse.add_argument("task", help="what to do in the browser")
+    pbrowse.set_defaults(func=_cmd_browse)
 
     pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")
     pdis.add_argument("--limit", type=int, default=100)

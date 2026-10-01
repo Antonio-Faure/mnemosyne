@@ -74,7 +74,7 @@ dev:
 
 # Stirrup agent loop (browser onboarding / outreach), P2.
 agents:
-  max_turns: 40
+  max_turns: 60
   max_tokens: 8192
   context_window_tokens: 128000
   output_dir: data/agent-runs

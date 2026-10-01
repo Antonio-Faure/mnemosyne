@@ -27,6 +27,8 @@ services:
       - localdomain
     volumes:
       - ./data/chrome-profile:/profile
+      # files the agent may upload are placed here (read-only in the browser)
+      - ./data/outbox:/outbox:ro
     ports:
       # Bind to loopback only: the profile is logged into the agent's Google
       # account and VNC has no password, so never expose these on the network.

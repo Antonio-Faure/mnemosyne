@@ -73,6 +73,21 @@ class ClickParams(BaseModel):
     selector: str = Field(description="CSS selector of the element to click")
 
 
+class UploadParams(BaseModel):
+    selector: str = Field(description="CSS selector of the file input (input[type=file])")
+    path: str = Field(description="Path inside the browser, under /outbox/")
+
+
+class TypeParams(BaseModel):
+    selector: str = Field(description="CSS selector of the field")
+    text: str = Field(description="Text to type with real keyboard events")
+    submit: bool = Field(default=False, description="Press Enter after typing")
+
+
+class ClickTextParams(BaseModel):
+    text: str = Field(description="Visible text of the button/link to click")
+
+
 class RememberParams(BaseModel):
     key: str = Field(description="Credential key, e.g. 'api_key' or 'login:acme'")
     value: str = Field(description="Secret value to store in the encrypted vault")
@@ -251,6 +266,69 @@ class BrowserToolProvider(ToolProvider):
                 return _fail(f"enter failed: {exc}")
             return _ok(f"enter {p.selector}: {res}")
 
+        async def upload_exec(p: UploadParams):
+            if not p.path.startswith("/outbox/"):
+                return _fail("upload path must be under /outbox/ (browser-side)")
+            try:
+                elements = await self._page.get_elements_by_css_selector(p.selector)
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"selector failed: {exc}")
+            if not elements:
+                return _fail(f"no element matches {p.selector}")
+            el = elements[0]
+            try:
+                await el._client.send_raw(
+                    "DOM.setFileInputFiles",
+                    {"files": [p.path], "backendNodeId": el._backend_node_id},
+                    session_id=el._session_id,
+                )
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"upload failed: {exc}")
+            await asyncio.sleep(2.0)
+            return _ok(f"uploaded {p.path} to {p.selector}")
+
+        async def type_exec(p: TypeParams):
+            try:
+                elements = await self._page.get_elements_by_css_selector(p.selector)
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"selector failed: {exc}")
+            if not elements:
+                return _fail(f"no element matches {p.selector}")
+            el = elements[0]
+            try:
+                await el.focus()
+                await el.fill(p.text)  # browser-use uses real CDP key events
+                if p.submit:
+                    for ev in ("keyDown", "keyUp"):
+                        await el._client.send_raw(
+                            "Input.dispatchKeyEvent",
+                            {"type": ev, "windowsVirtualKeyCode": 13, "key": "Enter",
+                             "nativeVirtualKeyCode": 13},
+                            session_id=el._session_id,
+                        )
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"type failed: {exc}")
+            await asyncio.sleep(1.5)
+            return _ok(f"typed into {p.selector}: {p.text!r}")
+
+        async def click_text_exec(p: ClickTextParams):
+            js = (
+                "(...args) => { const t = " + json.dumps(p.text.lower()) + ";"
+                " const sel = 'button,a,[role=button],input[type=submit],div';"
+                " const els = [...document.querySelectorAll(sel)];"
+                " const el = els.find(e => (e.innerText||e.value||'')"
+                ".trim().toLowerCase().includes(t));"
+                " if (!el) return 'no';"
+                " (el.closest('button,a,[role=button],input[type=submit]') || el).click();"
+                " return 'ok'; }"
+            )
+            try:
+                res = await self._eval(js)
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"click_text failed: {exc}")
+            await asyncio.sleep(2.0)
+            return _ok(f"click_text {p.text!r}: {res}")
+
         async def blocked_exec(_: EmptyParams):
             reason = await self._blocked()
             return _ok(reason or "no wall detected")
@@ -293,6 +371,15 @@ class BrowserToolProvider(ToolProvider):
                  parameters=ClickParams, executor=click_exec),
             Tool(name="press_enter", description="Press Enter on a field.",
                  parameters=ClickParams, executor=enter_exec),
+            Tool(name="upload_file",
+                 description="Set a file on an input[type=file] (path under /outbox/).",
+                 parameters=UploadParams, executor=upload_exec),
+            Tool(name="type_text",
+                 description="Type text with real keyboard events (React/combobox fields).",
+                 parameters=TypeParams, executor=type_exec),
+            Tool(name="click_text",
+                 description="Click a button/link by its visible text.",
+                 parameters=ClickTextParams, executor=click_text_exec),
             Tool(name="blocked_status", description="Report any captcha/login/rate wall.",
                  parameters=EmptyParams, executor=blocked_exec),
             Tool(name="remember", description="Store a credential in the encrypted vault.",
