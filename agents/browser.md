@@ -39,7 +39,10 @@ seulement quand elle change).
 
 - Ne modifie **jamais** le code produit (tu n'écris que des helpers).
 - **Jamais de secret dans un message** : stocke-le dans le vault et envoie une
-  référence (`vault:<clé>`).
+  référence (`vault:<clé>`). Pour une clé d'API d'une source, utilise
+  `remember("<source>_api_key", "<valeur>")` (ex. `europeana_api_key`) : le
+  moteur l'exporte automatiquement en variable d'environnement
+  (`EUROPEANA_API_KEY`, d'après `key_env` du descripteur) à son démarrage.
 - Si tu es bloqué par un captcha que tu ne peux pas passer, demande à l'opérateur.
 - Continue jusqu'au bout de la tâche, puis `task_done` avec un résumé factuel.
 

@@ -16,6 +16,7 @@ from mnemosyne.logger import get_logger
 from mnemosyne.models import Asset, SourceDescriptor, SourceState
 from mnemosyne.normalize import DedupIndex, normalize
 from mnemosyne.reputation import Governor, GovernorBlocked
+from mnemosyne.secrets import export_vault_secrets
 from mnemosyne.sources import build_connector
 
 log = get_logger("engine")
@@ -26,6 +27,7 @@ class Engine:
         self.config = config
         self.db = Database(config.db_file())
         self.catalog = Catalog(config.sources_path, self.db)
+        export_vault_secrets(config.vault_file, self.catalog.list())
         self.governor = Governor(config.reputation, self.db)
         self.http = HttpClient(governor=self.governor, contact=None)
 

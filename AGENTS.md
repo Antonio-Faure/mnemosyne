@@ -55,7 +55,7 @@ Dev: `pip install -e '.[dev]'` then `ruff check .` and `pytest`.
 
 # Security
 
-- **Never commit secrets.** Keys/logins/sessions live in the vault (`vault/`, git-ignored) or `.env` (git-ignored). `.env.example` only names variables. Never put a secret in an agent message — send a `vault:<key>` reference.
+- **Never commit secrets.** Keys/logins/sessions live in the vault (`vault/`, git-ignored) or `.env` (git-ignored). `.env.example` only names variables. Never put a secret in an agent message — send a `vault:<key>` reference. Source keys are stored as `<key_env>.lower()` and exported to env at `Engine` start (`docs/CREDENTIALS.md`).
 - Chrome runs as **uid 1000 with its sandbox enabled**; never `--no-sandbox`. Exposed ports are **loopback only**; the agent's traffic must not transit Tailscale (`make egress`).
 - **Governor mandatory** for any rate-limited/sensitive action (HTTP, account creation, outbound email). On 403/429/captcha the whole system slows down.
 - **Transparent outreach**: every email/contact form states who the agent is and links the repo — build it with `identity.disclosure()`, never by hand. Human-in-the-loop for anything irreversible; ask on Telegram when blocked (`request_human` / `Notifier.ask`).
