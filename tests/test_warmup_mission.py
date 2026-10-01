@@ -40,25 +40,24 @@ def test_no_cap_leaves_the_body_untouched():
 @pytest.mark.asyncio
 async def test_turn_cap_reaches_the_runner(config, monkeypatch):
     """A `[[tour: N]]` message bounds its turn, and the marker never reaches the agent."""
-    from mnemosyne.agents.supervisor import run_agency
+    from mnemosyne.agents.mailbox import Mailbox
+    from mnemosyne.agents.supervisor import _execute_turn
 
     seen: list[tuple[str, int | None]] = []
 
     async def fake_coder(cfg, task, mailbox, journal, vault_get, max_turns=None):
         seen.append((task, max_turns))
-        return type("O", (), {"finish": "ok"})()
+        return type("O", (), {"finish": "ok", "turns": 1})()
 
     monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
 
     db = Database(config.db_file())
     try:
-        from mnemosyne.agents.mailbox import Mailbox
-
-        Mailbox(db).post("operator", "coder", "[[tour: 12]]\nMission courte")
+        Mailbox(db).post("warmup", "coder", "[[tour: 12]]\nMission courte")
+        claimed = db.claim_messages("coder", owner="test")
+        await _execute_turn(config, "coder", claimed, Mailbox(db), None, None)
     finally:
         db.close()
-
-    await run_agency(config, "mission", start="coder", max_handoffs=1)
 
     assert seen and seen[0][1] == 12
     assert "[[tour:" not in seen[0][0]
@@ -110,3 +109,26 @@ async def test_warmup_job_posts_one_mission(config, monkeypatch):
         assert "lecture seule" in mission["body"]
     finally:
         await ctx.engine.aclose()
+
+
+def test_batch_cap_follows_the_longest_mission():
+    """A short warmup batched with a full mission must not truncate the mission."""
+    cleaned, cap = _split_turn_cap(
+        [
+            {"body": "[[tour: 40]]\nMission warmup", "sender": "warmup", "created_at": "t"},
+            {"body": "Mission longue (pas de plafond)", "sender": "operator", "created_at": "t"},
+        ]
+    )
+    assert cap is None
+    assert cleaned[0]["body"] == "Mission warmup"
+    assert cleaned[1]["body"] == "Mission longue (pas de plafond)"
+
+
+def test_batch_of_capped_missions_uses_the_longest():
+    _, cap = _split_turn_cap(
+        [
+            {"body": "[[tour: 25]]\na", "sender": "warmup", "created_at": "t"},
+            {"body": "[[tour: 90]]\nb", "sender": "operator", "created_at": "t"},
+        ]
+    )
+    assert cap == 90

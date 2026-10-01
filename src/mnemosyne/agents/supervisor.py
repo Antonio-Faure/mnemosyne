@@ -142,15 +142,21 @@ _TURN_CAP_RE = re.compile(r"^\s*\[\[tour:\s*(\d+)\s*\]\]\s*$", re.M)
 
 
 def _split_turn_cap(messages: list[dict]) -> tuple[list[dict], int | None]:
-    """Extract (and strip) a per-message turn cap from a batch of messages."""
-    cap: int | None = None
+    """Extract (and strip) per-message turn caps from a batch of messages.
+
+    A batch turns on the *longest* budget it contains: a short warmup mission
+    batched with a full-length mission must not truncate the latter, so when any
+    message has no cap the batch runs on the agent default.
+    """
+    caps: list[int] = []
+    for message in messages:
+        found = _TURN_CAP_RE.search(message["body"])
+        if found:
+            caps.append(int(found.group(1)))
+    cap = max(caps) if caps and len(caps) == len(messages) else None
     cleaned: list[dict] = []
     for message in messages:
-        body = message["body"]
-        found = _TURN_CAP_RE.search(body)
-        if found:
-            cap = int(found.group(1))
-            body = _TURN_CAP_RE.sub("", body).strip()
+        body = _TURN_CAP_RE.sub("", message["body"]).strip()
         cleaned.append({**message, "body": body})
     return cleaned, cap
 
