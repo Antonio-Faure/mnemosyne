@@ -180,3 +180,47 @@ def test_recover_stale_messages_runs_even_with_an_empty_queue(tmp_path):
     assert db.recover_stale_messages(stale_after_s=99999) == 1
     assert db.list_messages(status="pending")[0]["id"] == mid
     db.close()
+
+
+def test_holder_from_a_previous_container_is_reclaimed(tmp_path):
+    """docker recreates the container with a new hostname: the old holder is gone."""
+    import json as _json
+
+    db = _db(tmp_path)
+    db._conn.execute(
+        "INSERT INTO kv (key, value) VALUES ('lease:browser', ?)",
+        (
+            _json.dumps(
+                {
+                    "owner": "",
+                    "pid": 1,
+                    "host": "an-old-container-id",
+                    "started": 12345,
+                    "expires": time.time() + 18_000,
+                }
+            ),
+        ),
+    )
+    db._conn.commit()
+    assert db.try_lease("browser", ttl_s=60, owner="next") is True
+    db.close()
+
+
+def test_message_claimed_by_a_previous_container_comes_back(tmp_path):
+    import json as _json
+
+    db = _db(tmp_path)
+    mid = db.post_message("warmup", "browser", "mission")
+    db.claim_messages("browser", owner="heartbeat:1")
+    db._conn.execute(
+        "UPDATE messages SET claimed_by = ? WHERE id = ?",
+        (
+            _json.dumps(
+                {"who": "heartbeat:1", "pid": 1, "host": "an-old-container", "started": 1}
+            ),
+            mid,
+        ),
+    )
+    db._conn.commit()
+    assert db.recover_stale_messages(stale_after_s=99999) == 1
+    db.close()

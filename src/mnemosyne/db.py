@@ -102,6 +102,21 @@ def _proc_start_time(pid: int | None = None) -> int | None:
         return None
 
 
+def _holder_is_gone(payload: dict) -> bool:
+    """True when a lease/claim holder cannot be alive for us.
+
+    Single container per database: a payload from another hostname belongs to a
+    previous container generation (docker gives a fresh hostname on recreate),
+    and that process is gone. Same hostname -> check pid + incarnation.
+    """
+    host = payload.get("host")
+    if host is None:  # legacy payload: cannot attribute, respect it until expiry
+        return False
+    if host != socket.gethostname():
+        return True
+    return _process_gone(payload.get("pid"), payload.get("started"))
+
+
 def _process_gone(pid: object, started: object) -> bool:
     """True when `pid` is dead, or alive but a different process incarnation."""
     if not isinstance(pid, int) or pid <= 0:
@@ -132,7 +147,8 @@ def _claim_owner(who: str) -> str:
 
 
 def _owner_is_dead(raw: str | None) -> bool:
-    """True when the process that claimed the work no longer exists."""
+    """True when the claimer of a message cannot be alive for us (see
+    `_holder_is_gone`: foreign container, dead pid, or a reused pid)."""
     if not raw:
         return False
     try:
@@ -145,16 +161,7 @@ def _owner_is_dead(raw: str | None) -> bool:
             data = {"pid": int(str(raw).rsplit(":", 1)[-1])}
         except (TypeError, ValueError):
             return False
-    host, pid = data.get("host"), data.get("pid")
-    if host != socket.gethostname() or not isinstance(pid, int) or pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return True
-    except PermissionError:
-        pass
-    return False
+    return _holder_is_gone(data)
 
 
 def _read_lease(raw: str) -> dict | None:
@@ -177,9 +184,7 @@ def _lease_is_stale(held: dict, now: float) -> bool:
     """True when a lease may be taken: expired, or its holder process is gone."""
     if float(held.get("expires", 0)) <= now:
         return True
-    if held.get("host") != socket.gethostname():
-        return False
-    return _process_gone(held.get("pid"), held.get("started"))
+    return _holder_is_gone(held)
 
 
 class Database:
