@@ -8,6 +8,7 @@ persistence and wall detection are done by code.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from pathlib import Path
 from urllib.parse import quote
@@ -86,6 +87,18 @@ class TypeParams(BaseModel):
 
 class ClickTextParams(BaseModel):
     text: str = Field(description="Visible text of the button/link to click")
+
+
+class TabUrlParams(BaseModel):
+    url: str = Field(description="URL to open in a new tab")
+
+
+class TabIndexParams(BaseModel):
+    index: int = Field(description="Tab index from list_tabs()")
+
+
+class WaitParams(BaseModel):
+    seconds: float = Field(default=3.0, description="Seconds to wait for the page")
 
 
 class RememberParams(BaseModel):
@@ -221,7 +234,11 @@ class BrowserToolProvider(ToolProvider):
             reason = await self._blocked()
             if reason:
                 return _fail(f"mur detecte ({reason}).")
-            return _ok((await self._text())[:4000] or "(page vide)")
+            try:
+                url = await self._page.get_url()
+            except Exception:  # noqa: BLE001
+                url = "?"
+            return _ok(f"[url] {url}\n\n" + ((await self._text())[:4000] or "(page vide)"))
 
         async def links_exec(p: LinkParams):
             try:
@@ -246,6 +263,18 @@ class BrowserToolProvider(ToolProvider):
             return _ok(f"fill {p.selector}: {res}")
 
         async def click_exec(p: ClickParams):
+            # prefer a real CDP mouse click (works with React/disabled logic)
+            try:
+                elements = await self._page.get_elements_by_css_selector(p.selector)
+            except Exception:  # noqa: BLE001
+                elements = []
+            if elements:
+                try:
+                    await elements[0].click()
+                    await asyncio.sleep(1.5)
+                    return _ok(f"clicked {p.selector} (mouse)")
+                except Exception as exc:  # noqa: BLE001
+                    log.debug("mouse click failed, JS fallback: %s", exc)
             js = _qs_js(p.selector, "el.click(); return 'ok';")
             try:
                 res = await self._eval(js)
@@ -329,6 +358,47 @@ class BrowserToolProvider(ToolProvider):
             await asyncio.sleep(2.0)
             return _ok(f"click_text {p.text!r}: {res}")
 
+        async def new_tab_exec(p: TabUrlParams):
+            res = self._session.new_page(p.url)
+            page = await res if inspect.isawaitable(res) else res
+            self._page = page
+            await asyncio.sleep(2.0)
+            return _ok(f"new tab opened: {p.url}")
+
+        async def list_tabs_exec(_: EmptyParams):
+            pages = await self._session.get_pages()
+            lines = []
+            for i, pg in enumerate(pages):
+                try:
+                    url = await pg.get_url()
+                except Exception:  # noqa: BLE001
+                    url = "?"
+                mark = " <-current" if pg is self._page else ""
+                lines.append(f"{i}. {url}{mark}")
+            return _ok("\n".join(lines) or "(no tab)")
+
+        async def switch_tab_exec(p: TabIndexParams):
+            pages = await self._session.get_pages()
+            if p.index < 0 or p.index >= len(pages):
+                return _fail(f"bad tab index {p.index} (have {len(pages)})")
+            self._page = pages[p.index]
+            await asyncio.sleep(0.5)
+            return _ok(f"switched to tab {p.index}")
+
+        async def close_tab_exec(_: EmptyParams):
+            try:
+                await self._session.close_page(self._page)
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"close tab failed: {exc}")
+            pages = await self._session.get_pages()
+            if pages:
+                self._page = pages[0]
+            return _ok("tab closed")
+
+        async def wait_exec(p: WaitParams):
+            await asyncio.sleep(min(max(p.seconds, 0.5), 60.0))
+            return _ok(f"waited {p.seconds:.0f}s")
+
         async def blocked_exec(_: EmptyParams):
             reason = await self._blocked()
             return _ok(reason or "no wall detected")
@@ -380,6 +450,16 @@ class BrowserToolProvider(ToolProvider):
             Tool(name="click_text",
                  description="Click a button/link by its visible text.",
                  parameters=ClickTextParams, executor=click_text_exec),
+            Tool(name="new_tab", description="Open a URL in a new tab and switch to it.",
+                 parameters=TabUrlParams, executor=new_tab_exec),
+            Tool(name="list_tabs", description="List open tabs (index + url).",
+                 parameters=EmptyParams, executor=list_tabs_exec),
+            Tool(name="switch_tab", description="Switch to a tab by index.",
+                 parameters=TabIndexParams, executor=switch_tab_exec),
+            Tool(name="close_tab", description="Close the current tab.",
+                 parameters=EmptyParams, executor=close_tab_exec),
+            Tool(name="wait", description="Wait a few seconds for the page to settle.",
+                 parameters=WaitParams, executor=wait_exec),
             Tool(name="blocked_status", description="Report any captcha/login/rate wall.",
                  parameters=EmptyParams, executor=blocked_exec),
             Tool(name="remember", description="Store a credential in the encrypted vault.",

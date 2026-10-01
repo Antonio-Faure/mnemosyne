@@ -150,8 +150,8 @@ def _cmd_browse(args: argparse.Namespace) -> int:
             vault_get=vault.get if vault else None,
         )
     )
+    print("success:", outcome.success)
     print("finish:", outcome.finish or "(pas de résumé)")
-    print("usage:", outcome.outcome.get("usage"))
     return 0
 
 

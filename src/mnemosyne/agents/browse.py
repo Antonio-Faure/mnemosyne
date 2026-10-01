@@ -1,37 +1,63 @@
-"""Generic browser agent: do an arbitrary operator task with the dedicated Chrome."""
+"""Generic autonomous browser agent — uses browser-use's NATIVE Agent.
+
+browser-use already knows how to click, type, scroll, switch tabs, handle
+dialogs/dropdowns and upload files (see browser-use/browser-harness interaction
+skills). We do NOT re-implement those as micro-tools; we drive its `Agent` with
+our OpenCode/Zen model and attach it to the dedicated Chrome over CDP.
+"""
 
 from __future__ import annotations
 
-from stirrup import Agent
+import uuid
+from dataclasses import dataclass
+from pathlib import Path
 
-from mnemosyne.agents.onboarding import AgentOutcome
-from mnemosyne.agents.tools import BrowserToolProvider
-from mnemosyne.browser.stirrup_client import build_agent_client
+from browser_use import Agent, BrowserSession
+
+from mnemosyne.browser import cdp_url
 from mnemosyne.config import Config
 from mnemosyne.identity import disclosure
 from mnemosyne.journal import Journal
+from mnemosyne.llm.client import USER_AGENT, resolve_api_key
 from mnemosyne.logger import get_logger
-from mnemosyne.notify import Notifier
-from mnemosyne.util import ensure_dir
 
 log = get_logger("browse")
 
-_SYSTEM = """You are {name}, driving a real browser to accomplish the operator's
-request. You act in your own name and are transparent about it: {disclosure}
 
-TOOLS (deterministic): goto(url) · read_page() · list_links(substring) ·
-fill(selector, value) · click(selector) · press_enter(selector) ·
-upload_file(selector, path) · blocked_status() · remember(key, value) ·
-request_human(reason) · task_done(summary).
+@dataclass
+class BrowseOutcome:
+    finish: str | None
+    success: bool | None
 
-RULES:
-- One step at a time; read_page() after each action to check the result.
-- Files to upload live under /outbox/ (e.g. /outbox/agent-browsing.mp4); call
-  upload_file with the CSS selector of the input[type=file].
-- If you reach a captcha / login wall / phone verification you cannot pass, call
-  request_human with the reason and stop. Never guess or force.
-- When done, call task_done with a short factual summary (and any link produced).
-"""
+
+def _build_llm(config: Config, vault_get=None):
+    from browser_use.llm import ChatOpenAI
+
+    prov = config.llm.providers.get(config.llm.default)
+    if prov is None:
+        raise RuntimeError(f"LLM provider '{config.llm.default}' is not configured")
+    api_key, _ = resolve_api_key(prov, vault_get)
+    if not api_key:
+        raise RuntimeError("no LLM key for the browse agent")
+    return ChatOpenAI(
+        model=prov.model or "deepseek-v4.1-flash",
+        base_url=prov.base_url,
+        api_key=api_key,
+        default_headers={
+            "User-Agent": USER_AGENT,
+            "x-opencode-session": f"mnemosyne-browse-{uuid.uuid4().hex[:8]}",
+        },
+        max_completion_tokens=8192,
+        temperature=0.2,
+    )
+
+
+def _available_files(config: Config) -> list[str]:
+    """Files under data/outbox, exposed to the browser as /outbox/<name> (upload)."""
+    outbox = config.data_path / "outbox"
+    if not outbox.exists():
+        return []
+    return [f"/outbox/{p.name}" for p in sorted(outbox.iterdir()) if p.is_file()]
 
 
 async def run_browse(
@@ -40,27 +66,38 @@ async def run_browse(
     *,
     journal: Journal | None = None,
     vault_get=None,
-) -> AgentOutcome:
-    client = build_agent_client(config, session="browse", vault_get=vault_get)
-    notifier = Notifier(config.notify.telegram)
-    provider = BrowserToolProvider(
-        vault_path=config.vault_file, notifier=notifier, journal=journal
-    )
+    out_dir: Path | None = None,
+) -> BrowseOutcome:
+    session = BrowserSession(cdp_url=cdp_url(), keep_alive=True)
     agent = Agent(
-        client=client,
-        name="browse",
-        system_prompt=_SYSTEM.format(
-            name=config.identity.name, disclosure=disclosure(config.identity)
+        task=task,
+        llm=_build_llm(config, vault_get),
+        browser_session=session,
+        available_file_paths=_available_files(config),
+        max_actions_per_step=5,
+        extend_system_message=(
+            "You act in your own name and are transparent about it: "
+            + disclosure(config.identity)
+            + " Files to upload are made available to you (e.g. /outbox/*)."
         ),
-        tools=[provider],
-        max_turns=config.agents.max_turns,
     )
-    out_dir = config.root / config.agents.output_dir
-    ensure_dir(out_dir)
-    async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
-        finish, _history, _metadata = await session.run(task)
-    usage = client.usage.summary()
-    log.info("browse usage (cache-aware): %s", usage)
+    save_dir = out_dir or (config.root / config.agents.output_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        history = await agent.run(max_steps=config.agents.max_turns)
+    finally:
+        try:
+            await session.stop()
+        except Exception:  # noqa: BLE001 - cleanup only
+            pass
+    final = None
+    success = None
+    try:
+        final = history.final_result()
+        success = history.is_successful()
+    except Exception:  # noqa: BLE001 - older/newer API differences
+        final = str(history)[:2000]
+    log.info("browse done: success=%s result=%s", success, (final or "")[:200])
     if journal:
-        journal.append(f"browse — {provider.finish or finish}", source="browse")
-    return AgentOutcome(finish=provider.finish or finish, outcome={"usage": usage})
+        journal.append(f"browse — {final or '(pas de résultat)'}", source="browse")
+    return BrowseOutcome(finish=final, success=success)
