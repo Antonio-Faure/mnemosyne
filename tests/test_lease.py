@@ -117,3 +117,42 @@ def test_claim_of_a_dead_process_is_released_at_once(tmp_path):
     claimed = db.claim_messages("browser", owner="heartbeat", stale_after_s=99999)
     assert [m["id"] for m in claimed] == [mid]
     db.close()
+
+
+def test_lease_from_a_previous_incarnation_is_reclaimed(tmp_path):
+    """In a container every heartbeat is pid 1: the start time tells them apart."""
+    import json as _json
+
+    from mnemosyne.db import _proc_start_time
+
+    db = _db(tmp_path)
+    db._conn.execute(
+        "INSERT INTO kv (key, value) VALUES ('lease:browser', ?)",
+        (
+            _json.dumps(
+                {
+                    "owner": "",
+                    "pid": os.getpid(),  # same pid, previous generation
+                    "host": socket.gethostname(),
+                    "started": (_proc_start_time() or 0) - 10_000,
+                    "expires": time.time() + 18_000,
+                }
+            ),
+        ),
+    )
+    db._conn.commit()
+    assert db.try_lease("browser", ttl_s=60, owner="next") is True
+    db.close()
+
+
+def test_lease_of_the_current_process_is_respected(tmp_path):
+    import json as _json
+
+    from mnemosyne.db import _proc_start_time
+
+    db = _db(tmp_path)
+    assert db.try_lease("browser", ttl_s=600, owner="me") is True
+    row = db._conn.execute("SELECT value FROM kv WHERE key = 'lease:browser'").fetchone()
+    held = _json.loads(row["value"])
+    assert held["pid"] == os.getpid() and held["started"] == _proc_start_time()
+    db.close()

@@ -105,6 +105,10 @@ class Heartbeat:
             )
         log.info("heartbeat bootstrapped: %d supported providers", supported)
 
+        dropped = self.engine.db.release_legacy_leases()
+        if dropped:
+            log.warning("released %d legacy lease(s) at boot", dropped)
+
         directives = self.control.directives()
         self.journal.append(
             f"démarrage heartbeat — {supported} providers supportés"

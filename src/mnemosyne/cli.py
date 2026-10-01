@@ -307,6 +307,10 @@ def _cmd_warmup(args: argparse.Namespace) -> int:
         "helper, n'écris à personne. Termine par finish avec un bilan factuel."
     )
     db = Database(cfg.db_file())
+    if db.count_pending_from("warmup"):
+        db.close()
+        print("une mission warmup est déjà en attente — rien à poster")
+        return 0
     Mailbox(db).post("warmup", "browser", mission)
     db.close()
     print(f"mission warmup « {goal['name']} » (~{minutes:.0f} min) postée au navigateur")

@@ -83,9 +83,52 @@ CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
 """
 
 
+def _proc_start_time(pid: int | None = None) -> int | None:
+    """Start time of a process (/proc field 22): identifies an incarnation.
+
+    In a container every `mnemosyne run` is pid 1, so the pid alone cannot tell
+    "the current holder" from "a previous generation that died".
+    """
+    target = pid if pid is not None else os.getpid()
+    try:
+        with open(f"/proc/{target}/stat", "rb") as handle:
+            raw = handle.read()
+    except OSError:
+        return None
+    try:
+        fields = raw[raw.rindex(b")") + 2 :].split()
+        return int(fields[19])
+    except (ValueError, IndexError):
+        return None
+
+
+def _process_gone(pid: object, started: object) -> bool:
+    """True when `pid` is dead, or alive but a different process incarnation."""
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    if isinstance(started, int) and started > 0:
+        current = _proc_start_time(pid)
+        if current is not None and current != started:
+            return True  # pid reused by a newer process
+    return False
+
+
 def _claim_owner(who: str) -> str:
     """Identify the claimer (kind, pid, host) so a dead one is detectable."""
-    return json.dumps({"who": who, "pid": os.getpid(), "host": socket.gethostname()})
+    return json.dumps(
+        {
+            "who": who,
+            "pid": os.getpid(),
+            "host": socket.gethostname(),
+            "started": _proc_start_time(),
+        }
+    )
 
 
 def _owner_is_dead(raw: str | None) -> bool:
@@ -134,15 +177,9 @@ def _lease_is_stale(held: dict, now: float) -> bool:
     """True when a lease may be taken: expired, or its holder process is gone."""
     if float(held.get("expires", 0)) <= now:
         return True
-    host, pid = held.get("host"), held.get("pid")
-    if host == socket.gethostname() and isinstance(pid, int) and pid > 0:
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return True
-        except PermissionError:
-            pass  # alive, owned by someone else
-    return False
+    if held.get("host") != socket.gethostname():
+        return False
+    return _process_gone(held.get("pid"), held.get("started"))
 
 
 class Database:
@@ -618,6 +655,7 @@ class Database:
                 "owner": owner,
                 "pid": os.getpid(),
                 "host": socket.gethostname(),
+                "started": _proc_start_time(),
                 "expires": now + ttl_s,
             }
         )
@@ -642,6 +680,25 @@ class Database:
                 self._conn.rollback()
                 raise
         return True
+
+    def release_legacy_leases(self) -> int:
+        """Drop lease rows written before process-incarnation tracking.
+
+        Called once at heartbeat start: a row without a process incarnation
+        cannot be attributed, and no live holder can be one of ours right after
+        boot, so keeping it would only block the driver.
+        """
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT key, value FROM kv WHERE key LIKE 'lease:%'"
+            ).fetchall()
+            dropped = 0
+            for row in rows:
+                if "started" not in (row["value"] or ""):
+                    self._conn.execute("DELETE FROM kv WHERE key = ?", (row["key"],))
+                    dropped += 1
+            self._conn.commit()
+            return dropped
 
     def release_lease(self, name: str) -> None:
         with self._lock:
