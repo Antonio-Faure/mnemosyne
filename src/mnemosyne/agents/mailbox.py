@@ -33,6 +33,18 @@ class Mailbox:
     def next_for(self, recipient: str) -> dict | None:
         return self.db.next_pending_message(recipient)
 
+    def claim_for(
+        self, recipient: str, owner: str = "agency", stale_after_s: float = 1800
+    ) -> dict | None:
+        """Atomically claim the oldest pending message for `recipient`.
+
+        Single writer per message, global turn-taking (see
+        `Database.claim_next_message`). Returns None when nothing is claimable.
+        """
+        return self.db.claim_next_message(
+            recipient, owner=owner, stale_after_s=stale_after_s
+        )
+
     def pending_recipients(self, prefer_exclude: str | None = None) -> list[str]:
         pending = [a for a in AGENTS if self.db.next_pending_message(a) is not None]
         if prefer_exclude and len(pending) > 1 and prefer_exclude in pending:

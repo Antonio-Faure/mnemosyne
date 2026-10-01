@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +70,9 @@ CREATE TABLE IF NOT EXISTS messages (
     status      TEXT NOT NULL DEFAULT 'pending',
     created_at  TEXT NOT NULL,
     handled_at  TEXT,
-    note        TEXT
+    note        TEXT,
+    claimed_at  TEXT,
+    claimed_by  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
 
@@ -96,7 +99,15 @@ class Database:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA synchronous=NORMAL")
             self._conn.executescript(SCHEMA)
+            self._migrate()
             self._conn.commit()
+
+    def _migrate(self) -> None:
+        """Add columns introduced after the first schema version (idempotent)."""
+        cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(messages)")}
+        for name in ("claimed_at", "claimed_by"):
+            if name not in cols:
+                self._conn.execute(f"ALTER TABLE messages ADD COLUMN {name} TEXT")
 
     def close(self) -> None:
         with self._lock:
@@ -410,6 +421,75 @@ class Database:
             ).fetchone()
         return dict(row) if row else None
 
+    def claim_next_message(
+        self, recipient: str, owner: str, stale_after_s: float = 1800
+    ) -> dict | None:
+        """Atomically claim the oldest PENDING message for `recipient`.
+
+        Global turn-taking is enforced: if a message is still RUNNING (claimed
+        less than `stale_after_s` ago), nothing is claimed — another process is
+        driving an agent. RUNNING messages older than that (crashed process) are
+        released to PENDING first, inside the same transaction.
+
+        Returns the claimed message (status `running`) or None.
+        """
+        now = datetime.now(UTC).replace(microsecond=0)
+        now_iso = now.isoformat()
+        stale_iso = (now - timedelta(seconds=stale_after_s)).isoformat()
+        with self._lock:
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                self._conn.execute(
+                    """UPDATE messages
+                       SET status = 'pending', claimed_at = NULL, claimed_by = NULL
+                       WHERE status = 'running'
+                         AND (claimed_at IS NULL OR claimed_at < ?)""",
+                    (stale_iso,),
+                )
+                busy = self._conn.execute(
+                    "SELECT 1 FROM messages WHERE status = 'running' LIMIT 1"
+                ).fetchone()
+                if busy is not None:
+                    self._conn.commit()
+                    return None
+                row = self._conn.execute(
+                    """SELECT * FROM messages
+                       WHERE status = 'pending' AND recipient = ?
+                       ORDER BY id ASC LIMIT 1""",
+                    (recipient,),
+                ).fetchone()
+                if row is None:
+                    self._conn.commit()
+                    return None
+                cur = self._conn.execute(
+                    """UPDATE messages
+                       SET status = 'running', claimed_at = ?, claimed_by = ?
+                       WHERE id = ? AND status = 'pending'""",
+                    (now_iso, owner, row["id"]),
+                )
+                self._conn.commit()
+            except Exception:
+                self._conn.rollback()
+                raise
+        if not cur.rowcount:
+            return None
+        message = dict(row)
+        message.update(
+            status="running", claimed_at=now_iso, claimed_by=owner, handled_at=None
+        )
+        return message
+
+    def archive_pending_messages(self, recipient: str, note: str | None = None) -> int:
+        """Archive (stop processing) every pending message addressed to `recipient`."""
+        with self._lock:
+            cur = self._conn.execute(
+                """UPDATE messages SET status = 'archived', handled_at = ?, note = ?
+                   WHERE recipient = ? AND status = 'pending'""",
+                (utcnow_iso(), note, recipient),
+            )
+            self._conn.commit()
+            return cur.rowcount
+
     def list_messages(self, status: str | None = None, limit: int = 50) -> list[dict]:
         with self._lock:
             if status:
@@ -426,10 +506,15 @@ class Database:
     def mark_message(
         self, message_id: int, status: str = "handled", note: str | None = None
     ) -> None:
+        """Set a message state. `handled_at` is only stamped on terminal states."""
+        terminal = status in ("handled", "failed", "review", "archived")
         with self._lock:
             self._conn.execute(
-                "UPDATE messages SET status = ?, handled_at = ?, note = ? WHERE id = ?",
-                (status, utcnow_iso(), note, message_id),
+                """UPDATE messages
+                   SET status = ?, handled_at = ?, note = ?,
+                       claimed_at = NULL, claimed_by = NULL
+                   WHERE id = ?""",
+                (status, utcnow_iso() if terminal else None, note, message_id),
             )
             self._conn.commit()
 

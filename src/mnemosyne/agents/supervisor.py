@@ -8,6 +8,7 @@ so the cost stays low and the behaviour is predictable.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from mnemosyne.config import Config
 from mnemosyne.db import Database
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
+from mnemosyne.util import finish_text
 
 log = get_logger("supervisor")
 
@@ -96,10 +98,9 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
         if not pending:
             return None
         agent = pending[0]
-        message = mailbox.next_for(agent)
+        message = mailbox.claim_for(agent, owner=f"heartbeat:{os.getpid()}")
         if message is None:
             return None
-        mailbox.mark(message["id"], "running")
         note = f"agency (fond) → agent {agent} : {message['body'][:160]}"
         log.info(note)
         if journal:
@@ -107,7 +108,12 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
         try:
             outcome = await _RUNNERS[agent](config, message["body"], mailbox, journal, vault_get)
             finish = finish_text(getattr(outcome, "finish", None)) or ""
-            mailbox.mark(message["id"], "handled", finish[:200] or None)
+            if finish:
+                mailbox.mark(message["id"], "handled", finish[:200])
+            else:
+                mailbox.mark(
+                    message["id"], "review", "agent stopped without task_done"
+                )
         except Exception as exc:  # noqa: BLE001
             log.error("agency background: agent %s failed: %s", agent, exc)
             mailbox.mark(message["id"], "failed", str(exc)[:200])
@@ -132,6 +138,7 @@ async def run_agency(
     mailbox.post("operator", target, task)
     result = AgencyResult(start=target)
     last: str | None = None
+    failures = 0
 
     try:
         for _ in range(max(1, max_handoffs)):
@@ -140,11 +147,10 @@ async def run_agency(
                 result.stop_reason = "no_pending"
                 break
             agent = pending[0]
-            message = mailbox.next_for(agent)
+            message = mailbox.claim_for(agent, owner=f"cli:{os.getpid()}")
             if message is None:
-                result.stop_reason = "no_pending"
+                result.stop_reason = "busy"
                 break
-            mailbox.mark(message["id"], "running")
             note = f"superviseur → agent {agent} : {message['body'][:200]}"
             log.info(note)
             if journal:
@@ -153,11 +159,18 @@ async def run_agency(
                 outcome = await _RUNNERS[agent](
                     config, message["body"], mailbox, journal, vault_get
                 )
-                mailbox.mark(message["id"], "handled", (outcome.finish or "")[:200] or None)
+                finish = finish_text(getattr(outcome, "finish", None)) or ""
+                if finish:
+                    mailbox.mark(message["id"], "handled", finish[:200])
+                else:
+                    mailbox.mark(
+                        message["id"], "review", "agent stopped without task_done"
+                    )
                 result.turns.append(
-                    {"agent": agent, "message_id": message["id"], "finish": outcome.finish}
+                    {"agent": agent, "message_id": message["id"], "finish": finish}
                 )
             except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
+                failures += 1
                 log.error("agent %s failed: %s", agent, exc)
                 mailbox.mark(message["id"], "failed", str(exc)[:200])
                 result.turns.append(
@@ -166,8 +179,8 @@ async def run_agency(
             last = agent
         else:
             result.stop_reason = "max_handoffs"
-        if result.stop_reason == "max_handoffs" and not mailbox.pending_recipients():
-            result.stop_reason = "no_pending"
+        if failures:
+            result.stop_reason = "failed"
     finally:
         db.close()
     return result
