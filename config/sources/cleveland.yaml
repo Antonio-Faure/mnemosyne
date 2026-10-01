@@ -1,0 +1,22 @@
+id: cleveland
+name: Cleveland Museum of Art — Open Access
+institution: Cleveland Museum of Art
+country: US
+protocol: rest
+base_url: https://openaccess-api.clevelandart.org/api/artworks/
+auth: none
+license: CC0-1.0
+rights: "Cleveland Museum of Art Open Access — CC0 1.0 Universal (images); underlying works public domain"
+rate_limit_per_s: 1.0
+priority: 35
+tags: [museum, united-states, keyless, cc0, posters, prints]
+seeds:
+  - "affiche"
+  - "poster"
+  - "Jules Chéret"
+  - "Alphonse Mucha"
+notes: >-
+  Keyless REST (Open Access API). GET /api/artworks/?q=<query>&has_image=1
+  returns {"data": [...]} with id, title, creators[].description, creation_date,
+  images.web.url and a CC0 share_license_status. No API key required; the query
+  URL is reproducible offline and images are served CC0.

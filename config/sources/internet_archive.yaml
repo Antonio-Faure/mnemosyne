@@ -11,7 +11,7 @@ rate_limit_per_s: 1.0
 priority: 40
 tags: [aggregator, keyless, books, images]
 seeds:
-  - "oil industry 1900"
-  - "factory workers historical"
-  - "petroleum refinery vintage"
+  - "affiche poster 1890-1914"
+  - "Les Maîtres de l'Affiche"
+  - "Mucha affiche poster"
 notes: "mediatype:image; originals via metadata/{id}."

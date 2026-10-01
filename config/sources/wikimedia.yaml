@@ -11,7 +11,8 @@ rate_limit_per_s: 0.5
 priority: 30
 tags: [media, keyless]
 seeds:
-  - "oil derrick 1900"
-  - "steel mill 19th century"
-  - "coal miners historical"
+  - "Les Maîtres de l'Affiche"
+  - "Alphonse Mucha poster"
+  - "Jules Chéret affiche"
+  - "affiche Belle Époque 1900"
 notes: "Use a descriptive User-Agent with contact; maxlag=5."
