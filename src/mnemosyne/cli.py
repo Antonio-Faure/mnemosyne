@@ -289,17 +289,28 @@ def _cmd_history(args: argparse.Namespace) -> int:
 
 def _cmd_warmup(args: argparse.Namespace) -> int:
     cfg = get_config()
+    from mnemosyne.agents.supervisor import BROWSER_LEASE_S
     from mnemosyne.agents.warmup import run_warmup
+    from mnemosyne.db import Database
 
-    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
-    outcome = asyncio.run(
-        run_warmup(
-            cfg,
-            minutes=args.minutes,
-            journal=Journal(cfg.journal_path),
-            vault_get=vault.get if vault else None,
+    db = Database(cfg.db_file())
+    if not db.try_lease("browser", ttl_s=BROWSER_LEASE_S):
+        db.close()
+        print("navigateur occupé (tour bi-agent en cours) — réessaie plus tard")
+        return 1
+    try:
+        vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+        outcome = asyncio.run(
+            run_warmup(
+                cfg,
+                minutes=args.minutes,
+                journal=Journal(cfg.journal_path),
+                vault_get=vault.get if vault else None,
+            )
         )
-    )
+    finally:
+        db.release_lease("browser")
+        db.close()
     print("finish:", outcome.finish or "(pas de résumé)")
     print("usage:", outcome.outcome.get("usage"))
     return 0
