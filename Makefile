@@ -81,9 +81,9 @@ install-timer:  ## install + enable the daily connect systemd user timer
 egress:  ## verify the agent's traffic does not transit Tailscale
 	./scripts/check-egress.sh
 
-cdp:  ## check the Chrome DevTools endpoint (shared namespace)
-	docker run --rm --network container:mnemosyne-chrome-1 curlimages/curl:latest \
-		-s http://127.0.0.1:9222/json/version
+cdp:  ## check the Chrome DevTools endpoint
+	docker compose exec -T mnemosyne python -c "import json,urllib.request; \
+		print(json.load(urllib.request.urlopen('http://127.0.0.1:9222/json/version'))['Browser'])"
 
 vnc:  ## print how to open the noVNC page (local desktop or SSH tunnel)
 	@echo "=== CAS 1 : tu as un bureau/écran sur CETTE machine ($(shell hostname)) ==="

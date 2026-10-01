@@ -36,15 +36,15 @@ note "default route dev: ${def_dev:-unknown}"
 host_ip="$(curl -s --max-time 8 https://api.ipify.org || true)"
 note "host egress IP: ${host_ip:-unknown}"
 
-chrome="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i chrome | head -1 || true)"
-if [ -n "$chrome" ]; then
-  cip="$(docker exec "$chrome" sh -c 'wget -qO- https://api.ipify.org' 2>/dev/null || true)"
-  note "chrome egress IP: ${cip:-unknown}"
+app="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i mnemosyne | head -1 || true)"
+if [ -n "$app" ]; then
+  cip="$(docker exec "$app" sh -c 'wget -qO- https://api.ipify.org' 2>/dev/null || true)"
+  note "container egress IP: ${cip:-unknown}"
   if [ -n "$cip" ] && [ -n "$host_ip" ] && [ "$cip" != "$host_ip" ]; then
     bad "container egress ($cip) differs from host ($host_ip)"
   fi
 else
-  note "chrome container not running (skipped container egress check)"
+  note "mnemosyne container not running (skipped container egress check)"
 fi
 
 if [ "$warn" -ne 0 ]; then

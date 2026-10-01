@@ -1,53 +1,22 @@
-# The agent runs in a dedicated Chrome and must browse on the host's real
-# (residential) network — never through Tailscale (see scripts/check-egress.sh).
-#
-# Chrome 154 only listens for CDP on 127.0.0.1 inside its own container, so
-# `mnemosyne` shares Chrome's network namespace: it reaches CDP at
-# 127.0.0.1:9222 directly. The API port is therefore published on the `chrome`
-# service (the namespace owner).
+# Single container: the app AND a real Chrome (Xvfb + VNC + CDP) AND the
+# browser-harness, all as uid 1000 — same filesystem, same user, one CDP owner.
+# The agent's traffic must stay on the machine's real (residential) network,
+# never through Tailscale (see scripts/check-egress.sh).
 
 services:
-  chrome:
-    build: docker/chrome
-    image: mnemosyne-chrome:local
-    shm_size: "1gb"
-    environment:
-      DISPLAY: ":99"
-      CHROME_PROFILE_DIR: /profile
-    # Chrome runs as a non-root user WITH its sandbox: Docker's default seccomp
-    # profile blocks the user namespaces the sandbox needs, so relax seccomp for
-    # this dedicated, loopback-only container (Chrome's own sandbox stays active).
-    security_opt:
-      - seccomp=unconfined
-    # Keep DNS off the tailnet (no MagicDNS / tail*.ts.net search domain).
-    dns:
-      - 1.1.1.1
-      - 9.9.9.9
-    dns_search:
-      - localdomain
-    volumes:
-      - ./data/chrome-profile:/profile
-      # files the agent may upload are placed here (read-only in the browser)
-      - ./data/outbox:/outbox:ro
-    ports:
-      # Bind to loopback only: the profile is logged into the agent's Google
-      # account and VNC has no password, so never expose these on the network.
-      - "127.0.0.1:6080:6080"   # noVNC — human intervention
-      - "127.0.0.1:8080:8080"   # mnemosyne API (shared namespace)
-    restart: unless-stopped
-
   mnemosyne:
     build: .
     image: mnemosyne:local
-    # Share Chrome's netns so browser-use reaches CDP on 127.0.0.1:9222.
-    network_mode: "service:chrome"
+    # uid 1000 keeps Chrome's sandbox enabled (no --no-sandbox) and matches the
+    # host user, so data/, vault/ and the Chrome profile are shared cleanly.
+    user: "1000:1000"
+    # Chrome's sandbox needs user namespaces that Docker's default seccomp blocks.
+    security_opt:
+      - seccomp=unconfined
     env_file:
       - .env
     environment:
       MNEMOSYNE_CONFIG: /app/config/config.yaml
-      MNEMOSYNE_CDP_URL: http://127.0.0.1:9222
-      MNEMOSYNE_BROWSER_ENABLED: "1"
-      # Reuse the OpenCode Go token opencode caches after login (read-only mount).
       OPENCODE_AUTH_PATH: /opencode-auth/auth.json
     volumes:
       - ./data:/app/data
@@ -55,9 +24,14 @@ services:
       - ./journal:/app/journal
       - ./control:/app/control
       - ./config:/app/config:ro
+      # reuse the OpenCode Go token opencode caches after login (read-only)
       - ${HOME}/.local/share/opencode:/opencode-auth:ro
-    depends_on:
-      - chrome
+    ports:
+      # loopback only: the profile is logged into the agent's Google account and
+      # VNC has no password, so never expose these on the network.
+      - "127.0.0.1:6080:6080"   # noVNC — human intervention
+      - "127.0.0.1:9222:9222"   # Chrome DevTools Protocol
+      - "127.0.0.1:8080:8080"   # mnemosyne API (mnemosyne serve)
     restart: unless-stopped
     command: ["mnemosyne", "run"]
 

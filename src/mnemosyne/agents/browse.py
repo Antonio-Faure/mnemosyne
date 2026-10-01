@@ -66,15 +66,23 @@ def _build_llm(config: Config, vault_get=None):
         },
         max_completion_tokens=8192,
         temperature=0.2,
+        # OpenCode/Zen rejects strict json_schema response_format (400); put the
+        # schema in the system prompt and let browser-use parse the JSON instead.
+        dont_force_structured_output=True,
+        add_schema_to_system_prompt=True,
     )
 
 
 def _available_files(config: Config) -> list[str]:
-    """Files under data/outbox, exposed to the browser as /outbox/<name> (upload)."""
+    """Files under data/outbox, made available to the agent for uploads.
+
+    App and Chrome now live in the same container (same filesystem), so we pass
+    the real absolute paths.
+    """
     outbox = config.data_path / "outbox"
     if not outbox.exists():
         return []
-    return [f"/outbox/{p.name}" for p in sorted(outbox.iterdir()) if p.is_file()]
+    return [str(p) for p in sorted(outbox.iterdir()) if p.is_file()]
 
 
 async def run_browse(
