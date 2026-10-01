@@ -104,6 +104,9 @@ class AgentsConfig(BaseModel):
         ]
     )
     warmup_max_turns: int = 40
+    #: browser-use disables vision for models named "deepseek"; deepseek-v4.1-flash
+    #: has native vision, so force it back on.
+    force_vision: bool = True
     #: automatic warmup scheduling (human-like)
     warmup_per_day_min: int = 1
     warmup_per_day_max: int = 2

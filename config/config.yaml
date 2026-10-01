@@ -79,6 +79,7 @@ agents:
   context_window_tokens: 128000
   output_dir: data/agent-runs
   warmup_max_turns: 40
+  force_vision: true
   warmup_per_day_min: 1
   warmup_per_day_max: 2
   warmup_window_start: 8

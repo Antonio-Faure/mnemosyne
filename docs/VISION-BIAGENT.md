@@ -142,9 +142,14 @@ Outils/permissions :
 
 ## 5. Conventions & garde-fous à respecter
 
-- **LLM** : Zen exige `User-Agent` propre + `x-opencode-session` ; **pas de
-  `max_tokens`**. Pour browser-use, `dont_force_structured_output=True` +
+- **LLM** : Zen exige `User-Agent` propre + `x-opencode-session` (cache) ;
+  **pas de `max_tokens`** (jamais envoyé — modèles à raisonnement). Pour
+  browser-use : `dont_force_structured_output=True` +
   `add_schema_to_system_prompt=True` (Zen refuse le `json_schema` strict).
+- **Vision forcée** : browser-use désactive la vision pour tout modèle nommé
+  « deepseek » (`agent/service.py`) ; `deepseek-v4.1-flash` a la vision native,
+  donc `config.agents.force_vision: true` remet `agent.settings.use_vision = True`
+  après construction (vérifié : les screenshots sont bien envoyés).
 - **Vault** pour tous les secrets (`github_token`, clés API, logins).
 - **Token GitHub** fine-grained : `Contents` RW + `Pull requests` RW, un seul
   repo, pas d'Admin. Branches `agent/*`, PR, jamais de force-push/rm.

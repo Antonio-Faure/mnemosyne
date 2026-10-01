@@ -64,7 +64,9 @@ def _build_llm(config: Config, vault_get=None):
             "User-Agent": USER_AGENT,
             "x-opencode-session": f"mnemosyne-browse-{uuid.uuid4().hex[:8]}",
         },
-        max_completion_tokens=8192,
+        # No output cap: reasoning models return empty content when the budget is
+        # exhausted (None => the field is omitted from the request).
+        max_completion_tokens=None,
         temperature=0.2,
         # OpenCode/Zen rejects strict json_schema response_format (400); put the
         # schema in the system prompt and let browser-use parse the JSON instead.
@@ -107,6 +109,15 @@ async def run_browse(
             + " Files to upload are made available to you (e.g. /outbox/*)."
         ),
     )
+    if config.agents.force_vision:
+        # browser-use turns vision OFF for any model named "deepseek"; v4.1-flash
+        # has native vision, so re-enable it (deepseek is the first classic
+        # DeepSeek model with vision).
+        try:
+            agent.settings.use_vision = True
+            log.info("browse: vision forced ON for %s", getattr(llm, "model", "?"))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("browse: could not force vision: %s", exc)
     save_dir = out_dir or (config.root / config.agents.output_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
     try:
