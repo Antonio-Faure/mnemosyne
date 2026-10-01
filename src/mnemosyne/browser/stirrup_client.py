@@ -18,6 +18,13 @@ from mnemosyne.logger import get_logger
 
 log = get_logger("llm")
 
+#: injected in the agent's context when it works a long time without finishing
+TURN_TIP = (
+    "Tip : Cela fait {turns} tours que tu travailles. Si tu n'arrives pas à faire "
+    "ce que tu cherches à faire, ne t'acharne pas : fais un bilan à la fin pour "
+    "signaler ton problème au Master."
+)
+
 
 class UsageSink:
     """Accumulates prompt-cache stats that Stirrup itself ignores."""
@@ -56,14 +63,39 @@ class UsageSink:
 
 
 class _CompletionsProxy:
-    def __init__(self, inner: Any, sink: UsageSink) -> None:
+    def __init__(
+        self,
+        inner: Any,
+        sink: UsageSink,
+        *,
+        tip_at: int = 0,
+        tip_every: int = 0,
+    ) -> None:
         self._inner = inner
         self._sink = sink
+        self._tip_at = tip_at
+        self._tip_every = tip_every
+        self._requests = 0
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 
+    def _tip_due(self, turn: int) -> bool:
+        if not self._tip_at or not self._tip_every or turn < self._tip_at:
+            return False
+        return (turn - self._tip_at) % self._tip_every == 0
+
     async def create(self, *args: Any, **kwargs: Any) -> Any:
+        # One request = one agent turn. Past `tip_at`, nudge the agent (and again
+        # every `tip_every` turns) so it wraps up instead of grinding to max_turns.
+        self._requests += 1
+        if self._tip_due(self._requests):
+            messages = list(kwargs.get("messages") or [])
+            messages.append(
+                {"role": "user", "content": TURN_TIP.format(turns=self._requests)}
+            )
+            kwargs = {**kwargs, "messages": messages}
+            log.info("turn tip injected at turn %d", self._requests)
         response = await self._inner.create(*args, **kwargs)
         try:
             self._sink.record(getattr(response, "usage", None))
@@ -73,18 +105,24 @@ class _CompletionsProxy:
 
 
 class _ChatProxy:
-    def __init__(self, inner: Any, sink: UsageSink) -> None:
+    def __init__(
+        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
+    ) -> None:
         self._inner = inner
-        self.completions = _CompletionsProxy(inner.completions, sink)
+        self.completions = _CompletionsProxy(
+            inner.completions, sink, tip_at=tip_at, tip_every=tip_every
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 
 
 class _ClientProxy:
-    def __init__(self, inner: Any, sink: UsageSink) -> None:
+    def __init__(
+        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
+    ) -> None:
         self._inner = inner
-        self.chat = _ChatProxy(inner.chat, sink)
+        self.chat = _ChatProxy(inner.chat, sink, tip_at=tip_at, tip_every=tip_every)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
@@ -102,6 +140,8 @@ class ZenChatClient(ChatCompletionsClient):
         session: str,
         timeout: float = 180.0,
         max_retries: int = 2,
+        tip_at: int = 0,
+        tip_every: int = 0,
     ) -> None:
         super().__init__(
             model,
@@ -125,6 +165,8 @@ class ZenChatClient(ChatCompletionsClient):
                 },
             ),
             self.usage,
+            tip_at=tip_at,
+            tip_every=tip_every,
         )
 
 
@@ -151,4 +193,6 @@ def build_agent_client(
         base_url=prov.base_url,
         api_key=api_key,
         session=session,
+        tip_at=config.agents.turn_tip_at,
+        tip_every=config.agents.turn_tip_every,
     )

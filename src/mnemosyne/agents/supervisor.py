@@ -82,8 +82,9 @@ async def _run_browser(config: Config, task: str, mailbox: Mailbox, journal, vau
 
 _RUNNERS = {"coder": _run_coder, "browser": _run_browser}
 
-#: a browser session may run long; hold the Chrome lease for an hour
-BROWSER_LEASE_S = 3600
+#: a browser session may run long (up to 200 turns); hold the Chrome lease well
+#: past the longest plausible session
+BROWSER_LEASE_S = 10800
 
 
 def _task_with_directives(config: Config, task: str) -> str:

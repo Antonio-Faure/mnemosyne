@@ -414,7 +414,7 @@ class Database:
         return dict(row) if row else None
 
     def claim_next_message(
-        self, recipient: str, owner: str, stale_after_s: float = 1800
+        self, recipient: str, owner: str, stale_after_s: float = 10800
     ) -> dict | None:
         """Atomically claim the oldest PENDING message for `recipient`.
 

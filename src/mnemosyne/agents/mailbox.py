@@ -37,7 +37,7 @@ class Mailbox:
         return self.db.next_pending_message(recipient)
 
     def claim_for(
-        self, recipient: str, owner: str = "agency", stale_after_s: float = 1800
+        self, recipient: str, owner: str = "agency", stale_after_s: float = 10800
     ) -> dict | None:
         """Atomically claim the oldest pending message for `recipient`.
 

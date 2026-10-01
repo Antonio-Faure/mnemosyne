@@ -33,7 +33,8 @@ class ApiConfig(BaseModel):
 class HeartbeatConfig(BaseModel):
     tick_seconds: int = 15
     max_workers: int = 4
-    job_timeout_s: int = 300
+    #: must exceed the longest agent session (browser sessions can hit 200 turns)
+    job_timeout_s: int = 7200
     stale_lock_s: int = 600
 
 
@@ -86,7 +87,11 @@ class IdentityConfig(BaseModel):
 class AgentsConfig(BaseModel):
     """Stirrup agent loop settings (bi-agent + warmup)."""
 
-    max_turns: int = 40
+    max_turns: int = 200
+    #: after this many turns, inject a "don't get stuck" tip into the agent's
+    #: context, then repeat every `turn_tip_every` turns
+    turn_tip_at: int = 75
+    turn_tip_every: int = 50
     #: Stirrup requires an explicit output ceiling; keep it high so reasoning
     #: models are never truncated (a small budget returns empty content).
     max_tokens: int = 32768
