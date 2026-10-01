@@ -28,8 +28,9 @@ WARMUP_GOALS: list[dict] = [
         "name": "wikipedia",
         "weight": 16,
         "sites": [
-            "https://fr.wikipedia.org/wiki/Histoire_de_l%27industrie",
+            "https://fr.wikipedia.org/wiki/Industrialisation",
             "https://fr.wikipedia.org/wiki/P%C3%A9trole",
+            "https://fr.wikipedia.org/wiki/Affiche",
             "https://fr.wikipedia.org/wiki/R%C3%A9volution_industrielle",
             "https://fr.wikipedia.org/wiki/Special:Random",
         ],
@@ -53,7 +54,7 @@ WARMUP_GOALS: list[dict] = [
         "sites": [
             "https://www.francetvinfo.fr/",
             "https://www.lemonde.fr/",
-            "https://www.ouest-france.fr/",
+            "https://www.lemonde.fr/archives/",
         ],
         "instruction": "Read the headlines and open one or two articles.",
     },
