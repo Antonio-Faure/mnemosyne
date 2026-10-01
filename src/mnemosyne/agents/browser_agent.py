@@ -178,9 +178,34 @@ class BrowserAgentToolProvider(ToolProvider):
         self.token = token
         self.git = Git(self.worktree, token)
 
+    def _worktree_is_usable(self) -> bool:
+        """A .git file is not enough: the gitdir it points at must exist.
+
+        The repo is also used from the host (different absolute path), so a
+        worktree registered inside the container looks broken outside — and a
+        stray `git worktree prune` on the host can drop its registration.
+        """
+        if not (self.worktree / ".git").exists():
+            return False
+        probe = subprocess.run(
+            ["git", "-C", str(self.worktree), "rev-parse", "--git-dir"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return probe.returncode == 0
+
     def _ensure_worktree(self) -> None:
-        if (self.worktree / ".git").exists():
+        if self._worktree_is_usable():
             return
+        if self.worktree.exists():
+            log.warning("helpers worktree unusable; recreating it")
+            subprocess.run(
+                ["git", "-C", str(self.repo), "worktree", "remove", "--force", str(self.worktree)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
         try:
             add_worktree(self.repo, self.worktree, self.config.dev.base_branch)
         except Exception as exc:  # noqa: BLE001

@@ -70,6 +70,9 @@ pour l'upload et l'e-mail, puis `finish`.
 ## RÈGLES
 
 - Ne modifie **jamais** le code produit (tu n'écris que des helpers).
+- **E-mail / formulaires** : vérifie le destinataire (adresse valide) **avant** d'envoyer
+  — un envoi ne s'annule pas ; après l'envoi, referme la fenêtre de composition
+  (aucun brouillon ne doit rester ouvert) et vérifie « Messages envoyés ».
 - **Une seule API d'action** : `click_at_xy` pour cliquer, `fill_input`/`press_key`
   pour le clavier. `js()` et `cdp()` sont **réservés à l'observation** : un clic
   ou une soumission via eux est refusé par le garde-fou, et un second clic au

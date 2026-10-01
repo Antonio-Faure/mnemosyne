@@ -80,6 +80,13 @@ et d'arrêts non propres. Corrigé :
 Pour repartir d'un profil vierge (efface la connexion Google) : `make chrome-reset`,
 puis reconnecte via `make vnc`.
 
+> **Attention worktrees** : l'arbre de travail des helpers du navigateur
+> (`data/agent-workspace/helpers-worktree`) est enregistré depuis le conteneur
+> (chemin absolu `/app/...`). Depuis l'hôte, `git worktree list` le affiche
+> « prunable » — c'est normal. Ne lance pas `git worktree prune` sur l'hôte :
+> ça casserait le worktree de l'agent (il se recrée tout seul au prochain tour,
+> mais les helpers non publiés seraient perdus).
+
 ## 3bis. Transparence & mémoire
 
 - **Transparence** : tout mail / formulaire inclut une phrase d'identité + l'URL du
