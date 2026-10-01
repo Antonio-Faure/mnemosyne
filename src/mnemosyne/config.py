@@ -159,6 +159,7 @@ class DevConfig(BaseModel):
             ".env",
             ".git/",
             ".github/",
+            "agents/",
             "vault/",
             "data/",
             "journal/",

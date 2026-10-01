@@ -82,6 +82,15 @@ Never leak a provider's raw shape into `Asset`: normalize at the connector bound
 entry `opencode-go`). It always sends a clean `User-Agent` and a stable
 `x-opencode-session` header (required by Zen).
 
+## Agent instructions vs AGENTS.md
+
+`AGENTS.md` (this file) is for a **coding agent working on this repo**. It is NOT
+the runtime prompt of our agents. Each runtime agent has its own editable
+instructions file, loaded at run time (the repo is mounted, so no rebuild needed):
+
+- **coder**  → `agents/coder.md`   (product code, tests, git/PR)
+- **browser** → `agents/browser.md` (browser-harness, helpers, video, outreach)
+
 ## Agentic layer (Stirrup)
 
 The heartbeat is the deterministic control plane; the per-task LLM loop uses

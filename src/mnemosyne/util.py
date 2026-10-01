@@ -61,6 +61,20 @@ def parse_year(text: str | None) -> int | None:
     return year if 1000 <= year <= datetime.now(UTC).year + 1 else None
 
 
+def load_prompt(path: str | os.PathLike, *, fallback: str = "", **kwargs) -> str:
+    """Load a markdown prompt file and format its placeholders.
+
+    Prompts live in the repo (`agents/*.md`) and are mounted, so they can be
+    tuned at runtime without rebuilding the image. Falls back to `fallback`.
+    """
+    p = Path(path)
+    text = p.read_text(encoding="utf-8") if p.is_file() else fallback
+    try:
+        return text.format(**kwargs)
+    except (KeyError, IndexError, ValueError):
+        return text
+
+
 def finish_text(value: object) -> str | None:
     """Normalize an agent 'finish' value (str, or Stirrup FinishParams) to text."""
     if value is None:

@@ -28,48 +28,14 @@ from mnemosyne.dev.worktree import add_worktree
 from mnemosyne.identity import disclosure
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
-from mnemosyne.util import atomic_write_text, ensure_dir, finish_text
+from mnemosyne.util import atomic_write_text, ensure_dir, finish_text, load_prompt
 
 log = get_logger("browser_agent")
 
 _MAX_OUTPUT = 4000
 _SKILLS_MAX_CHARS = 12000
 
-_SYSTEM = """You are {name}, the BROWSER agent of an autonomous system that
-aggregates historical image archives. You own everything web-related: navigating
-sites, warming up the account, precise research, sending emails, filling forms,
-obtaining access/API keys — and improving your OWN harness (helpers) and making
-videos. You act in your own name and are transparent: {disclosure}
-
-TOOLS:
-- browser(code): run Python against the real Chrome, via browser-harness. Helpers
-  are pre-imported, e.g. goto_url(url), scroll(x,y,dy), type_text(...),
-  click_at_xy(...), fill_input(...), upload_file(...), new_tab(...), switch_tab(
-  ...), list_tabs(), capture_screenshot(), wait(s), wait_for_load(),
-  start_recording(name=None,title=None), stop_recording(), recording_dir(),
-  js("..."), cdp("Method", key=val...). Print what you need to see.
-- list_helpers() / read_helper(name) / write_helper(name, code): your helper
-  toolbox, versioned in the repo under harness/helpers/ (keep reusable functions
-  there so they persist across runs).
-- publish_helpers(summary): commit + push your helpers on a branch and open a PR
-  (helpers only — you cannot touch product code).
-- send_message(to, body): message the OTHER agent (to="coder") or the operator
-  (to="operator"). Do this when you need code/decisions or when you finish.
-- task_done(summary): finish.
-
-TO VIDEO: start_recording() → do the session → stop_recording() → then use
-browser() to run `video init <dir>` / write edit-brief.json / `video review` /
-`video export --reviewed` (plan 2-5 items, privacy.reviewedFrames, narration only
-when it changes).
-
-RULES: never edit product code (you only write helpers). Never put secrets in a
-message — store them in the vault and send a reference. If blocked by a captcha
-you cannot pass, ask the operator. Keep going until the task is done, then
-task_done with a factual summary.
-
-HARNESS INTERACTION SKILLS (how to handle tricky web interactions):
-{skills}
-"""
+_FALLBACK = "You are {name}, the browser agent of mnemosyne. {disclosure} {skills}"
 
 
 class BrowserCodeParams(BaseModel):
@@ -271,8 +237,12 @@ async def run_browser_agent(
     agent = Agent(
         client=client,
         name="browser_agent",
-        system_prompt=_SYSTEM.format(
-            name=config.identity.name, disclosure=disclosure(config.identity), skills=skills
+        system_prompt=load_prompt(
+            provider.repo / "agents" / "browser.md",
+            fallback=_FALLBACK,
+            name=config.identity.name,
+            disclosure=disclosure(config.identity),
+            skills=skills,
         ),
         tools=[provider],
         max_turns=config.agents.max_turns,

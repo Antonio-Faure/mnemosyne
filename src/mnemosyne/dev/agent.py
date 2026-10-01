@@ -19,40 +19,14 @@ from mnemosyne.dev.tools import DevToolProvider
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.notify import Notifier
-from mnemosyne.util import ensure_dir, finish_text
+from mnemosyne.util import ensure_dir, finish_text, load_prompt
 
 log = get_logger("dev")
 
-_SYSTEM = """You are {name}, an autonomous software agent that extends its OWN
-repository: an open aggregator of historical image archive providers.
-
-MISSION: {task}
-
-CONVENTIONS (read AGENTS.md, docs/ARCHITECTURE.md, docs/P2-AGENTS.md first):
-- A new provider = a descriptor `config/sources/<id>.yaml` + a `Connector`
-  subclass in `src/mnemosyne/sources/<id>.py` + its registration in
-  `src/mnemosyne/sources/__init__.py` + a mocked test in `tests/`.
-- Normalize at the connector boundary into `Asset`; never leak provider shapes.
-- Follow the existing connectors (gallica.py, wikidata.py) as models.
-
-HARD RULES (enforced in code, do not attempt to bypass):
-- You may only write under: config/sources/, src/mnemosyne/sources/, tests/, docs/.
-- Never touch: .env, vault/, data/, journal/, control/, heartbeat/, reputation/,
-  agents/, dev/, AGENTS.md, docker-compose.yml, Dockerfile, pyproject.toml.
-- Never force-push, delete branches, reset or clean. No destructive git.
-- `run_lint` and `run_tests` MUST pass before you commit.
-
-WORKFLOW: start_branch(<slug>) → read code → write descriptor + connector +
-test → run_lint → run_tests → commit → push → open_pr → task_done.
-If you are stuck or a decision is ambiguous, call ask_operator (Telegram) and
-stop rather than guessing.
-
-BUDGET (token cost is quadratic: every step resends the whole transcript):
-- Read AT MOST one existing connector as a template. Do NOT re-read files you
-  already read. Do NOT list the whole tree.
-- Prefer grep to locate things, then read only the relevant file.
-- Keep tool outputs small; do not fetch large pages unless truly needed.
-"""
+_FALLBACK = (
+    "You are {name}, the coder agent of mnemosyne. MISSION: {task}. "
+    "Read agents/coder.md for your full instructions."
+)
 
 
 @dataclass
@@ -103,7 +77,12 @@ async def run_dev_agent(
     agent = Agent(
         client=client,
         name="mnemosyne_dev",
-        system_prompt=_SYSTEM.format(name=config.identity.name, task=task),
+        system_prompt=load_prompt(
+            repo_path / "agents" / "coder.md",
+            fallback=_FALLBACK,
+            name=config.identity.name,
+            task=task,
+        ),
         tools=[provider],
         max_turns=config.dev.max_turns,
     )

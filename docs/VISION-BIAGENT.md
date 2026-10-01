@@ -35,6 +35,11 @@ Commandes : `make up|down|logs`, `make cdp`, `make vnc|record`, `make egress`.
 **Deux sessions Stirrup distinctes**, même provider (OpenCode Go / Zen,
 `deepseek-v4.1-flash`), **un seul agent actif à la fois**.
 
+Chaque agent a son **fichier de consignes** (prompt système), chargé au runtime
+depuis le repo (monté) — donc modifiable à chaud, sans rebuild :
+`agents/coder.md` et `agents/browser.md`. (Ne pas confondre avec `AGENTS.md`, qui
+s'adresse à un agent codeur travaillant **sur** ce dépôt.)
+
 ### 2.1 Agent CODEUR (le produit)
 
 Rôle : faire **le produit final** — l'API d'agrégation et ses connecteurs.
