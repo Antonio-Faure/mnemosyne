@@ -151,6 +151,7 @@ def _cmd_browse(args: argparse.Namespace) -> int:
         )
     )
     print("success:", outcome.success)
+    print("usage:", outcome.usage)
     print("finish:", outcome.finish or "(pas de résumé)")
     return 0
 

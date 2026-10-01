@@ -28,10 +28,27 @@ log = get_logger("browse")
 class BrowseOutcome:
     finish: str | None
     success: bool | None
+    usage: dict | None = None
 
 
 def _build_llm(config: Config, vault_get=None):
+    """A ChatOpenAI pointed at OpenCode/Zen that accumulates cache-aware usage."""
     from browser_use.llm import ChatOpenAI
+
+    class TrackedChatOpenAI(ChatOpenAI):
+        def __init__(self, *args, **kwargs):  # noqa: D401
+            super().__init__(*args, **kwargs)
+            self.usage_totals = {"calls": 0, "prompt": 0, "cached": 0, "completion": 0}
+
+        async def ainvoke(self, *args, **kwargs):
+            resp = await super().ainvoke(*args, **kwargs)
+            usage = getattr(resp, "usage", None)
+            if usage is not None:
+                self.usage_totals["calls"] += 1
+                self.usage_totals["prompt"] += getattr(usage, "prompt_tokens", 0) or 0
+                self.usage_totals["cached"] += getattr(usage, "prompt_cached_tokens", 0) or 0
+                self.usage_totals["completion"] += getattr(usage, "completion_tokens", 0) or 0
+            return resp
 
     prov = config.llm.providers.get(config.llm.default)
     if prov is None:
@@ -39,7 +56,7 @@ def _build_llm(config: Config, vault_get=None):
     api_key, _ = resolve_api_key(prov, vault_get)
     if not api_key:
         raise RuntimeError("no LLM key for the browse agent")
-    return ChatOpenAI(
+    return TrackedChatOpenAI(
         model=prov.model or "deepseek-v4.1-flash",
         base_url=prov.base_url,
         api_key=api_key,
@@ -69,9 +86,10 @@ async def run_browse(
     out_dir: Path | None = None,
 ) -> BrowseOutcome:
     session = BrowserSession(cdp_url=cdp_url(), keep_alive=True)
+    llm = _build_llm(config, vault_get)
     agent = Agent(
         task=task,
-        llm=_build_llm(config, vault_get),
+        llm=llm,
         browser_session=session,
         available_file_paths=_available_files(config),
         max_actions_per_step=5,
@@ -97,7 +115,14 @@ async def run_browse(
         success = history.is_successful()
     except Exception:  # noqa: BLE001 - older/newer API differences
         final = str(history)[:2000]
-    log.info("browse done: success=%s result=%s", success, (final or "")[:200])
+    usage = getattr(llm, "usage_totals", None)
+    if usage:
+        usage["cached_pct"] = round(100.0 * usage["cached"] / max(usage["prompt"], 1), 1)
+    steps = getattr(history, "number_of_steps", None)
+    log.info("browse done: success=%s steps=%s usage=%s", success, steps, usage)
     if journal:
-        journal.append(f"browse — {final or '(pas de résultat)'}", source="browse")
-    return BrowseOutcome(finish=final, success=success)
+        journal.append(
+            f"browse — {final or '(pas de résultat)'} | steps={steps} usage={usage}",
+            source="browse",
+        )
+    return BrowseOutcome(finish=final, success=success, usage=usage)
