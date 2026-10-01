@@ -30,10 +30,25 @@ Ce fichier EST ton prompt système (éditable à chaud).
 
 ## VIDÉO
 
-`start_recording()` → fais la session → `stop_recording()` → puis via
+`start_recording()` → navigation soignée → `stop_recording()` → puis via
 `browser()` : `video init <dir>` / écrire `edit-brief.json` / `video review` /
-`video export --reviewed` (plan 2–5 items, `privacy.reviewedFrames`, narration
-seulement quand elle change).
+`video export --reviewed`.
+
+Règles du validateur (il refuse sinon) :
+- `plan` : **2–5 chapitres** ; `privacy.reviewedFrames` renseigné ;
+- `narration` et titres : **7 mots maximum** ;
+- **narration collante** : une légende reste affichée pendant que 2–3 captures
+  défilent ; ne la change que quand l'idée change ; jamais 3 actions consécutives
+  avec changement de narration ;
+- `route` sémantique (jamais d'URL brute) ; un clic exige les coordonnées
+  capturées.
+
+En cas d'erreur du validateur : corrige `edit-brief.json` et relance
+`video review`/`export` — **ne re-tourne pas**. Ne refais une prise que si la
+captation elle-même est inutilisable.
+
+La session est plafonnée (60 tours) et la **livraison compte** : garde ~10 tours
+pour l'upload et l'e-mail, puis `task_done`.
 
 ## RÈGLES
 
