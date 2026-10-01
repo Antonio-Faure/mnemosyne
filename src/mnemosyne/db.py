@@ -61,6 +61,18 @@ CREATE TABLE IF NOT EXISTS discoveries (
     created_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender      TEXT NOT NULL,
+    recipient   TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    created_at  TEXT NOT NULL,
+    handled_at  TEXT,
+    note        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
+
 CREATE TABLE IF NOT EXISTS memory (
     session TEXT NOT NULL,
     seq     INTEGER NOT NULL,
@@ -376,6 +388,59 @@ class Database:
     def count_discoveries(self) -> int:
         with self._lock:
             row = self._conn.execute("SELECT COUNT(*) AS n FROM discoveries").fetchone()
+        return int(row["n"]) if row else 0
+
+    # ── inter-agent mailbox (bi-agent) ───────────────────────────────────
+    def post_message(self, sender: str, recipient: str, body: str) -> int:
+        with self._lock:
+            cur = self._conn.execute(
+                """INSERT INTO messages (sender, recipient, body, status, created_at)
+                   VALUES (?, ?, ?, 'pending', ?)""",
+                (sender, recipient, body, utcnow_iso()),
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def next_pending_message(self, recipient: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                """SELECT * FROM messages WHERE status = 'pending' AND recipient = ?
+                   ORDER BY id ASC LIMIT 1""",
+                (recipient,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_messages(self, status: str | None = None, limit: int = 50) -> list[dict]:
+        with self._lock:
+            if status:
+                rows = self._conn.execute(
+                    "SELECT * FROM messages WHERE status = ? ORDER BY id ASC LIMIT ?",
+                    (status, limit),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM messages ORDER BY id ASC LIMIT ?", (limit,)
+                ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_message(
+        self, message_id: int, status: str = "handled", note: str | None = None
+    ) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE messages SET status = ?, handled_at = ?, note = ? WHERE id = ?",
+                (status, utcnow_iso(), note, message_id),
+            )
+            self._conn.commit()
+
+    def count_messages(self, status: str | None = None) -> int:
+        with self._lock:
+            if status:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) AS n FROM messages WHERE status = ?", (status,)
+                ).fetchone()
+            else:
+                row = self._conn.execute("SELECT COUNT(*) AS n FROM messages").fetchone()
         return int(row["n"]) if row else 0
 
     # ── memory (conversation store, pruned by compaction) ────────────────

@@ -18,7 +18,10 @@ services:
     environment:
       MNEMOSYNE_CONFIG: /app/config/config.yaml
       OPENCODE_AUTH_PATH: /opencode-auth/auth.json
+      # the coder agent works on the real (mounted) repo, so both agents live here
+      MNEMOSYNE_DEV_REPO: /repo
     volumes:
+      - ./:/repo
       - ./data:/app/data
       - ./vault:/app/vault
       - ./journal:/app/journal

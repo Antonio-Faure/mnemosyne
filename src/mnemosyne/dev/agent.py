@@ -19,7 +19,7 @@ from mnemosyne.dev.tools import DevToolProvider
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.notify import Notifier
-from mnemosyne.util import ensure_dir
+from mnemosyne.util import ensure_dir, finish_text
 
 log = get_logger("dev")
 
@@ -88,6 +88,7 @@ async def run_dev_agent(
     vault_get=None,
     repo: str | Path | None = None,
     journal: Journal | None = None,
+    mailbox=None,
 ) -> DevOutcome:
     repo_path = Path(repo or config.root).resolve()
     _ensure_clean(repo_path)
@@ -97,7 +98,7 @@ async def run_dev_agent(
     )
     notifier = Notifier(config.notify.telegram)
     provider = DevToolProvider(
-        repo_path, config.dev, token, notifier=notifier, journal=journal
+        repo_path, config.dev, token, notifier=notifier, journal=journal, mailbox=mailbox
     )
     agent = Agent(
         client=client,
@@ -114,4 +115,4 @@ async def run_dev_agent(
     log.info("dev agent usage (cache-aware): %s", usage)
     if journal:
         journal.append(f"dev agent usage: {usage}", source="dev")
-    return DevOutcome(finish=provider.finish or finish, branch=provider.branch)
+    return DevOutcome(finish=provider.finish or finish_text(finish), branch=provider.branch)

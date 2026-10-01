@@ -25,7 +25,7 @@ from mnemosyne.config import Config
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.notify import Notifier
-from mnemosyne.util import ensure_dir
+from mnemosyne.util import ensure_dir, finish_text
 
 log = get_logger("warmup")
 
@@ -251,4 +251,6 @@ async def run_warmup(
     log.info("warmup usage (cache-aware): %s", usage)
     if journal:
         journal.append(f"warmup {minutes:.0f}min — LLM usage: {usage}", source="warmup")
-    return AgentOutcome(finish=provider.finish or finish, outcome={"usage": usage})
+    return AgentOutcome(
+        finish=provider.finish or finish_text(finish), outcome={"usage": usage}
+    )

@@ -128,17 +128,28 @@ Outils/permissions :
   découverte (`src/mnemosyne/discovery/`) + 1 connexion/jour (timer).
 - Warmup auto (1–2/jour, sites pondérés), vault, Telegram, journal.
 
-**Reste (le chantier bi-agent) :**
-1. **Boîte aux lettres** durable (table `messages` en SQLite + API/classe).
-2. **Superviseur** : job heartbeat qui route et lance l'agent cible (turn-taking,
-   bornes), en respectant le quota gouverneur.
-3. **Outil `send_message`** côté codeur (Stirrup `DevToolProvider`) **et** côté
-   navigateur.
-4. **Agent navigateur « Stirrup + harness »** : session dédiée, outils
-   `browser-harness` (exécuter des helpers), édition **allowlist helpers**,
-   git pour les helpers, `send_message`.
-5. **Routage au lancement** (`mnemosyne agent coder|browser "<tâche>"`).
-6. Tests + docs.
+**Bi-agent (fait) :**
+1. **Boîte aux lettres** durable : table `messages` (`src/mnemosyne/db.py`) +
+   `src/mnemosyne/agents/mailbox.py`.
+2. **Superviseur** déterministe : `src/mnemosyne/agents/supervisor.py`
+   (`run_agency`) — un agent à la fois, hand-offs bornés, routage auto.
+3. **`send_message`** côté codeur (`DevToolProvider`) et côté navigateur.
+4. **Agent navigateur** : `src/mnemosyne/agents/browser_agent.py` (Stirrup) —
+   outil `browser(code)` qui exécute browser-harness, édition **allowlist
+   helpers** (`data/agent-workspace/helpers/`), `send_message`, `task_done`.
+5. **CLI** : `mnemosyne agency "<tâche>" [--to coder|browser] [--max N]` et
+   `mnemosyne messages`.
+6. Le **codeur** tourne aussi dans le conteneur (dépôt monté sur `/repo`,
+   `MNEMOSYNE_DEV_REPO=/repo`, worktree isolé) → `agency` fait tourner les deux.
+
+**Reste :**
+- **Autonomie heartbeat** : un job qui exécute en continu les messages en attente
+  (turn-taking en arrière-plan), et une notification à l'opérateur pour les
+  messages adressés à `operator` (Telegram).
+- **Git des helpers** : le navigateur écrit des helpers ; reste à les committer
+  (branche/PR) avec son propre périmètre.
+- **Skill browser-harness** : injecter les `interaction-skills` utiles au prompt
+  de l'agent navigateur.
 
 ## 5. Conventions & garde-fous à respecter
 

@@ -61,6 +61,19 @@ def parse_year(text: str | None) -> int | None:
     return year if 1000 <= year <= datetime.now(UTC).year + 1 else None
 
 
+def finish_text(value: object) -> str | None:
+    """Normalize an agent 'finish' value (str, or Stirrup FinishParams) to text."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    for attr in ("reason", "summary", "text"):
+        candidate = getattr(value, attr, None)
+        if isinstance(candidate, str) and candidate:
+            return candidate
+    return str(value)
+
+
 def utcnow_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 

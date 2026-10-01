@@ -132,6 +132,9 @@ class DevConfig(BaseModel):
     branch_prefix: str = "agent/"
     base_branch: str = "main"
     github_repo: str = "Antonio-Faure/mnemosyne"
+    #: git checkout the coder agent works on (default: the repo root). In Docker
+    #: this is the mounted repo (e.g. /repo), so both agents live in one process.
+    repo_path: str | None = None
     #: the dev agent resends its whole transcript every step, so keep turns low
     max_turns: int = 18
     #: tool output caps (chars/entries) — they live in the transcript forever
@@ -258,6 +261,8 @@ def load_config(config_path: str | Path | None = None) -> Config:
         cfg.app.vault_path = os.environ["MNEMOSYNE_VAULT_PATH"]
     if os.environ.get("MNEMOSYNE_LOG_LEVEL"):
         cfg.app.log_level = os.environ["MNEMOSYNE_LOG_LEVEL"]
+    if os.environ.get("MNEMOSYNE_DEV_REPO"):
+        cfg.dev.repo_path = os.environ["MNEMOSYNE_DEV_REPO"]
     return cfg
 
 

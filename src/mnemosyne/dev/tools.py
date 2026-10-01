@@ -58,6 +58,11 @@ class PrParam(BaseModel):
     body: str = Field(default="", description="Pull request body")
 
 
+class SendMessageParam(BaseModel):
+    to: str = Field(description="Recipient: 'browser' or 'operator'")
+    body: str = Field(description="Message (never include secrets — use vault references)")
+
+
 class DoneParam(BaseModel):
     summary: str = Field(description="What was done")
 
@@ -83,6 +88,7 @@ class DevToolProvider(ToolProvider):
         *,
         notifier: Notifier | None = None,
         journal: Journal | None = None,
+        mailbox=None,
     ):
         self.repo = Path(repo)
         self.config = config
@@ -90,6 +96,7 @@ class DevToolProvider(ToolProvider):
         self.git = Git(self.repo, self.token)
         self.notifier = notifier
         self.journal = journal
+        self.mailbox = mailbox
         self.branch: str | None = None
         self.finish: str | None = None
 
@@ -110,8 +117,13 @@ class DevToolProvider(ToolProvider):
         return target
 
     def _run_cmd(self, args: list[str], timeout: int = 300) -> subprocess.CompletedProcess:
+        # make lint/tests import the code from the working repo, not the installed copy
+        import os
+
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(self.repo / "src") + os.pathsep + env.get("PYTHONPATH", "")
         return subprocess.run(
-            args, cwd=self.repo, capture_output=True, text=True, timeout=timeout
+            args, cwd=self.repo, capture_output=True, text=True, timeout=timeout, env=env
         )
 
     async def _escalate(self, message: str) -> None:
@@ -265,11 +277,20 @@ class DevToolProvider(ToolProvider):
             await self._escalate(p.message)
             return _ok("question sent to the operator on Telegram")
 
+        async def send_exec(p: SendMessageParam):
+            if self.mailbox is None:
+                return _fail("no mailbox configured")
+            try:
+                mid = self.mailbox.post("coder", p.to, p.body)
+            except ValueError as exc:
+                return _fail(str(exc))
+            return _ok(f"message #{mid} sent to {p.to}")
+
         async def done_exec(p: DoneParam):
             self.finish = p.summary
             return _ok("done")
 
-        return [
+        tools = [
             Tool(name="list_files", description="List files in a directory.",
                  parameters=DirParam, executor=list_exec),
             Tool(name="read_file", description="Read a repo file.",
@@ -299,6 +320,16 @@ class DevToolProvider(ToolProvider):
             Tool(name="task_done", description="Finish.",
                  parameters=DoneParam, executor=done_exec),
         ]
+        if self.mailbox is not None:
+            tools.append(
+                Tool(
+                    name="send_message",
+                    description="Message the browser agent or the operator.",
+                    parameters=SendMessageParam,
+                    executor=send_exec,
+                )
+            )
+        return tools
 
 
 def _writable(rel: str, config: DevConfig) -> bool:

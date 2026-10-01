@@ -13,7 +13,7 @@ from mnemosyne.config import Config
 from mnemosyne.journal import Journal
 from mnemosyne.models import SourceDescriptor
 from mnemosyne.notify import Notifier
-from mnemosyne.util import ensure_dir
+from mnemosyne.util import ensure_dir, finish_text
 
 
 @dataclass
@@ -59,4 +59,6 @@ async def run_onboarding(
             f"onboarding `{descriptor.id}` LLM usage: {client.usage.summary()}",
             source="onboard",
         )
-    return AgentOutcome(finish=provider.finish or finish, outcome=provider.outcome)
+    return AgentOutcome(
+        finish=provider.finish or finish_text(finish), outcome=provider.outcome
+    )

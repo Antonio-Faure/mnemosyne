@@ -158,41 +158,55 @@ def _cmd_browse(args: argparse.Namespace) -> int:
 
 
 def _agent_worktree(cfg) -> Path:
-    """A throwaway git worktree based on the base branch.
+    """A throwaway git worktree based on the base branch (never touch main)."""
+    from mnemosyne.dev.worktree import add_worktree
 
-    The dev agent works here so it never switches the branch of the main
-    checkout (which used to disrupt the operator's working tree).
-    """
-    path = Path(cfg.data_path) / "agent-worktree"
-    subprocess.run(
-        ["git", "-C", str(cfg.root), "worktree", "remove", "--force", str(path)],
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["git", "-C", str(cfg.root), "fetch", "origin", cfg.dev.base_branch],
-        capture_output=True,
-        text=True,
-    )
-    res = subprocess.run(
-        [
-            "git", "-C", str(cfg.root), "worktree", "add", "--detach",
-            str(path), f"origin/{cfg.dev.base_branch}",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if res.returncode != 0:
-        raise RuntimeError(f"git worktree add failed: {res.stderr.strip()[:200]}")
-    return path
+    return add_worktree(cfg.root, Path(cfg.data_path) / "agent-worktree", cfg.dev.base_branch)
 
 
 def _cleanup_worktree(cfg, path) -> None:
-    subprocess.run(
-        ["git", "-C", str(cfg.root), "worktree", "remove", "--force", str(path)],
-        capture_output=True,
-        text=True,
+    from mnemosyne.dev.worktree import remove_worktree
+
+    remove_worktree(cfg.root, path)
+
+
+def _cmd_agency(args: argparse.Namespace) -> int:
+    """Run the bi-agent (coder + browser) under the deterministic supervisor."""
+    cfg = get_config()
+    from mnemosyne.agents.supervisor import run_agency
+
+    vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
+    result = asyncio.run(
+        run_agency(
+            cfg,
+            args.task,
+            start=args.to,
+            max_handoffs=args.max,
+            journal=Journal(cfg.journal_path),
+            vault_get=vault.get if vault else None,
+        )
     )
+    print(f"start: {result.start} | stop: {result.stop_reason}")
+    for turn in result.turns:
+        summary = turn.get("finish") or turn.get("error") or ""
+        print(f"  - {turn.get('agent')} (msg #{turn.get('message_id')}): {str(summary)[:160]}")
+    return 0
+
+
+def _cmd_messages(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    messages = db.list_messages(status=args.status, limit=args.limit)
+    db.close()
+    for m in messages:
+        print(
+            f"#{m['id']:<4} {m['status']:<8} "
+            f"{m['sender']} -> {m['recipient']}: {m['body'][:110]}"
+        )
+    print(f"\n{len(messages)} message(s)")
+    return 0
 
 
 def _cmd_discoveries(args: argparse.Namespace) -> int:
@@ -674,6 +688,18 @@ def build_parser() -> argparse.ArgumentParser:
     pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
     pw.add_argument("--minutes", type=float, default=5.0)
     pw.set_defaults(func=_cmd_warmup)
+
+    pagency = sub.add_parser("agency", help="run the bi-agent (coder + browser) on a task")
+    pagency.add_argument("task", help="what the agency must achieve")
+    pagency.add_argument("--to", choices=["coder", "browser"], default=None,
+                         help="force the starting agent (default: auto-routing)")
+    pagency.add_argument("--max", type=int, default=6, help="max hand-offs")
+    pagency.set_defaults(func=_cmd_agency)
+
+    pmsgs = sub.add_parser("messages", help="show the inter-agent mailbox")
+    pmsgs.add_argument("--status", default=None, help="filter: pending/running/handled/failed")
+    pmsgs.add_argument("--limit", type=int, default=50)
+    pmsgs.set_defaults(func=_cmd_messages)
 
     pbrowse = sub.add_parser("browse", help="run a generic browser agent on a task")
     pbrowse.add_argument("task", help="what to do in the browser")
