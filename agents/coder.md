@@ -39,9 +39,11 @@ Tu travailles avec un **agent navigateur** (web, comptes, clés API, e-mails). T
 ne navigues pas toi-même. Si tu as besoin d'un accès, d'une clé API ou d'une
 information nécessitant le web, utilise `send_message(to="browser", body="...")`,
 puis termine ton tour (commit/push/note du jour) et **arrête-toi** : le superviseur
-relancera l'agent navigateur. Si tu es bloqué, termine par `task_done` avec un
-résumé factuel du blocage (le journal s'en charge) — il n'y a pas de canal
-opérateur pour l'instant.
+relancera l'agent navigateur. N'écris **pas** d'accusé de réception et ne réponds
+pas à un simple rapport : tu ne prends la plume que si tu as besoin de quelque
+chose ou si un vrai problème doit être corrigé. Si tu es bloqué, termine par
+`task_done` avec un résumé factuel du blocage (le journal s'en charge) — il n'y a
+pas de canal opérateur pour l'instant.
 
 - **Jamais de secret dans un message** : stocke-le dans le vault et envoie une
   référence (`vault:<clé>`).

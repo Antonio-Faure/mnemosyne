@@ -32,6 +32,18 @@ COPY src ./src
 COPY config ./config
 RUN pip install -e '.[browser]'
 
+# mnemosyne house style: allow long edits. The harness default caps a compiled
+# video at 32 s (maximumDurationBudget) and a 2-minute presentation is wanted.
+RUN python - <<'PY'
+import pathlib
+p = pathlib.Path("/usr/local/lib/python3.12/site-packages/browser_harness/video.py")
+t = p.read_text()
+patch = t.replace('"maximumDurationBudget": 32', '"maximumDurationBudget": 180')
+patch = patch.replace('"baseDurationBudget": 22', '"baseDurationBudget": 40')
+assert '"maximumDurationBudget": 180' in patch, "browser_harness video.py changed"
+p.write_text(patch)
+PY
+
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

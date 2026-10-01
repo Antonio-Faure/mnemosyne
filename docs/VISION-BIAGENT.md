@@ -177,11 +177,15 @@ Outils/permissions :
 - Directives permanentes (`control/directives.md`) **injectées** dans chaque tour.
 - Mémoire morte supprimée ; plafond de sortie Stirrup gardé haut (32k) ;
   environnement filtré pour `browser-harness` ; lectures du dépôt encadrées.
-- Sessions navigateur : **200 tours** max ; à **75 tours** (puis tous les 50) un
+- Sessions navigateur : **400 tours** max ; à **75 tours** (puis tous les 50) un
   **tip anti-acharnement** est injecté dans le contexte : l'agent peut écrire son
   problème dans ses **output tokens** (bilan final) — le Master (l'humain ou une
-  autre IA) le lira et corrigera ; timeouts alignés (job heartbeat 2 h, bail
-  navigateur 3 h, reprise des messages 3 h).
+  autre IA) le lira et corrigera ; timeouts alignés (job heartbeat 4 h, bail
+  navigateur 5 h, reprise des messages 5 h).
+- **Échanges = relations d'intérêt** : un agent n'écrit à l'autre que s'il a
+  besoin de quelque chose ou pour signaler un vrai problème. Pas de rapport
+  obligatoire, pas d'accusé de réception — le bilan de fin de mission est le
+  `task_done` (journal), pas un message.
 
 **Reste :**
 - **Canal opérateur** : désactivé pour l'instant (l'opérateur réfléchit à une
