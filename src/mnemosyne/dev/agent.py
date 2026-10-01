@@ -63,6 +63,7 @@ async def run_dev_agent(
     repo: str | Path | None = None,
     journal: Journal | None = None,
     mailbox=None,
+    max_turns: int | None = None,
 ) -> DevOutcome:
     repo_path = Path(repo or config.root).resolve()
     _ensure_clean(repo_path)
@@ -84,7 +85,7 @@ async def run_dev_agent(
             task=task,
         ),
         tools=[provider],
-        max_turns=config.dev.max_turns,
+        max_turns=max_turns or config.dev.max_turns,
     )
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)

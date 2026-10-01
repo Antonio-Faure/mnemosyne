@@ -19,7 +19,7 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup ag
 - `src/mnemosyne/catalog/` — provider registry + lifecycle state machine
 - `src/mnemosyne/connectors/` — connector contract (`base.py`)
 - `src/mnemosyne/sources/` — one connector per provider (`iiif.py` = generic IIIF)
-- `src/mnemosyne/agents/` — bi-agent: `mailbox.py`, `supervisor.py`, `browser_agent.py`, `warmup*.py`
+- `src/mnemosyne/agents/` — bi-agent: `mailbox.py`, `supervisor.py`, `browser_agent.py`, `warmup_schedule.py` (le warmup est une mission du navigateur)
 - `src/mnemosyne/dev/` — coder agent: `agent.py`, `tools.py`, `guard.py`, `git_ops.py`, `worktree.py`
 - `src/mnemosyne/discovery/` — find new providers (Wikidata IIIF hosts)
 - `src/mnemosyne/normalize/` — canonical `Asset`, dedup

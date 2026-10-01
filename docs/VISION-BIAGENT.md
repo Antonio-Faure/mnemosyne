@@ -137,7 +137,7 @@ Outils/permissions :
 - Agent codeur via `agency` / `connect-next` (Stirrup, PR, worktree isolé).
 - Générateur de connecteurs IIIF générique (`src/mnemosyne/sources/iiif.py`) +
   découverte (`src/mnemosyne/discovery/`) + 1 connexion/jour (timer).
-- Warmup auto (1–2/jour, sites pondérés), vault, Telegram, journal.
+- Warmup auto (1–2/jour, sites pondérés) : **une mission « lecture seule » postée au navigateur** (plafonnée en tours), vault, Telegram, journal.
 
 **Bi-agent (fait) :**
 1. **Boîte aux lettres** durable : table `messages` (`src/mnemosyne/db.py`) +

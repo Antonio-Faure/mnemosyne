@@ -17,7 +17,7 @@ heartbeat:
   max_workers: 4
   # browser sessions (bi-agent turn, warmup) can run several minutes
   job_timeout_s: 14400
-  stale_lock_s: 3600
+  stale_lock_s: 18000   # > job_timeout_s : un job agent long ne doit pas être relancé
 
 reputation:
   # ISO date the agent's own Google account was created — enables the warmup

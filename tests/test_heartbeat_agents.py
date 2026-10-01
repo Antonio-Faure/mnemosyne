@@ -36,7 +36,7 @@ async def test_agency_idle_is_free(config):
 async def test_agency_runs_one_pending_message(config, monkeypatch):
     calls: list[str] = []
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get):
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, max_turns=None):
         calls.append(task)
         return AgentOutcome(finish="rapport ok")
 

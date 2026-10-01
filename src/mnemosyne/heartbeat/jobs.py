@@ -95,10 +95,11 @@ async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
 async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     """Human-like warmup browsing: 1-2 randomized sessions/day inside a window.
 
-    Each session picks one goal (Gmail, Wikipedia, INA, Gallica…) and wanders
-    slowly to build the account's history/coherence. No outbound actions.
+    The session itself is a normal mission for the BROWSER agent (read-only
+    wandering on archive/history sites); this job only decides *when* and posts
+    it to the mailbox, with a tight turn cap.
     """
-    from mnemosyne.agents.warmup import run_warmup
+    from mnemosyne.agents.mailbox import Mailbox
     from mnemosyne.agents.warmup_schedule import (
         daily_session_target,
         pick_goal,
@@ -135,28 +136,37 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
 
     goal = pick_goal()
     minutes = random.uniform(cfg.agents.warmup_session_min, cfg.agents.warmup_session_max)
-    note = f"warmup « {goal['name']} » ~{minutes:.0f} min (session {count + 1}/{target})"
+    sites = goal.get("sites") or cfg.agents.warmup_sites
+    db = ctx.engine.db
+    if db.count_pending_from("warmup"):
+        ctx.journal.append("warmup : mission déjà en attente", source="warmup")
+        return {
+            "interval_s": seconds_until_next_slot(
+                now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
+            )
+        }
+
+    mission = (
+        f"[[tour: {cfg.agents.warmup_max_turns}]]\n"
+        f"MISSION WARMUP (~{minutes:.0f} min, lecture seule) — objectif « {goal['name']} ».\n"
+        f"Sites : {', '.join(sites)}\n"
+        f"{goal.get('instruction', 'Parcourt ces sites comme un curieux.')}\n"
+        "\nRègles : navigation lente et humaine (attentes de 5 à 20 s, défilement par\n"
+        "petites pages, une recherche Max 2-3, suivi d'un lien ou deux). AUCUNE action\n"
+        "sortante : pas de compte, pas de formulaire, pas d'e-mail, pas d'envoi. Ne\n"
+        "crée aucun helper, n'écris à personne. Quand le temps est écoulé, termine par\n"
+        "finish avec un bilan factuel de ce que tu as parcouru."
+    )
+    mailbox = Mailbox(db)
+    mailbox.post("warmup", "browser", mission)
+    db.incr_counter(key)
+    db.set_kv("warmup_last", job.run_at)
+    note = (
+        f"warmup « {goal['name']} » ~{minutes:.0f} min posté au navigateur "
+        f"(session {count + 1}/{target})"
+    )
     log.info(note)
     ctx.journal.append(note, source="warmup")
-    from mnemosyne.agents.supervisor import BROWSER_LEASE_S
-
-    if not ctx.engine.db.try_lease("browser", ttl_s=BROWSER_LEASE_S):
-        ctx.journal.append(
-            "warmup : navigateur occupé (bi-agent), reporté", level="warn", source="warmup"
-        )
-        return {"interval_s": 900}
-    try:
-        result = await run_warmup(
-            cfg, minutes=minutes, goal=goal, journal=ctx.journal, vault_get=_vault_get(ctx)
-        )
-    finally:
-        ctx.engine.db.release_lease("browser")
-    ctx.engine.db.incr_counter(key)
-    ctx.engine.db.set_kv("warmup_last", job.run_at)
-    ctx.journal.append(
-        f"warmup « {goal['name']} » terminé — {result.finish or 'ok'}", source="warmup"
-    )
-    # next session later, still inside today's human window if possible
     return {
         "interval_s": seconds_until_next_slot(
             now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end

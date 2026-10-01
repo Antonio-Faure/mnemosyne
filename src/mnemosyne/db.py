@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import socket
 import sqlite3
 import threading
 import time
@@ -41,6 +43,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     max_attempts INTEGER NOT NULL DEFAULT 5,
     run_at       TEXT NOT NULL,
     locked_at    TEXT,
+    locked_by    TEXT,
     last_error   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_due ON jobs(state, run_at, priority);
@@ -80,6 +83,68 @@ CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
 """
 
 
+def _claim_owner(who: str) -> str:
+    """Identify the claimer (kind, pid, host) so a dead one is detectable."""
+    return json.dumps({"who": who, "pid": os.getpid(), "host": socket.gethostname()})
+
+
+def _owner_is_dead(raw: str | None) -> bool:
+    """True when the process that claimed the work no longer exists."""
+    if not raw:
+        return False
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        data = None
+    if not isinstance(data, dict):
+        # legacy owner format: "heartbeat:1234" / "cli:1234"
+        try:
+            data = {"pid": int(str(raw).rsplit(":", 1)[-1])}
+        except (TypeError, ValueError):
+            return False
+    host, pid = data.get("host"), data.get("pid")
+    if host != socket.gethostname() or not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        pass
+    return False
+
+
+def _read_lease(raw: str) -> dict | None:
+    """Parse a lease value: JSON object, JSON number, or a plain float expiry."""
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        try:
+            return {"expires": float(raw)}
+        except (TypeError, ValueError):
+            return None
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, (int, float)):  # legacy: the bare expiry was valid JSON
+        return {"expires": float(data)}
+    return None
+
+
+def _lease_is_stale(held: dict, now: float) -> bool:
+    """True when a lease may be taken: expired, or its holder process is gone."""
+    if float(held.get("expires", 0)) <= now:
+        return True
+    host, pid = held.get("host"), held.get("pid")
+    if host == socket.gethostname() and isinstance(pid, int) and pid > 0:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        except PermissionError:
+            pass  # alive, owned by someone else
+    return False
+
+
 class Database:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -96,10 +161,14 @@ class Database:
 
     def _migrate(self) -> None:
         """Add columns introduced after the first schema version (idempotent)."""
-        cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(messages)")}
-        for name in ("claimed_at", "claimed_by"):
-            if name not in cols:
-                self._conn.execute(f"ALTER TABLE messages ADD COLUMN {name} TEXT")
+        for table, names in (
+            ("messages", ("claimed_at", "claimed_by")),
+            ("jobs", ("locked_by",)),
+        ):
+            cols = {row["name"] for row in self._conn.execute(f"PRAGMA table_info({table})")}
+            for name in names:
+                if name not in cols:
+                    self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} TEXT")
 
     def close(self) -> None:
         with self._lock:
@@ -214,9 +283,15 @@ class Database:
             claimed: list[Job] = []
             for row in rows:
                 cur = self._conn.execute(
-                    """UPDATE jobs SET state = ?, locked_at = ?
+                    """UPDATE jobs SET state = ?, locked_at = ?, locked_by = ?
                        WHERE id = ? AND state = ?""",
-                    (JobState.RUNNING.value, now, row["id"], JobState.PENDING.value),
+                    (
+                        JobState.RUNNING.value,
+                        now,
+                        _claim_owner(f"job:{row['kind']}"),
+                        row["id"],
+                        JobState.PENDING.value,
+                    ),
                 )
                 if cur.rowcount:
                     claimed.append(_row_to_job(row))
@@ -249,15 +324,33 @@ class Database:
             self._conn.commit()
 
     def recover_stale_jobs(self, cutoff: str) -> int:
-        """Return RUNNING jobs older than `cutoff` to PENDING (crash recovery)."""
+        """Return stuck RUNNING jobs to PENDING (crash recovery).
+
+        A job is stuck when it has been RUNNING longer than `cutoff`, or when the
+        process that claimed it no longer exists (killed session / dead container
+        process) — the second case is what makes recovery immediate instead of
+        waiting for the whole stale window.
+        """
         with self._lock:
-            cur = self._conn.execute(
-                """UPDATE jobs SET state = ?, locked_at = NULL
-                   WHERE state = ? AND (locked_at IS NULL OR locked_at < ?)""",
-                (JobState.PENDING.value, JobState.RUNNING.value, cutoff),
-            )
+            rows = self._conn.execute(
+                "SELECT id, locked_at, locked_by FROM jobs WHERE state = ?",
+                (JobState.RUNNING.value,),
+            ).fetchall()
+            recovered = 0
+            for row in rows:
+                if (
+                    row["locked_at"] is None
+                    or row["locked_at"] < cutoff
+                    or _owner_is_dead(row["locked_by"])
+                ):
+                    cur = self._conn.execute(
+                        """UPDATE jobs SET state = ?, locked_at = NULL, locked_by = NULL
+                           WHERE id = ? AND state = ?""",
+                        (JobState.PENDING.value, row["id"], JobState.RUNNING.value),
+                    )
+                    recovered += cur.rowcount
             self._conn.commit()
-            return cur.rowcount
+            return recovered
 
     def has_open_job(self, kind: str, source_id: str | None = None) -> bool:
         """True if a pending/running job of `kind` exists.
@@ -446,13 +539,23 @@ class Database:
         with self._lock:
             try:
                 self._conn.execute("BEGIN IMMEDIATE")
-                self._conn.execute(
-                    """UPDATE messages
-                       SET status = 'pending', claimed_at = NULL, claimed_by = NULL
-                       WHERE status = 'running'
-                         AND (claimed_at IS NULL OR claimed_at < ?)""",
-                    (stale_iso,),
-                )
+                running = self._conn.execute(
+                    "SELECT id, claimed_at, claimed_by FROM messages"
+                    " WHERE status = 'running'"
+                ).fetchall()
+                for row in running:
+                    if (
+                        row["claimed_at"] is None
+                        or row["claimed_at"] < stale_iso
+                        or _owner_is_dead(row["claimed_by"])
+                    ):
+                        self._conn.execute(
+                            """UPDATE messages
+                               SET status = 'pending', claimed_at = NULL,
+                                   claimed_by = NULL
+                               WHERE id = ?""",
+                            (row["id"],),
+                        )
                 busy = self._conn.execute(
                     "SELECT 1 FROM messages WHERE status = 'running' LIMIT 1"
                 ).fetchone()
@@ -471,7 +574,7 @@ class Database:
                         """UPDATE messages
                            SET status = 'running', claimed_at = ?, claimed_by = ?
                            WHERE id = ? AND status = 'pending'""",
-                        (now_iso, owner, row["id"]),
+                        (now_iso, _claim_owner(owner), row["id"]),
                     )
                     if cur.rowcount:
                         message = dict(row)
@@ -500,30 +603,45 @@ class Database:
             return cur.rowcount
 
     # ── cross-process leases (single browser driver) ─────────────────────
-    def try_lease(self, name: str, ttl_s: float) -> bool:
-        """Acquire `name` for `ttl_s` seconds. False if someone else holds it.
+    def try_lease(self, name: str, ttl_s: float, owner: str = "") -> bool:
+        """Acquire `name` for `ttl_s` seconds. False if someone alive holds it.
 
         Leases are intentional and coarse: only one process may drive Chrome at
-        a time (bi-agent browser turn, warmup session, picture/video work).
+        a time (bi-agent browser turn, warmup mission, picture/video work).
+        A lease whose holder died (kill, crash) is reclaimed immediately instead
+        of blocking the driver for the whole TTL.
         """
         key = f"lease:{name}"
         now = time.time()
+        payload = json.dumps(
+            {
+                "owner": owner,
+                "pid": os.getpid(),
+                "host": socket.gethostname(),
+                "expires": now + ttl_s,
+            }
+        )
         with self._lock:
-            cur = self._conn.execute(
-                "UPDATE kv SET value = ? WHERE key = ? AND CAST(value AS REAL) < ?",
-                (str(now + ttl_s), key, now),
-            )
-            if cur.rowcount == 0:
-                try:
-                    self._conn.execute(
-                        "INSERT INTO kv (key, value) VALUES (?, ?)",
-                        (key, str(now + ttl_s)),
-                    )
-                except sqlite3.IntegrityError:
-                    self._conn.commit()
-                    return False
-            self._conn.commit()
-            return True
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                row = self._conn.execute(
+                    "SELECT value FROM kv WHERE key = ?", (key,)
+                ).fetchone()
+                if row is not None:
+                    held = _read_lease(row["value"])
+                    if held and not _lease_is_stale(held, now):
+                        self._conn.commit()
+                        return False
+                self._conn.execute(
+                    """INSERT INTO kv (key, value) VALUES (?, ?)
+                       ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+                    (key, payload),
+                )
+                self._conn.commit()
+            except Exception:
+                self._conn.rollback()
+                raise
+        return True
 
     def release_lease(self, name: str) -> None:
         with self._lock:
@@ -567,6 +685,16 @@ class Database:
             else:
                 row = self._conn.execute("SELECT COUNT(*) AS n FROM messages").fetchone()
         return int(row["n"]) if row else 0
+
+    def count_pending_from(self, sender: str) -> int:
+        """Pending messages posted by one sender (e.g. a single warmup mission)."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM messages WHERE status = 'pending' AND sender = ?",
+                (sender,),
+            ).fetchone()
+        return int(row["n"]) if row else 0
+
     def set_kv(self, key: str, value: Any) -> None:
         with self._lock:
             self._conn.execute(

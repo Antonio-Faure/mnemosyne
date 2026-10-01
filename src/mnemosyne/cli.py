@@ -288,31 +288,28 @@ def _cmd_history(args: argparse.Namespace) -> int:
 
 
 def _cmd_warmup(args: argparse.Namespace) -> int:
+    """Post a warmup mission to the browser agent right now."""
     cfg = get_config()
-    from mnemosyne.agents.supervisor import BROWSER_LEASE_S
-    from mnemosyne.agents.warmup import run_warmup
+    from mnemosyne.agents.mailbox import Mailbox
+    from mnemosyne.agents.warmup_schedule import pick_goal
     from mnemosyne.db import Database
 
+    goal = pick_goal()
+    minutes = args.minutes or 5.0
+    mission = (
+        f"[[tour: {cfg.agents.warmup_max_turns}]]\n"
+        f"MISSION WARMUP (~{minutes:.0f} min, lecture seule) — objectif « {goal['name']} ».\n"
+        f"Sites : {', '.join(goal.get('sites') or cfg.agents.warmup_sites)}\n"
+        f"{goal.get('instruction', 'Parcourt ces sites comme un curieux.')}\n"
+        "\nRègles : navigation lente et humaine (attentes de 5 à 20 s, défilement par\n"
+        "petites pages, une recherche ou deux, suivi d'un lien ou deux). AUCUNE action\n"
+        "sortante : pas de compte, pas de formulaire, pas d'e-mail. Ne crée aucun\n"
+        "helper, n'écris à personne. Termine par finish avec un bilan factuel."
+    )
     db = Database(cfg.db_file())
-    if not db.try_lease("browser", ttl_s=BROWSER_LEASE_S):
-        db.close()
-        print("navigateur occupé (tour bi-agent en cours) — réessaie plus tard")
-        return 1
-    try:
-        vault = Vault(cfg.vault_file) if cfg.vault_file.exists() else None
-        outcome = asyncio.run(
-            run_warmup(
-                cfg,
-                minutes=args.minutes,
-                journal=Journal(cfg.journal_path),
-                vault_get=vault.get if vault else None,
-            )
-        )
-    finally:
-        db.release_lease("browser")
-        db.close()
-    print("finish:", outcome.finish or "(pas de résumé)")
-    print("usage:", outcome.outcome.get("usage"))
+    Mailbox(db).post("warmup", "browser", mission)
+    db.close()
+    print(f"mission warmup « {goal['name']} » (~{minutes:.0f} min) postée au navigateur")
     return 0
 
 
@@ -553,7 +550,7 @@ def build_parser() -> argparse.ArgumentParser:
     phist.add_argument("--top", type=int, default=15)
     phist.set_defaults(func=_cmd_history)
 
-    pw = sub.add_parser("warmup", help="human-like browsing session (reputation warmup)")
+    pw = sub.add_parser("warmup", help="post a warmup mission to the browser agent")
     pw.add_argument("--minutes", type=float, default=5.0)
     pw.set_defaults(func=_cmd_warmup)
 

@@ -22,13 +22,13 @@ def test_run_agency_handoff(config, monkeypatch):
     """coder asks the browser agent, which answers; the coder resumes."""
     calls: list[str] = []
 
-    async def fake_coder(cfg, task, mailbox, journal, vault_get):
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, max_turns=None):
         calls.append("coder")
         if "browser" not in calls:
             mailbox.post("coder", "browser", "j'ai besoin de la clé api europeana")
         return _Outcome(finish="coder done")
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get):
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, max_turns=None):
         calls.append("browser")
         mailbox.post("browser", "coder", "clé dispo : vault:europeana_api_key")
         return _Outcome(finish="browser done")
@@ -45,7 +45,7 @@ def test_run_agency_handoff(config, monkeypatch):
 def test_run_agency_injects_standing_directives(config, monkeypatch):
     seen: list[str] = []
 
-    async def capture(cfg, task, mailbox, journal, vault_get):
+    async def capture(cfg, task, mailbox, journal, vault_get, max_turns=None):
         seen.append(task)
         return _Outcome(finish="ok")
 
@@ -65,12 +65,12 @@ def test_pending_messages_are_batched_into_one_turn(config, monkeypatch):
     """Two messages posted back-to-back cost ONE turn, not two."""
     tasks: list[str] = []
 
-    async def fake_coder(cfg, task, mailbox, journal, vault_get):
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, max_turns=None):
         mailbox.post("coder", "browser", "premier message")
         mailbox.post("coder", "browser", "deuxieme message (mise a jour)")
         return _Outcome(finish="coder ok")
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get):
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, max_turns=None):
         tasks.append(task)
         return _Outcome(finish="browser ok")
 
@@ -95,7 +95,7 @@ def test_pending_messages_are_batched_into_one_turn(config, monkeypatch):
 def test_run_agency_marks_review_without_finish(config, monkeypatch):
     """An agent that stops without task_done is not reported as done."""
 
-    async def silent(cfg, task, mailbox, journal, vault_get):
+    async def silent(cfg, task, mailbox, journal, vault_get, max_turns=None):
         return _Outcome(finish=None)
 
     monkeypatch.setitem(supervisor._RUNNERS, "coder", silent)
@@ -113,7 +113,7 @@ def test_run_agency_marks_review_without_finish(config, monkeypatch):
 
 
 def test_run_agency_reports_failure(config, monkeypatch):
-    async def boom(cfg, task, mailbox, journal, vault_get):
+    async def boom(cfg, task, mailbox, journal, vault_get, max_turns=None):
         raise RuntimeError("boom")
 
     monkeypatch.setitem(supervisor._RUNNERS, "coder", boom)
@@ -132,11 +132,11 @@ def test_run_agency_reports_failure(config, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_run_agency_respects_max_handoffs(config, monkeypatch):
-    async def loop_agent(cfg, task, mailbox, journal, vault_get):
+    async def loop_agent(cfg, task, mailbox, journal, vault_get, max_turns=None):
         mailbox.post("coder", "browser", "again")
         return _Outcome(finish="loop")
 
-    async def browser_agent(cfg, task, mailbox, journal, vault_get):
+    async def browser_agent(cfg, task, mailbox, journal, vault_get, max_turns=None):
         mailbox.post("browser", "coder", "again")
         return _Outcome(finish="loop")
 

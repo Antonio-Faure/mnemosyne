@@ -299,6 +299,7 @@ async def run_browser_agent(
     mailbox: Mailbox,
     journal: Journal | None = None,
     vault_get=None,
+    max_turns: int | None = None,
 ) -> AgentOutcome:
     client = build_agent_client(config, session="browser-agent", vault_get=vault_get)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
@@ -315,7 +316,7 @@ async def run_browser_agent(
             skills=skills,
         ),
         tools=[provider],
-        max_turns=config.agents.max_turns,
+        max_turns=max_turns or config.agents.max_turns,
     )
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)

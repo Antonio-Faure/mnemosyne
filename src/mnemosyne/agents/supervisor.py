@@ -9,6 +9,7 @@ so the cost stays low and the behaviour is predictable.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -58,7 +59,14 @@ class AgencyResult:
     stop_reason: str = "no_pending"
 
 
-async def _run_coder(config: Config, task: str, mailbox: Mailbox, journal, vault_get):
+async def _run_coder(
+    config: Config,
+    task: str,
+    mailbox: Mailbox,
+    journal,
+    vault_get,
+    max_turns: int | None = None,
+):
     from mnemosyne.dev.agent import run_dev_agent
     from mnemosyne.dev.worktree import add_worktree, remove_worktree
 
@@ -66,17 +74,35 @@ async def _run_coder(config: Config, task: str, mailbox: Mailbox, journal, vault
     worktree = add_worktree(repo, Path(config.data_path) / "agent-worktree", config.dev.base_branch)
     try:
         return await run_dev_agent(
-            config, task, vault_get=vault_get, journal=journal, repo=worktree, mailbox=mailbox
+            config,
+            task,
+            vault_get=vault_get,
+            journal=journal,
+            repo=worktree,
+            mailbox=mailbox,
+            max_turns=max_turns,
         )
     finally:
         remove_worktree(repo, worktree)
 
 
-async def _run_browser(config: Config, task: str, mailbox: Mailbox, journal, vault_get):
+async def _run_browser(
+    config: Config,
+    task: str,
+    mailbox: Mailbox,
+    journal,
+    vault_get,
+    max_turns: int | None = None,
+):
     from mnemosyne.agents.browser_agent import run_browser_agent
 
     return await run_browser_agent(
-        config, task, mailbox=mailbox, journal=journal, vault_get=vault_get
+        config,
+        task,
+        mailbox=mailbox,
+        journal=journal,
+        vault_get=vault_get,
+        max_turns=max_turns,
     )
 
 
@@ -110,6 +136,25 @@ def _acquire_browser_lease(db: Database, agent: str) -> bool | None:
     return None
 
 
+#: a message may cap its own turn: a first line `[[tour: 40]]` bounds the session
+#: (used by the warmup mission, which must be short and boring)
+_TURN_CAP_RE = re.compile(r"^\s*\[\[tour:\s*(\d+)\s*\]\]\s*$", re.M)
+
+
+def _split_turn_cap(messages: list[dict]) -> tuple[list[dict], int | None]:
+    """Extract (and strip) a per-message turn cap from a batch of messages."""
+    cap: int | None = None
+    cleaned: list[dict] = []
+    for message in messages:
+        body = message["body"]
+        found = _TURN_CAP_RE.search(body)
+        if found:
+            cap = int(found.group(1))
+            body = _TURN_CAP_RE.sub("", body).strip()
+        cleaned.append({**message, "body": body})
+    return cleaned, cap
+
+
 def _batched_task(messages: list[dict]) -> str:
     """One task out of several pending messages (a report then an update...)."""
     if len(messages) == 1:
@@ -139,6 +184,7 @@ async def _execute_turn(
     vault_get,
 ) -> dict:
     """Run one agent turn for a batch of claimed messages, then mark them all."""
+    messages, turn_cap = _split_turn_cap(messages)
     note_prefix = f"{len(messages)} message(s)"
     outcome = None
     error: str | None = None
@@ -149,6 +195,7 @@ async def _execute_turn(
             mailbox,
             journal,
             vault_get,
+            max_turns=turn_cap,
         )
     except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
         error = str(exc)
