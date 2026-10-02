@@ -208,14 +208,18 @@ Outils/permissions :
   problème dans ses **output tokens** (bilan final) — le Master (l'humain ou une
   autre IA) le lira et corrigera ; timeouts alignés (job heartbeat 4 h, bail
   navigateur 5 h, reprise des messages 5 h).
- - **Plafond de temps par tour** (`agents.turn_deadline_s`, 45 min ; 0 = désactivé) :
-   un plafond de tours ne borne pas le temps — 400 tours rapides font 20 min, mais
-   40 tours lents (page bloquée, API qui rate-limite) gardaient le bail `agency`
-   pendant des heures et affamaient toute la file (constaté : un tour navigateur
-   « batterie » à 51 min, 4 missions en attente derrière, watchdog alerté). Passé
-   le délai, l'agent est **pressé de finir** (`finish(reason=...)` avec bilan
-   factuel) tous les `deadline_tip_every` tours (5), sans coupe brutale : on garde
-   un rapport honnête plutôt qu'une session tronquée sans conclusion.
+ - **Aucun plafond de temps.** Une mission longue doit aller au bout : on ne juge
+   pas sur l'horloge mais sur le **progrès**. J'avais d'abord mis une limite de
+   45 min (l'agent de la vidéo Europeana avait mis 30 min, un tour « batterie »
+   51 min) — c'était une erreur : cela coupait indistinctement le travail en
+   cours. Remplacé par `agents/progress.py` (`ProgressWatch`) : chaque appel
+   d'outil est horodaté et fingerprinté ; **une action jamais vue = progrès**.
+   L'agent n'estujahpressé que s'il **patine** — aucune action distincte depuis
+   `stall_after_s` (15 min) ou `stall_repeat` (6) appels identiques d'affilée —
+   et la note dit explicitement « si tu es bloqué, fais ton bilan ; si tu
+   avances, continue, tu n'as aucune limite de temps ». Une boucle silencieuse
+   est coupée net, un long travail ne l'est jamais. Le chien de garde du soak
+   alerte toujours (information, pas arrêt).
 - **Échanges = relations d'intérêt** : un agent n'écrit à l'autre que s'il a
   besoin de quelque chose ou pour signaler un vrai problème. Pas de rapport
   obligatoire, pas d'accusé de réception — le bilan de fin de mission est le

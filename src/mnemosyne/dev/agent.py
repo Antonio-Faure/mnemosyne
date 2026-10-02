@@ -13,6 +13,7 @@ from pathlib import Path
 
 from stirrup import Agent
 
+from mnemosyne.agents.progress import ProgressWatch, watch_provider
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.dev.tools import DevToolProvider
@@ -76,6 +77,13 @@ async def run_dev_agent(
     provider = DevToolProvider(
         repo_path, config.dev, token, notifier=notifier, journal=journal, mailbox=mailbox
     )
+    # Stuck detection, not a deadline: a long refactor that keeps progressing runs
+    # to the end; only a freeze or a repeated-call loop is asked to report.
+    progress = ProgressWatch(
+        stall_after_s=config.agents.stall_after_s,
+        stall_repeat=config.agents.stall_repeat,
+    )
+    watched = watch_provider(provider, progress, "codeur")
     agent = Agent(
         client=client,
         name="mnemosyne_dev",
@@ -85,7 +93,7 @@ async def run_dev_agent(
             name=config.identity.name,
             task=task,
         ),
-        tools=[provider],
+        tools=[watched],
         max_turns=max_turns or config.dev.max_turns,
     )
     out_dir = config.root / config.agents.output_dir

@@ -92,13 +92,13 @@ class AgentsConfig(BaseModel):
     #: context, then repeat every `turn_tip_every` turns
     turn_tip_at: int = 75
     turn_tip_every: int = 50
-    #: wall-clock budget of one agent turn. A turn cap alone does not bound the
-    #: time: 400 fast turns last ~20 min, but 40 slow ones can hold the agency
-    #: lease for hours and starve every other mission. Past the deadline the
-    #: agent is urged (every `deadline_tip_every` turns) to finish with a factual
-    #: report. 0 disables it.
-    turn_deadline_s: int = 2700
-    deadline_tip_every: int = 5
+    #: No wall-clock cap: a long mission that keeps making progress must run to
+    #: completion, however long it takes. We only warn an agent that is *stuck*:
+    #: no new distinct action for `stall_after_s` seconds, or `stall_repeat`
+    #: identical actions in a row. Then, and only then, it is asked to stop and
+    #: write a factual report of where it stands.
+    stall_after_s: int = 900
+    stall_repeat: int = 6
     #: Stirrup requires an explicit output ceiling; keep it high so reasoning
     #: models are never truncated (a small budget returns empty content).
     max_tokens: int = 32768

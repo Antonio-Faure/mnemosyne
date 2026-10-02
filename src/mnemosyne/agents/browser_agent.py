@@ -22,6 +22,7 @@ from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, Too
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.agents.outcome import AgentOutcome
+from mnemosyne.agents.progress import ProgressWatch
 from mnemosyne.browser.recordings import prune_recordings
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
@@ -180,6 +181,12 @@ class BrowserAgentToolProvider(ToolProvider):
         ensure_dir(self.helpers_dir)
         self.token = token
         self.git = Git(self.worktree, token)
+        #: Stuck detection, not a deadline: a long mission that advances is left
+        #: alone; only a freeze or a loop gets the honest-report nudge.
+        self.progress = ProgressWatch(
+            stall_after_s=config.agents.stall_after_s,
+            stall_repeat=config.agents.stall_repeat,
+        )
 
     def _prune_recordings(self) -> None:
         """Bound the disk: the harness never deletes its own recordings."""
@@ -302,10 +309,31 @@ class BrowserAgentToolProvider(ToolProvider):
         out = (res.stdout or "") + (("\n[stderr]\n" + res.stderr) if res.stderr.strip() else "")
         return out[-_MAX_OUTPUT:] or "(no output)"
 
+    def _watched(self, tool: str, arguments: str, result: str) -> str:
+        """Record progress of one tool call; append the nudge if stuck.
+
+        A long mission that keeps doing new things is never interrupted: the
+        note only appears when no new action happened for a while or when the
+        same call repeats.
+        """
+        self.progress.record(tool, arguments, result)
+        note = self.progress.note_for()
+        if note:
+            log.warning(
+                "agent navigateur patine (%s) -> rapport demandé",
+                self.progress.reason(),
+            )
+            return f"{result}\n\n{note}"
+        return result
+
     def _tools(self) -> list[Tool]:
         async def browser_exec(p: BrowserCodeParams):
             return _ok(
-                await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code)
+                self._watched(
+                    "browser",
+                    p.code,
+                    await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code),
+                )
             )
 
         async def list_exec(_: EmptyParams):
@@ -316,11 +344,12 @@ class BrowserAgentToolProvider(ToolProvider):
             path = self._helper_path(p.name)
             if not path.is_file():
                 return _fail(f"no helper {p.name}")
-            return _ok(path.read_text(encoding="utf-8")[:4000])
+            text = path.read_text(encoding="utf-8")[:4000]
+            return _ok(self._watched("read_helper", p.name, text))
 
         async def write_exec(p: WriteHelperParams):
             atomic_write_text(self._helper_path(p.name), p.code)
-            return _ok(f"wrote helper {p.name}")
+            return _ok(self._watched("write_helper", p.name, f"wrote helper {p.name}"))
 
         async def publish_exec(p: PublishParams):
             if not self.token:

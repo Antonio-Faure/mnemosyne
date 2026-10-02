@@ -7,7 +7,6 @@ and rebuild the underlying `AsyncOpenAI` with those headers.
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -25,15 +24,6 @@ TURN_TIP = (
     "ce que tu cherches à faire, ne t'acharne pas : écris simplement ton problème "
     "dans ta réponse (tes output tokens) et fais un bilan à la fin. Le Master "
     "(l'humain ou une autre IA) lira ton message et corrigera le problème."
-)
-
-
-DEADLINE_TIP = (
-    "Alerte temps : le budget de {minutes} min pour cette session est dépassé. "
-    "Ce tour ne peut pas continuer indéfiniment. Termine maintenant : appelle "
-    "finish(reason=...) avec un bilan facturel de ce qui est fait, ce qui reste, "
-    "et où sont les fichiers. Un bilan honnête vaut mieux qu'une session "
-    "tronquée sans conclusion."
 )
 
 
@@ -81,32 +71,15 @@ class _CompletionsProxy:
         *,
         tip_at: int = 0,
         tip_every: int = 0,
-        deadline_s: float = 0.0,
-        deadline_tip_every: int = 5,
     ) -> None:
         self._inner = inner
         self._sink = sink
         self._tip_at = tip_at
         self._tip_every = tip_every
-        self._deadline_s = deadline_s
-        self._deadline_tip_every = max(1, deadline_tip_every)
         self._requests = 0
-        self._started = time.monotonic()
-        self._deadline_hits = 0
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
-
-    def _deadline_due(self) -> bool:
-        """True once the wall-clock budget of the session is spent.
-
-        The turn cap alone does not bound a session in time: 400 fast turns last
-        20 minutes, but 40 slow ones (a stalled page, a rate-limited API) can
-        hold the agency lease for hours and starve every other mission.
-        """
-        if not self._deadline_s:
-            return False
-        return (time.monotonic() - self._started) >= self._deadline_s
 
     def _tip_due(self, turn: int) -> bool:
         if not self._tip_at or not self._tip_every or turn < self._tip_at:
@@ -117,23 +90,13 @@ class _CompletionsProxy:
         # One request = one agent turn. Past `tip_at`, nudge the agent (and again
         # every `tip_every` turns) so it wraps up instead of grinding to max_turns.
         self._requests += 1
-        nudge: str | None = None
         if self._tip_due(self._requests):
-            nudge = TURN_TIP.format(turns=self._requests)
-        elif self._deadline_due():
-            if self._deadline_hits % self._deadline_tip_every == 0:
-                minutes = round(self._deadline_s / 60)
-                nudge = DEADLINE_TIP.format(minutes=minutes)
-                log.warning(
-                    "wall-clock budget spent (%d min, tour %d) : finish urged",
-                    minutes,
-                    self._requests,
-                )
-            self._deadline_hits += 1
-        if nudge:
             messages = list(kwargs.get("messages") or [])
-            messages.append({"role": "user", "content": nudge})
+            messages.append(
+                {"role": "user", "content": TURN_TIP.format(turns=self._requests)}
+            )
             kwargs = {**kwargs, "messages": messages}
+            log.info("turn tip injected at turn %d", self._requests)
         response = await self._inner.create(*args, **kwargs)
         try:
             self._sink.record(getattr(response, "usage", None))
@@ -144,23 +107,11 @@ class _CompletionsProxy:
 
 class _ChatProxy:
     def __init__(
-        self,
-        inner: Any,
-        sink: UsageSink,
-        *,
-        tip_at: int = 0,
-        tip_every: int = 0,
-        deadline_s: float = 0.0,
-        deadline_tip_every: int = 5,
+        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
     ) -> None:
         self._inner = inner
         self.completions = _CompletionsProxy(
-            inner.completions,
-            sink,
-            tip_at=tip_at,
-            tip_every=tip_every,
-            deadline_s=deadline_s,
-            deadline_tip_every=deadline_tip_every,
+            inner.completions, sink, tip_at=tip_at, tip_every=tip_every
         )
 
     def __getattr__(self, name: str) -> Any:
@@ -169,24 +120,10 @@ class _ChatProxy:
 
 class _ClientProxy:
     def __init__(
-        self,
-        inner: Any,
-        sink: UsageSink,
-        *,
-        tip_at: int = 0,
-        tip_every: int = 0,
-        deadline_s: float = 0.0,
-        deadline_tip_every: int = 5,
+        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
     ) -> None:
         self._inner = inner
-        self.chat = _ChatProxy(
-            inner.chat,
-            sink,
-            tip_at=tip_at,
-            tip_every=tip_every,
-            deadline_s=deadline_s,
-            deadline_tip_every=deadline_tip_every,
-        )
+        self.chat = _ChatProxy(inner.chat, sink, tip_at=tip_at, tip_every=tip_every)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
@@ -206,8 +143,6 @@ class ZenChatClient(ChatCompletionsClient):
         max_retries: int = 2,
         tip_at: int = 0,
         tip_every: int = 0,
-        deadline_s: float = 0.0,
-        deadline_tip_every: int = 5,
     ) -> None:
         super().__init__(
             model,
@@ -233,8 +168,6 @@ class ZenChatClient(ChatCompletionsClient):
             self.usage,
             tip_at=tip_at,
             tip_every=tip_every,
-            deadline_s=deadline_s,
-            deadline_tip_every=deadline_tip_every,
         )
 
 
@@ -263,6 +196,4 @@ def build_agent_client(
         session=session,
         tip_at=config.agents.turn_tip_at,
         tip_every=config.agents.turn_tip_every,
-        deadline_s=config.agents.turn_deadline_s,
-        deadline_tip_every=config.agents.deadline_tip_every,
     )
