@@ -15,9 +15,11 @@ api:
 heartbeat:
   tick_seconds: 15
   max_workers: 4
-  # safety net for mechanical jobs only — agent sessions (agency) are never
-  # time-capped (judged on the stall marker, not the clock)
-  job_timeout_s: 14400
+  # disjoncteur anti-freeze pour les jobs mécaniques SEULEMENT (bornés en
+  # interne: httpx 30s/requête, boucles plafonnées — 1h est une large marge).
+  # Les sessions d'agent (agency) n'ont JAMAIS de plafond de temps (jugées sur
+  # le marqueur de patinage, pas sur l'horloge).
+  job_timeout_s: 3600
   stale_lock_s: 18000   # > job_timeout_s : un job mécanique hangé est repris après 5h max
 
 reputation:

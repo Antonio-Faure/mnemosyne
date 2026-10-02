@@ -224,8 +224,9 @@ l'historique/cohérence du compte Google sans te solliciter.
 
 Réglages `config.agents` : `warmup_per_day_min/max`, `warmup_window_start/end`,
 `warmup_session_min/max` (minutes), `warmup_skip_probability`, `warmup_sites`,
-`warmup_max_turns`. Le budget horaire de job est `heartbeat.job_timeout_s`
-(1800s).
+`warmup_max_turns`. Le disjoncteur anti-freeze des jobs mécaniques est
+`heartbeat.job_timeout_s` (1h) ; les sessions d'agent (agency) n'ont **jamais**
+de plafond de temps (jugées sur le marqueur de patinage).
 
 Enregistrer l'écran de l'agent (vidéo) : `make record SECONDS=120` (ffmpeg
 `x11grab` dans le conteneur Chrome) → `data/agent-recording.mp4`. Lance une

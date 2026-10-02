@@ -33,10 +33,11 @@ class ApiConfig(BaseModel):
 class HeartbeatConfig(BaseModel):
     tick_seconds: int = 15
     max_workers: int = 4
-    #: safety net for *mechanical* jobs only — they are internally bounded
-    #: (httpx 30s/request, plafonné loops). Agent sessions (kind=agency) are
-    #: exempt in scheduler._run_job: judged on progress, never on a clock.
-    job_timeout_s: int = 14400
+    #: disjoncteur anti-freeze pour les jobs MÉCANIQUES seulement — ils sont
+    #: bornés en interne (httpx 30s/requête, boucles plafonnées), 1h est une
+    #: large marge. Les sessions d'agent (kind=agency) sont exemptes dans
+    #: scheduler._run_job: jugées sur le progrès, jamais sur une horloge.
+    job_timeout_s: int = 3600
     stale_lock_s: int = 600
 
 

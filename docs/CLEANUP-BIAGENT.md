@@ -18,7 +18,8 @@
   `wait_for` reste, car il protège la **vivacité de la boucle** — un handler
   mécanique hangé gèlerait `_tick` pour toujours (plus de watchdog, plus
   d'agency, plus de récupération de messages). Ce n'est pas une limite de
-  mission, c'est un disjoncteur.
+  mission, c'est un disjoncteur — ramené de 4h à **1h** (les jobs mécaniques
+  sont bornés en interne à ~10 min : httpx 30 s/requête, boucles plafonnées).
 - Test : une mission agency qui dépasse le timeout finit DONE ; un job
   mécanique hangé est cancellé et replanifié.
 
