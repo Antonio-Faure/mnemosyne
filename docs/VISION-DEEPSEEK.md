@@ -96,7 +96,7 @@ hérite de `ToolProvider` + test d'invariant
   `use_vision: bool | None` de la PR #1393.
 - Pas d'engagement mainteneur connu au moment du commentaire.
 
-## 7. Bug du harness découvert au passage
+## 7. Bug du harness découvert au passage — signalé upstream
 
 **browser-harness 0.1.13 perd son attache CDP après `goto_url` dans le MÊME
 run** : `goto_url(...); capture_screenshot(...)` échoue avec
@@ -106,4 +106,6 @@ Chaque run du harness se réattache au démarrage, donc :
   séparé, c'est même pourquoi il marche) ;
 - un agent qui écrit navigation+capture dans un même snippet recevra cette
   erreur — les consignes peuvent séparer les deux, ou le harness devra
-  réattacher après navigation (à signaler upstream).
+  réattacher après navigation (issue postée, ci-dessous).
+
+Issue postée : https://github.com/browser-use/browser-harness/issues/879
