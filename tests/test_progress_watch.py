@@ -121,3 +121,51 @@ async def test_wrapped_provider_passes_every_tool_through_the_watch():
 
 def _ok(text: str) -> ToolResult:
     return ToolResult[ToolUseCountMetadata](content=text)
+
+
+async def test_every_browser_tool_goes_through_the_single_watch(config):
+    """One funnel for both agents: the browser provider is wrapped as a whole,
+    not tool by tool by hand (the old per-tool copy covered 3 tools out of 7)."""
+    pytest.importorskip("stirrup")
+    from stirrup.core.models import EmptyParams
+
+    from mnemosyne.agents.browser_agent import (
+        BrowserAgentToolProvider,
+        BrowserCodeParams,
+        HelperNameParams,
+        PublishParams,
+        RememberParams,
+        SendMessageParams,
+        WriteHelperParams,
+        watch_provider,
+    )
+    from mnemosyne.agents.mailbox import Mailbox
+    from mnemosyne.db import Database
+
+    db = Database(config.db_file())
+    provider = BrowserAgentToolProvider(config, Mailbox(db))
+    try:
+        provider._run_harness = lambda code: "fake harness output"
+        watch = provider.progress
+        wrapped = watch_provider(provider, watch, "navigateur")
+        tools = {t.name: t for t in await wrapped.__aenter__()}
+        expected = {
+            "browser", "list_helpers", "read_helper", "write_helper",
+            "publish_helpers", "remember", "send_message",
+        }
+        assert set(tools) == expected
+        params = {
+            "browser": BrowserCodeParams(code="pass"),
+            "list_helpers": EmptyParams(),
+            "read_helper": HelperNameParams(name="ghost"),
+            "write_helper": WriteHelperParams(name="probe", code="print(1)"),
+            "publish_helpers": PublishParams(summary="test"),
+            "send_message": SendMessageParams(to="coder", body="hello"),
+            "remember": RememberParams(key="pytest_probe", value="v"),
+        }
+        for name, p in params.items():
+            await tools[name].executor(p)
+        recorded = {sig[0] for sig in watch.seen}
+        assert recorded == expected, recorded
+    finally:
+        db.close()

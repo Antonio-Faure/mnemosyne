@@ -22,11 +22,10 @@ from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, Too
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.agents.outcome import AgentOutcome
-from mnemosyne.agents.progress import ProgressWatch
+from mnemosyne.agents.progress import ProgressWatch, watch_provider
 from mnemosyne.browser.recordings import prune_recordings
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
-from mnemosyne.db import Database
 from mnemosyne.dev.git_ops import Git, GitError
 from mnemosyne.dev.worktree import add_worktree
 from mnemosyne.identity import disclosure
@@ -172,8 +171,9 @@ class BrowserAgentToolProvider(ToolProvider):
     ):
         self.config = config
         self.mailbox = mailbox
-        # short-lived handle for the stall marker only (the watchdog reads it)
-        self._db = Database(config.db_file())
+        # the supervisor's database handle: one connection per turn, closed by
+        # whoever opened it (run_pending_once) — no dedicated leak here
+        self._db = mailbox.db
         self.journal = journal
         self.repo = Path(config.dev.repo_path or config.root)
         self.worktree = Path(config.data_path) / "agent-workspace" / "helpers-worktree"
@@ -314,32 +314,9 @@ class BrowserAgentToolProvider(ToolProvider):
         out = (res.stdout or "") + (("\n[stderr]\n" + res.stderr) if res.stderr.strip() else "")
         return out[-_MAX_OUTPUT:] or "(no output)"
 
-    def _watched(self, tool: str, arguments: str, result: str) -> str:
-        """Record progress of one tool call; append the nudge if stuck.
-
-        A long mission that keeps doing new things is never interrupted: the
-        note only appears when no new action happened for a while or when the
-        same call repeats.
-        """
-        self.progress.record(tool, arguments, result)
-        note = self.progress.note_for()
-        if note:
-            log.warning(
-                "agent navigateur patine (%s) -> rapport demandé",
-                self.progress.reason(),
-            )
-            return f"{result}\n\n{note}"
-        return result
-
     def _tools(self) -> list[Tool]:
         async def browser_exec(p: BrowserCodeParams):
-            return _ok(
-                self._watched(
-                    "browser",
-                    p.code,
-                    await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code),
-                )
-            )
+            return _ok(await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code))
 
         async def list_exec(_: EmptyParams):
             names = sorted(f.name for f in self.helpers_dir.glob("*.py"))
@@ -350,11 +327,11 @@ class BrowserAgentToolProvider(ToolProvider):
             if not path.is_file():
                 return _fail(f"no helper {p.name}")
             text = path.read_text(encoding="utf-8")[:4000]
-            return _ok(self._watched("read_helper", p.name, text))
+            return _ok(text)
 
         async def write_exec(p: WriteHelperParams):
             atomic_write_text(self._helper_path(p.name), p.code)
-            return _ok(self._watched("write_helper", p.name, f"wrote helper {p.name}"))
+            return _ok(f"wrote helper {p.name}")
 
         async def publish_exec(p: PublishParams):
             if not self.token:
@@ -436,7 +413,7 @@ async def run_browser_agent(
             disclosure=disclosure(config.identity),
             skills=skills,
         ),
-        tools=[provider],
+        tools=[watch_provider(provider, provider.progress, "navigateur")],
         max_turns=max_turns or config.agents.max_turns,
     )
     out_dir = config.root / config.agents.output_dir

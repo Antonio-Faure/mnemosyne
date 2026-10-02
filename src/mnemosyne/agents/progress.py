@@ -21,6 +21,10 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from mnemosyne.logger import get_logger
+
+log = get_logger("progress")
+
 #: What we inject once the agent looks stuck. Not a stop order: a long mission
 #: that is advancing must run to the end.
 STALL_NOTE = (
@@ -142,23 +146,17 @@ class ProgressWatch:
 def watch_provider(provider, watch: ProgressWatch, label: str):
     """Wrap a ToolProvider so every tool call goes through `watch`.
 
-    One wrapper instead of touching each tool: the coder has a dozen of them and
-    a new one must be covered the day it is added.
+    One wrapper instead of touching each tool: a new tool must be covered the
+    day it is added, on both agents (coder via run_dev_agent, browser via
+    run_browser_agent).
     """
-    import logging
-
-    log = logging.getLogger("mnemosyne.progress")
-
     class _Watched:
         def __init__(self, inner):
             self._inner = inner
 
         async def __aenter__(self):
             tools = await self._inner.__aenter__()
-            wrapped = []
-            for tool in tools:
-                wrapped.append(_wrap_tool(tool, watch, label, log))
-            return wrapped
+            return [_wrap_tool(tool, watch, label) for tool in tools]
 
         async def __aexit__(self, *exc):
             return await self._inner.__aexit__(*exc)
@@ -169,7 +167,7 @@ def watch_provider(provider, watch: ProgressWatch, label: str):
     return _Watched(provider)
 
 
-def _wrap_tool(tool, watch: ProgressWatch, label: str, log):
+def _wrap_tool(tool, watch: ProgressWatch, label: str):
     """Return a copy of `tool` whose result passes through the stuck detector."""
     from stirrup.core.models import Tool as _Tool
 

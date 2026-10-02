@@ -16,6 +16,7 @@ from stirrup import Agent
 from mnemosyne.agents.progress import ProgressWatch, watch_provider
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
+from mnemosyne.db import Database
 from mnemosyne.dev.tools import DevToolProvider
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
@@ -79,32 +80,33 @@ async def run_dev_agent(
     )
     # Stuck detection, not a deadline: a long refactor that keeps progressing runs
     # to the end; only a freeze or a repeated-call loop is asked to report.
-    from mnemosyne.db import Database
-
     watch_db = Database(config.db_file())
-    progress = ProgressWatch(
-        agent="coder",
-        db=watch_db,
-        stall_after_s=config.agents.stall_after_s,
-        stall_repeat=config.agents.stall_repeat,
-    )
-    watched = watch_provider(provider, progress, "codeur")
-    agent = Agent(
-        client=client,
-        name="mnemosyne_dev",
-        system_prompt=load_prompt(
-            repo_path / "agents" / "coder.md",
-            fallback=_FALLBACK,
-            name=config.identity.name,
-            task=task,
-        ),
-        tools=[watched],
-        max_turns=max_turns or config.dev.max_turns,
-    )
-    out_dir = config.root / config.agents.output_dir
-    ensure_dir(out_dir)
-    async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
-        finish, history, _metadata = await session.run(task)
+    try:
+        progress = ProgressWatch(
+            agent="coder",
+            db=watch_db,
+            stall_after_s=config.agents.stall_after_s,
+            stall_repeat=config.agents.stall_repeat,
+        )
+        watched = watch_provider(provider, progress, "codeur")
+        agent = Agent(
+            client=client,
+            name="mnemosyne_dev",
+            system_prompt=load_prompt(
+                repo_path / "agents" / "coder.md",
+                fallback=_FALLBACK,
+                name=config.identity.name,
+                task=task,
+            ),
+            tools=[watched],
+            max_turns=max_turns or config.dev.max_turns,
+        )
+        out_dir = config.root / config.agents.output_dir
+        ensure_dir(out_dir)
+        async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
+            finish, history, _metadata = await session.run(task)
+    finally:
+        watch_db.close()
     usage = client.usage.summary()
     turns = int(usage.get("calls") or 0) or len(history)
     log.info("dev agent usage (cache-aware): %s (tours=%d)", usage, turns)
