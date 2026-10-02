@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 
-from browser_harness.helpers import click_at_xy, js, cdp
+from browser_harness.helpers import cdp, click_at_xy, js
 
 _DEFAULT_TAGS = [
     "button",
@@ -64,11 +64,13 @@ def find_label(text, exact: bool = False, tags=None):
     if nothing matches -- observation only, no click.
     """
     sel = ",".join(tags or _DEFAULT_TAGS)
-    code = """
+    code = (
+        """
+
     (function(){
-      var t = %s;
-      var exact = %s;
-      var sel = %s;
+      var t = {t};
+      var exact = {exact};
+      var sel = {sel};
       var els = Array.from(document.querySelectorAll(sel));
       function label(e){
         var v = (e.innerText || e.value || e.getAttribute('aria-label') || '').trim();
@@ -86,7 +88,10 @@ def find_label(text, exact: bool = False, tags=None):
       }
       return null;
     })()
-    """ % (json.dumps(str(text)), "true" if exact else "false", json.dumps(sel))
+            """
+        f"{{t={json.dumps(str(text))}, exact='true' if exact else 'false', "
+        f"sel={json.dumps(sel)}}}"
+    )
     info = js(code)
     if isinstance(info, dict) and "x" in info:
         return info
