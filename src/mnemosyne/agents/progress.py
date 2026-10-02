@@ -24,14 +24,12 @@ from dataclasses import dataclass, field
 #: What we inject once the agent looks stuck. Not a stop order: a long mission
 #: that is advancing must run to the end.
 STALL_NOTE = (
-    "NOTE DE L'ORCHESTRATEUR : depuis {mins} min, je ne vois plus d'action "
-    "nouvelle de ta part ({last}). Tu as peut-être un blocage réel (page qui ne "
-    "charge pas, sélecteur obsolète, API qui refuse, boucle).\n"
-    "→ Si tu es bloqué : appelle finish(reason=...) MAINTENANT avec un bilan "
-    "factuel : ce qui est fait, ce qui reste, où sont les fichiers, ce que tu "
-    "as essayé. Un rapport honnête vaut mieux qu'une boucle silencieuse.\n"
-    "→ Si tu avances encore : continue normalement, ignore cette note. Tu n'as "
-    "aucune limite de temps tant que tu produis du nouveau."
+    "ORCHESTRATEUR — constat : aucune action nouvelle depuis {mins} min ({reason}).\n"
+    "- blocage réel : termine par finish(reason=...) avec l'état exact du travail "
+    "(fait, restant, chemins des fichiers, dernières pistes essayées) ;\n"
+    "- mission qui avance : continue, ce constat est sans effet.\n"
+    "Aucune limite de temps n'est appliquée : la détection porte sur l'absence "
+    "de progrès, pas sur la durée de la session."
 )
 
 _WS = re.compile(r"\s+")
@@ -47,8 +45,16 @@ def _fingerprint(text: str) -> str:
 
 @dataclass
 class ProgressWatch:
-    """Decide whether an agent is advancing or going in circles."""
+    """Decide whether an agent is advancing or going in circles.
 
+    `agent` and `db` are optional: when a database is given, a stall marker is
+    written for the watchdog, and cleared as soon as the agent moves again. The
+    watchdog then reports "stuck, with a cause" instead of "running for long",
+    which are very different things.
+    """
+
+    agent: str = ""
+    db: object = None
     stall_after_s: float = 900.0
     stall_repeat: int = 6
     #: keep a bounded history: enough to detect a loop, small enough to forget
@@ -67,6 +73,10 @@ class ProgressWatch:
             self.seen.add(signature)
             self.last_progress_at = time.monotonic()
             self.history.append(signature)
+            if self.db is not None:
+                from mnemosyne.monitor import clear_stall
+
+                clear_stall(self.db, self.agent)
             return True
         self.history.append(signature)
         return False
@@ -114,8 +124,12 @@ class ProgressWatch:
             return None
         self.last_note_at = now
         self.notes_sent += 1
+        if self.db is not None:
+            from mnemosyne.monitor import mark_stall
+
+            mark_stall(self.db, self.agent, self.reason(now))
         frozen_min = max(1, int((now - self.last_progress_at) // 60))
-        return STALL_NOTE.format(mins=frozen_min, last=self.reason(now))
+        return STALL_NOTE.format(mins=frozen_min, reason=self.reason(now))
 
     def stats(self) -> dict:
         return {

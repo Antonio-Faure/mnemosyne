@@ -22,6 +22,7 @@ HARVEST_INTERVAL_S = 1800
 VERIFY_INTERVAL_S = 21600
 WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
+WATCHDOG_INTERVAL_S = 300  # invariants check, inside the service (no side process)
 AGENCY_INTERVAL_S = 120  # check the bi-agent mailbox every 2 minutes (idle = free)
 
 
@@ -86,6 +87,10 @@ class Heartbeat:
         if warmup and not self.engine.db.has_open_job("warmup"):
             self.engine.db.enqueue(
                 Job(kind="warmup", payload={"interval_s": WARMUP_INTERVAL_S}, priority=20)
+            )
+        if not self.engine.db.has_open_job("watchdog"):
+            self.engine.db.enqueue(
+                Job(kind="watchdog", payload={"interval_s": WATCHDOG_INTERVAL_S}, priority=99)
             )
         if not self.engine.db.has_open_job("journal"):
             self.engine.db.enqueue(

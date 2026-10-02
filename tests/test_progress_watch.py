@@ -50,15 +50,19 @@ def test_no_new_action_for_too_long_is_a_freeze():
     assert "5 min sans action nouvelle" in note
 
 
-def test_the_note_never_orders_a_stop_of_a_working_mission():
-    """The nudge says: finish OR continue. It is not a deadline."""
+def test_the_note_is_factual_and_states_no_time_limit():
+    """The note reports an observation; it neither scolds nor imposes a deadline."""
     watch = ProgressWatch(stall_after_s=60)
     watch.record("browser", "x", "y")
     now = watch.last_progress_at + 600
     note = watch.note_for(now=now)
-    assert note == STALL_NOTE.format(mins=10, last=watch.reason(now))
-    assert "continue normalement" in note
-    assert "aucune limite de temps" in note
+    assert note == STALL_NOTE.format(mins=10, reason=watch.reason(now))
+    assert "Aucune limite de temps" in note
+    assert "pas sur la durée" in note
+    assert "ce constat est sans effet" in note
+    # no moralising, no shouting, no caps-lock orders
+    for ugly in ("MAINTENANT", "honnête", "boucle silencieuse", "tu as peut-être"):
+        assert ugly not in note
 
 
 def test_the_note_is_not_repeated_every_call():

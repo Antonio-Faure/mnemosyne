@@ -9,6 +9,7 @@ import random
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 from mnemosyne.config import Config
 from mnemosyne.engine import Engine
@@ -217,6 +218,23 @@ async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
             "info",
         )
     return None
+
+
+@handler("watchdog")
+async def handle_watchdog(ctx: JobContext, job: Job) -> dict | None:
+    """Check the invariants and log one line, every 5 minutes.
+
+    Runs inside the service (not as a side process), so it survives a restart
+    and cannot be forgotten. Alerts are information only: nothing is stopped.
+    """
+    from mnemosyne.monitor import report
+
+    out = Path(ctx.config.data_path) / "outbox" / "soak.log"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    line, alerts = report(ctx.config, out)
+    if alerts:
+        log.warning("watchdog: %d alerte(s)\n  %s", len(alerts), "\n  ".join(alerts))
+    return {"line": line, "alerts": alerts}
 
 
 @handler("journal")

@@ -26,6 +26,7 @@ from mnemosyne.agents.progress import ProgressWatch
 from mnemosyne.browser.recordings import prune_recordings
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
+from mnemosyne.db import Database
 from mnemosyne.dev.git_ops import Git, GitError
 from mnemosyne.dev.worktree import add_worktree
 from mnemosyne.identity import disclosure
@@ -171,6 +172,8 @@ class BrowserAgentToolProvider(ToolProvider):
     ):
         self.config = config
         self.mailbox = mailbox
+        # short-lived handle for the stall marker only (the watchdog reads it)
+        self._db = Database(config.db_file())
         self.journal = journal
         self.repo = Path(config.dev.repo_path or config.root)
         self.worktree = Path(config.data_path) / "agent-workspace" / "helpers-worktree"
@@ -184,6 +187,8 @@ class BrowserAgentToolProvider(ToolProvider):
         #: Stuck detection, not a deadline: a long mission that advances is left
         #: alone; only a freeze or a loop gets the honest-report nudge.
         self.progress = ProgressWatch(
+            agent="browser",
+            db=self._db,
             stall_after_s=config.agents.stall_after_s,
             stall_repeat=config.agents.stall_repeat,
         )

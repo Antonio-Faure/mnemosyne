@@ -79,7 +79,12 @@ async def run_dev_agent(
     )
     # Stuck detection, not a deadline: a long refactor that keeps progressing runs
     # to the end; only a freeze or a repeated-call loop is asked to report.
+    from mnemosyne.db import Database
+
+    watch_db = Database(config.db_file())
     progress = ProgressWatch(
+        agent="coder",
+        db=watch_db,
         stall_after_s=config.agents.stall_after_s,
         stall_repeat=config.agents.stall_repeat,
     )
