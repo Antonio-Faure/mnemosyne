@@ -78,6 +78,10 @@ agents:
   # injecte un tip anti-acharnement à 75 tours, puis tous les 50
   turn_tip_at: 75
   turn_tip_every: 50
+  # budget temps d'un tour (minutes) : au-dela on presse l'agent de terminer avec
+  # un bilan factuel, sinon un tour lent peut garder le bail agency pendant des heures
+  turn_deadline_s: 2700
+  deadline_tip_every: 5
   # required by Stirrup; kept high so reasoning is not truncated
   max_tokens: 32768
   # le harness ne supprime jamais ses enregistrements (~37 Mo par session) :
