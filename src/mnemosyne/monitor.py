@@ -10,33 +10,17 @@ Alerts therefore mean "look at this", never "cut this off".
 
 from __future__ import annotations
 
-import json
-import os
-import socket
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from mnemosyne.config import Config
 from mnemosyne.db import Database
 
-#: a running message/job is only suspicious once it has stalled
+#: a mechanical job running longer than this is suspicious (agents are exempt:
+#: they are judged on the stall marker, whatever their duration)
 STALE_MIN = 45
 PENDING_MIN = 90
-#: a stall marker older than this is reported (the agent gets 3 min of silence)
+#: a stall marker counts after this age (the agent gets 2 min of silence)
 STALL_MARK_MIN = 2
-
-
-def _iso_minus(minutes: float) -> str:
-    return (datetime.now(UTC) - timedelta(minutes=minutes)).isoformat()
-
-
-def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 def _age_minutes(stamp: str | None) -> float | None:
@@ -46,26 +30,6 @@ def _age_minutes(stamp: str | None) -> float | None:
         return (datetime.now(UTC) - datetime.fromisoformat(stamp)).total_seconds() / 60
     except ValueError:
         return None
-
-
-def _lease_dead(db: Database, name: str) -> int | None:
-    """Pid of a lease whose holder cannot be alive (same host, dead process)."""
-    row = db._conn.execute("SELECT value FROM kv WHERE key = ?", (f"lease:{name}",)).fetchone()
-    if not row:
-        return None
-    try:
-        payload = json.loads(row["value"])
-    except ValueError:
-        return None
-    pid = payload.get("pid")
-    if (
-        payload.get("host") == socket.gethostname()
-        and isinstance(pid, int)
-        and pid > 0
-        and not _alive(pid)
-    ):
-        return pid
-    return None
 
 
 def _stall_marker(db: Database) -> dict | None:
@@ -92,16 +56,12 @@ def check_invariants(
     try:
         stall = _stall_marker(db)
 
-        running = db._conn.execute(
-            "SELECT id, sender, recipient, claimed_at FROM messages WHERE status = 'running'"
-        ).fetchall()
+        running = db.running_messages()
         # A running message is NOT an alert, whatever its age: a long mission is
         # the normal case. Only the stall marker (written by the agent itself
         # when it stops progressing) turns into an alert.
 
-        pending = db._conn.execute(
-            "SELECT id, sender, recipient, created_at FROM messages WHERE status = 'pending'"
-        ).fetchall()
+        pending = db.pending_messages()
         for row in pending:
             age = _age_minutes(row["created_at"])
             if age is not None and age > pending_min:
@@ -111,28 +71,25 @@ def check_invariants(
                 )
 
         for lease_name in ("browser", "agency"):
-            dead_pid = _lease_dead(db, lease_name)
+            dead_pid = db.lease_holder_dead_pid(lease_name)
             if dead_pid:
-                alerts.append(f"bail {lease_name} détenu par un pid mort ({dead_pid})")
+                alerts.append(f"bail {lease_name} tenu par un processus disparu ({dead_pid})")
 
-        jobs = db._conn.execute(
-            "SELECT id, kind, locked_at FROM jobs WHERE state = 'running'"
-        ).fetchall()
-        for job in jobs:
+        for job in db.running_jobs():
             age = _age_minutes(job["locked_at"])
-            if age is not None and age > stale_min:
+            if age is None:
+                continue
+            if job["kind"] == "agency":
+                # une session d'agent est jugée sur le patinage, jamais sur la durée
+                continue
+            if age > stale_min:
                 alerts.append(f"job #{job['id']} ({job['kind']}) running depuis {age:.0f} min")
 
-        review = db._conn.execute(
-            "SELECT COUNT(*) AS n FROM messages WHERE status = 'review'"
-        ).fetchone()["n"]
         stats = {
             "pending": len(pending),
             "running": len(running),
-            "review": review,
-            "lease": bool(db._conn.execute(
-                "SELECT 1 FROM kv WHERE key = 'lease:browser'"
-            ).fetchone()),
+            "review": db.review_message_count(),
+            "lease": db.lease_exists("browser"),
             "stall": stall["agent"] if stall else "-",
         }
     finally:
@@ -169,4 +126,5 @@ def mark_stall(db: Database, agent: str, reason: str) -> None:
 
 
 def clear_stall(db: Database, agent: str) -> None:
-    db.set_kv(f"stall:{agent}", None)
+    """Remove the marker (a true DELETE: no "null" rows left in kv)."""
+    db.delete_kv(f"stall:{agent}")

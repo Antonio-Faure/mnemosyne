@@ -234,7 +234,9 @@ async def handle_watchdog(ctx: JobContext, job: Job) -> dict | None:
     line, alerts = report(ctx.config, out)
     if alerts:
         log.warning("watchdog: %d alerte(s)\n  %s", len(alerts), "\n  ".join(alerts))
-    return {"line": line, "alerts": alerts}
+    # No return: the log is the contract. Returning the line/alerts would grow
+    # the next run's job payload every 5 minutes, with no reader.
+    return None
 
 
 @handler("journal")

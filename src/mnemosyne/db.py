@@ -794,6 +794,64 @@ class Database:
             )
             self._conn.commit()
 
+    def delete_kv(self, key: str) -> None:
+        """Remove a key (no row left behind, unlike set_kv(None))."""
+        with self._lock:
+            self._conn.execute("DELETE FROM kv WHERE key = ?", (key,))
+            self._conn.commit()
+
+    # ── watchdog reads (mnemosyne.monitor) ───────────────────────────────
+    def running_messages(self) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, sender, recipient, claimed_at FROM messages"
+                " WHERE status = 'running'"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def pending_messages(self) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, sender, recipient, created_at FROM messages"
+                " WHERE status = 'pending'"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def review_message_count(self) -> int:
+        return self.count_messages(status="review")
+
+    def running_jobs(self) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, kind, locked_at FROM jobs WHERE state = 'running'"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def lease_exists(self, name: str) -> bool:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM kv WHERE key = ?", (f"lease:{name}",)
+            ).fetchone()
+        return row is not None
+
+    def lease_holder_dead_pid(self, name: str) -> int | None:
+        """Pid of a lease holder that cannot be alive for us (same definition
+        as reclaim: foreign container, dead pid, or a reused pid — never a bare
+        `os.kill` probe). An expired lease is reclaimable, not an alert."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT value FROM kv WHERE key = ?", (f"lease:{name}",)
+            ).fetchone()
+        if row is None:
+            return None
+        held = _read_lease(row["value"])
+        if not held or float(held.get("expires", 0)) <= time.time():
+            return None
+        if not _holder_is_gone(held):
+            return None
+        pid = held.get("pid")
+        return pid if isinstance(pid, int) and pid > 0 else None
+
     def get_kv(self, key: str, default: Any = None) -> Any:
         with self._lock:
             row = self._conn.execute("SELECT value FROM kv WHERE key = ?", (key,)).fetchone()
