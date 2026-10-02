@@ -1,21 +1,18 @@
-"""Durable inter-agent mailbox (bi-agent).
+"""Per-task temporary mailbox (bi-agent).
 
-The two agents (coder + browser) never launch each other: they *post messages*
-here, and the deterministic supervisor (`agents/supervisor.py`) launches the
-recipient when the sender has stopped. Messages survive crashes (SQLite).
+A task owns its mailbox: agents exchange messages ONLY inside the task they
+are working on, and the mailbox dies with the task (the journal keeps the
+trace). No global inbox anymore — a message without a task does not exist.
 """
 
 from __future__ import annotations
 
-from mnemosyne.db import STALE_MESSAGE_S, Database
+from mnemosyne.db import Database
 from mnemosyne.logger import get_logger
 
 log = get_logger("mailbox")
 
 AGENTS = ("coder", "browser")
-
-#: how many pending messages one agent turn may absorb
-MAX_BATCH = 5
 
 
 class Mailbox:
@@ -26,37 +23,30 @@ class Mailbox:
     def other(agent: str) -> str:
         return "browser" if agent == "coder" else "coder"
 
-    def post(self, sender: str, recipient: str, body: str) -> int:
-        """Post a message between the two agents (operator channel disabled)."""
-        if recipient not in AGENTS:
-            raise ValueError(f"unknown recipient '{recipient}' (use {AGENTS})")
+    def post(self, sender: str, recipient: str, body: str, task_id: int) -> int:
+        """Post a message inside one task's mailbox (agent to agent only)."""
+        if sender not in AGENTS or recipient not in AGENTS:
+            raise ValueError(
+                f"the mailbox is agent-to-agent (use {AGENTS}); "
+                "the operator posts TASKS to the queue, not messages"
+            )
         if sender == recipient:
             raise ValueError("cannot message yourself")
-        message_id = self.db.post_message(sender, recipient, body.strip())
-        log.info("mail #%s %s → %s: %s", message_id, sender, recipient, body.strip()[:160])
+        message_id = self.db.post_message(sender, recipient, body.strip(), task_id)
+        log.info(
+            "mail #%s (tâche #%s) %s → %s: %s",
+            message_id, task_id, sender, recipient, body.strip()[:160],
+        )
         return message_id
 
-    def claim_all_for(
-        self,
-        recipient: str,
-        owner: str = "agency",
-        *,
-        limit: int = MAX_BATCH,
-        stale_after_s: float = STALE_MESSAGE_S,
-    ) -> list[dict]:
-        """Claim every pending message for `recipient` (up to `limit`) at once.
+    def pending_for(self, task_id: int, recipient: str) -> list[dict]:
+        return self.db.pending_task_messages(task_id, recipient)
 
-        One turn per batch, not one turn per message.
-        """
-        return self.db.claim_messages(
-            recipient, owner=owner, limit=limit, stale_after_s=stale_after_s
-        )
+    def recipients(self, task_id: int) -> list[str]:
+        return self.db.pending_task_recipients(task_id)
 
-    def pending_recipients(self, prefer_exclude: str | None = None) -> list[str]:
-        pending = [a for a in AGENTS if self.db.next_pending_message(a) is not None]
-        if prefer_exclude and len(pending) > 1 and prefer_exclude in pending:
-            pending = [a for a in pending if a != prefer_exclude]
-        return pending
+    def pending_count(self, task_id: int) -> int:
+        return self.db.task_message_count(task_id)
 
     def mark(self, message_id: int, status: str = "handled", note: str | None = None) -> None:
         self.db.mark_message(message_id, status=status, note=note)

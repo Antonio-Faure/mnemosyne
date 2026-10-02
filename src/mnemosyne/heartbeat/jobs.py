@@ -94,13 +94,14 @@ async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
 
 @handler("warmup")
 async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
-    """Human-like warmup browsing: 1-2 randomized sessions/day inside a window.
+    """The mission cycle: 1 warmup → 1 source connection, alternating.
 
-    The session itself is a normal mission for the BROWSER agent (read-only
-    wandering on archive/history sites); this job only decides *when* and posts
-    it to the mailbox, with a tight turn cap.
+    Both legs are ordinary TASKS in the operator's queue (start=browser) —
+    never mixed into one session. This job only decides *when* and which leg
+    to post; a connexion leg with no candidate falls back to a warmup (the
+    daily quota applies to warmup legs only). The session itself runs under
+    the agency job.
     """
-    from mnemosyne.agents.mailbox import Mailbox
     from mnemosyne.agents.warmup_schedule import (
         daily_session_target,
         pick_goal,
@@ -118,53 +119,74 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     )
 
     in_window = cfg.agents.warmup_window_start <= now.hour < cfg.agents.warmup_window_end
-    if not in_window or count >= target:
-        # outside human hours, or quota reached: sleep until the next window
+    if not in_window:
+        # outside human hours: sleep until the next window
         return {"interval_s": seconds_until_next_window(now, cfg.agents.warmup_window_start)}
 
-    # humans don't do it on schedule every single time
-    if random.random() < cfg.agents.warmup_skip_probability:
-        ctx.journal.append("warmup : session sautée (au hasard)", source="warmup")
-        return {
-            "interval_s": seconds_until_next_slot(
-                now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
-            )
-        }
+    db = ctx.engine.db
+    cycle = db.get_kv("mission_cycle", 0)
+    candidate = _connexion_candidate(ctx) if cycle % 2 == 1 else None
+    if candidate is None and count >= target:
+        # warmup quota reached and nothing to connect: sleep until tomorrow
+        return {"interval_s": seconds_until_next_window(now, cfg.agents.warmup_window_start)}
 
     if not await _browser_ready(ctx):
-        ctx.journal.append("warmup : Chrome injoignable, reporté", level="warn", source="warmup")
+        ctx.journal.append("cycle : Chrome injoignable, reporté", level="warn", source="warmup")
         return {"interval_s": 1800}
 
-    goal = pick_goal()
     minutes = random.uniform(cfg.agents.warmup_session_min, cfg.agents.warmup_session_max)
-    sites = goal.get("sites") or cfg.agents.warmup_sites
-    db = ctx.engine.db
-    if db.count_pending_from("warmup"):
-        ctx.journal.append("warmup : mission déjà en attente", source="warmup")
-        return {
-            "interval_s": seconds_until_next_slot(
-                now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
-            )
-        }
 
-    mission = (
-        f"[[tour: {cfg.agents.warmup_max_turns}]]\n"
-        f"MISSION WARMUP (~{minutes:.0f} min, lecture seule) — objectif « {goal['name']} ».\n"
-        f"Sites : {', '.join(sites)}\n"
-        f"{goal.get('instruction', 'Parcourt ces sites comme un curieux.')}\n"
-        "\nRègles : navigation lente et humaine (attentes de 5 à 20 s, défilement par\n"
-        "petites pages, une recherche Max 2-3, suivi d'un lien ou deux). AUCUNE action\n"
-        "sortante : pas de compte, pas de formulaire, pas d'e-mail, pas d'envoi. Ne\n"
-        "crée aucun helper, n'écris à personne. Quand le temps est écoulé, termine par\n"
-        "finish avec un bilan factuel de ce que tu as parcouru."
-    )
-    mailbox = Mailbox(db)
-    mailbox.post("warmup", "browser", mission)
-    db.incr_counter(key)
-    note = (
-        f"warmup « {goal['name']} » ~{minutes:.0f} min posté au navigateur "
-        f"(session {count + 1}/{target})"
-    )
+    if candidate is not None:
+        mission = (
+            f"MISSION CONNEXION DE SOURCE (~{minutes:.0f} min) — "
+            f"objectif « {candidate.name} ».\n"
+            f"Portail : {candidate.base_url} (auth={candidate.auth.value}).\n"
+            f"Obtiens un accès légitime pour le compte archivist "
+            f"({ctx.config.identity.agent_email}) : inscris-toi ou connecte-toi, "
+            f"récupère la clé ou le jeton nécessaire, puis "
+            f"remember('{candidate.id}_api_key', …) et écris au codeur pour "
+            "brancher le connecteur si besoin.\n"
+            "Règles : UNIQUEMENT l'objectif de cette mission — pas d'autre "
+            "inscription, pas d'envoi sortant. Termine par finish avec un bilan "
+            "factuel (ce qui a été obtenu, où, sous quel nom)."
+        )
+        db.enqueue_task(
+            "browser", mission, turn_cap=cfg.agents.warmup_max_turns,
+            payload={"kind": "connexion", "source_id": candidate.id},
+        )
+        note = f"connexion « {candidate.name} » postée au navigateur (cycle {cycle + 1})"
+    else:
+        # humans don't do it on schedule every single time
+        if random.random() < cfg.agents.warmup_skip_probability:
+            ctx.journal.append("cycle : session sautée (au hasard)", source="warmup")
+            return {
+                "interval_s": seconds_until_next_slot(
+                    now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
+                )
+            }
+        goal = pick_goal()
+        sites = goal.get("sites") or cfg.agents.warmup_sites
+        mission = (
+            f"MISSION WARMUP (~{minutes:.0f} min, lecture seule) — "
+            f"objectif « {goal['name']} ».\n"
+            f"Sites : {', '.join(sites)}\n"
+            f"{goal.get('instruction', 'Parcourt ces sites comme un curieux.')}\n"
+            "\nRègles : navigation lente et humaine (attentes de 5 à 20 s, "
+            "défilement par petites pages, une recherche ou deux, suivi d'un "
+            "lien ou deux). AUCUNE action sortante : pas de compte, pas de "
+            "formulaire, pas d'e-mail. Ne crée aucun helper, n'écris à "
+            "personne. Termine par finish avec un bilan factuel."
+        )
+        db.enqueue_task(
+            "browser", mission, turn_cap=cfg.agents.warmup_max_turns,
+            payload={"kind": "warmup"},
+        )
+        db.incr_counter(key)
+        note = (
+            f"warmup « {goal['name']} » ~{minutes:.0f} min posté au navigateur "
+            f"(session {count + 1}/{target})"
+        )
+    db.set_kv("mission_cycle", cycle + 1)
     log.info(note)
     ctx.journal.append(note, source="warmup")
     return {
@@ -172,6 +194,23 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
             now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
         )
     }
+
+
+def _connexion_candidate(ctx: JobContext):
+    """A source that needs an access the vault does not hold, with no task open."""
+    from mnemosyne.models import AuthKind
+
+    db = ctx.engine.db
+    vault = _vault_get(ctx)
+    for descriptor in ctx.engine.catalog.sync():
+        if descriptor.auth == AuthKind.NONE:
+            continue
+        if db.has_open_task(source_id=descriptor.id):
+            continue
+        if vault and vault(f"{descriptor.id}_api_key"):
+            continue  # access already obtained
+        return descriptor
+    return None
 
 
 @handler("agency")

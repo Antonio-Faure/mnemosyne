@@ -59,6 +59,7 @@ async def run_dev_agent(
     repo: str | Path | None = None,
     journal: Journal | None = None,
     mailbox=None,
+    task_id: int | None = None,
     max_turns: int | None = None,
 ) -> AgentOutcome:
     repo_path = Path(repo or config.root).resolve()
@@ -69,7 +70,8 @@ async def run_dev_agent(
     )
     notifier = Notifier(config.notify.telegram)
     provider = DevToolProvider(
-        repo_path, config.dev, token, notifier=notifier, journal=journal, mailbox=mailbox
+        repo_path, config.dev, token, notifier=notifier, journal=journal,
+        mailbox=mailbox, task_id=task_id,
     )
     # Stuck detection, not a deadline: a long refactor that keeps progressing runs
     # to the end; only a freeze or a repeated-call loop is asked to report.
@@ -96,7 +98,13 @@ async def run_dev_agent(
         )
         out_dir = config.root / config.agents.output_dir
         ensure_dir(out_dir)
-        async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
+        # persistent session (same semantics as the browser agent)
+        async with agent.session(
+            output_dir=str(out_dir),
+            cache_on_interrupt=True,
+            resume=True,
+            clear_cache_on_success=False,
+        ) as session:
             finish, history, _metadata = await session.run(task)
     finally:
         watch_db.close()

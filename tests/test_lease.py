@@ -92,33 +92,6 @@ def test_legacy_float_lease_is_understood(tmp_path):
     db.close()
 
 
-def test_claim_of_a_dead_process_is_released_at_once(tmp_path):
-    """A session killed mid-turn must not park its message for the stale TTL."""
-    import json as _json
-
-    db = _db(tmp_path)
-    mid = db.post_message("warmup", "browser", "mission")
-    db.mark_message(mid, "running")  # claimed, but claim_at/owner unknown
-    db._conn.execute(
-        "UPDATE messages SET claimed_by = ? WHERE id = ?",
-        (
-            _json.dumps(
-                {
-                    "who": "heartbeat",
-                    "pid": 4_000_000,
-                    "host": socket.gethostname(),
-                }
-            ),
-            mid,
-        ),
-    )
-    db._conn.commit()
-
-    claimed = db.claim_messages("browser", owner="heartbeat", stale_after_s=99999)
-    assert [m["id"] for m in claimed] == [mid]
-    db.close()
-
-
 def test_lease_from_a_previous_incarnation_is_reclaimed(tmp_path):
     """In a container every heartbeat is pid 1: the start time tells them apart."""
     import json as _json
@@ -158,30 +131,6 @@ def test_lease_of_the_current_process_is_respected(tmp_path):
     db.close()
 
 
-def test_recover_stale_messages_runs_even_with_an_empty_queue(tmp_path):
-    """A killed turn must be retried even when nothing else is pending."""
-    import json as _json
-
-    db = _db(tmp_path)
-    mid = db.post_message("operator", "browser", "mission")
-    db.claim_messages("browser", owner="battery")
-    assert db.claim_messages("browser", owner="battery2") == []  # turn busy
-
-    # the claimer died mid-turn
-    db._conn.execute(
-        "UPDATE messages SET claimed_by = ? WHERE id = ?",
-        (
-            _json.dumps({"who": "cli", "pid": 4_000_000, "host": socket.gethostname()}),
-            mid,
-        ),
-    )
-    db._conn.commit()
-
-    assert db.recover_stale_messages(stale_after_s=99999) == 1
-    assert db.list_messages(status="pending")[0]["id"] == mid
-    db.close()
-
-
 def test_holder_from_a_previous_container_is_reclaimed(tmp_path):
     """docker recreates the container with a new hostname: the old holder is gone."""
     import json as _json
@@ -203,24 +152,4 @@ def test_holder_from_a_previous_container_is_reclaimed(tmp_path):
     )
     db._conn.commit()
     assert db.try_lease("browser", ttl_s=60, owner="next") is True
-    db.close()
-
-
-def test_message_claimed_by_a_previous_container_comes_back(tmp_path):
-    import json as _json
-
-    db = _db(tmp_path)
-    mid = db.post_message("warmup", "browser", "mission")
-    db.claim_messages("browser", owner="heartbeat:1")
-    db._conn.execute(
-        "UPDATE messages SET claimed_by = ? WHERE id = ?",
-        (
-            _json.dumps(
-                {"who": "heartbeat:1", "pid": 1, "host": "an-old-container", "started": 1}
-            ),
-            mid,
-        ),
-    )
-    db._conn.commit()
-    assert db.recover_stale_messages(stale_after_s=99999) == 1
     db.close()

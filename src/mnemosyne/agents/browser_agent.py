@@ -172,9 +172,12 @@ class BrowserAgentToolProvider(ToolProvider):
         *,
         token: str | None = None,
         journal: Journal | None = None,
+        task_id: int | None = None,
     ):
         self.config = config
         self.mailbox = mailbox
+        # messages live INSIDE the task's temporary mailbox
+        self.task_id = task_id
         # the supervisor's database handle: one connection per turn, closed by
         # whoever opened it (run_pending_once) — no dedicated leak here
         self._db = mailbox.db
@@ -399,11 +402,15 @@ class BrowserAgentToolProvider(ToolProvider):
             return _ok(f"helpers published: {url}")
 
         async def send_exec(p: SendMessageParams):
+            if self.task_id is None:
+                return _fail(
+                    "aucune tâche ouverte : impossible d'écrire dans une boîte de messages"
+                )
             try:
-                mid = self.mailbox.post("browser", p.to, p.body)
+                mid = self.mailbox.post("browser", p.to, p.body, self.task_id)
             except ValueError as exc:
                 return _fail(str(exc))
-            return _ok(f"message #{mid} sent to {p.to}")
+            return _ok(f"message #{mid} envoyé (tâche #{self.task_id})")
 
         async def remember_exec(p: RememberParams):
             if p.key in _RESERVED_VAULT_KEYS:
@@ -438,11 +445,17 @@ async def run_browser_agent(
     mailbox: Mailbox,
     journal: Journal | None = None,
     vault_get=None,
+    task_id: int | None = None,
     max_turns: int | None = None,
 ) -> AgentOutcome:
+    from mnemosyne.agents.session_cache import cache_base_dir
+
+    cache_base_dir(config)  # sessions persistantes : le cache vit sur le volume data
     client = build_agent_client(config, session="browser-agent", vault_get=vault_get)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
-    provider = BrowserAgentToolProvider(config, mailbox, token=token, journal=journal)
+    provider = BrowserAgentToolProvider(
+        config, mailbox, token=token, journal=journal, task_id=task_id
+    )
     skills = _load_skills(provider.repo)
     agent = Agent(
         client=client,
@@ -459,7 +472,15 @@ async def run_browser_agent(
     )
     out_dir = config.root / config.agents.output_dir
     ensure_dir(out_dir)
-    async with agent.session(output_dir=str(out_dir), cache_on_interrupt=True) as session:
+    # persistent session: resume=True reopens the same history at every
+    # activation of this task; clear_cache_on_success=False keeps it for the
+    # next ping-pong hop (the supervisor deletes it when the task closes)
+    async with agent.session(
+        output_dir=str(out_dir),
+        cache_on_interrupt=True,
+        resume=True,
+        clear_cache_on_success=False,
+    ) as session:
         finish, history, _metadata = await session.run(task)
     usage = client.usage.summary()
     # one generation per turn: the usage counter is the reliable turn count

@@ -8,15 +8,14 @@ import socket
 import sqlite3
 import threading
 import time
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from mnemosyne.models import Asset, Job, JobState, SourceState
 from mnemosyne.util import ensure_dir, utcnow_iso
 
-#: how long a RUNNING message may stay claimed before a crashed turn is retried
-STALE_MESSAGE_S = 18000
+#: the note stored on a message/task row (a WeTransfer link must fit)
+NOTE_MAX_CHARS = 1000
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sources (
@@ -71,17 +70,31 @@ CREATE TABLE IF NOT EXISTS discoveries (
 
 CREATE TABLE IF NOT EXISTS messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id     INTEGER,
     sender      TEXT NOT NULL,
     recipient   TEXT NOT NULL,
     body        TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'pending',
     created_at  TEXT NOT NULL,
     handled_at  TEXT,
-    note        TEXT,
-    claimed_at  TEXT,
-    claimed_by  TEXT
+    note        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
+CREATE INDEX IF NOT EXISTS idx_messages_task ON messages(task_id, recipient);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    start_agent  TEXT NOT NULL,
+    objective    TEXT NOT NULL,
+    turn_cap     INTEGER,
+    payload      TEXT,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    created_at   TEXT NOT NULL,
+    started_at   TEXT,
+    finished_at  TEXT,
+    note         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status, id);
 
 """
 
@@ -207,13 +220,18 @@ class Database:
     def _migrate(self) -> None:
         """Add columns introduced after the first schema version (idempotent)."""
         for table, names in (
-            ("messages", ("claimed_at", "claimed_by")),
+            ("messages", ("task_id", "handled_at", "note")),
             ("jobs", ("locked_by",)),
+            ("tasks", ("last_activation_at",)),
         ):
             cols = {row["name"] for row in self._conn.execute(f"PRAGMA table_info({table})")}
             for name in names:
                 if name not in cols:
-                    self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} TEXT")
+                    kind = "INTEGER" if name == "task_id" else "TEXT"
+                    self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
+        # messages rebuilt by the task model: the old claim columns are dropped
+        # from the schema; leave them in place (SQLite cannot easily drop), they
+        # are simply never written again.
 
     def close(self) -> None:
         with self._lock:
@@ -536,124 +554,171 @@ class Database:
             row = self._conn.execute("SELECT COUNT(*) AS n FROM discoveries").fetchone()
         return int(row["n"]) if row else 0
 
-    # ── inter-agent mailbox (bi-agent) ───────────────────────────────────
-    def post_message(self, sender: str, recipient: str, body: str) -> int:
+    # ── task queue (bi-agent) ────────────────────────────────────────────
+    def enqueue_task(
+        self, start_agent: str, objective: str, turn_cap: int | None = None,
+        payload: dict | None = None,
+    ) -> int:
+        """Create a queue entry. One task = one objective, one starting agent."""
         with self._lock:
             cur = self._conn.execute(
-                """INSERT INTO messages (sender, recipient, body, status, created_at)
-                   VALUES (?, ?, ?, 'pending', ?)""",
-                (sender, recipient, body, utcnow_iso()),
+                """INSERT INTO tasks (start_agent, objective, turn_cap, payload, status, created_at)
+                   VALUES (?, ?, ?, ?, 'pending', ?)""",
+                (start_agent, objective, turn_cap,
+                 json.dumps(payload) if payload else None, utcnow_iso()),
             )
             self._conn.commit()
             return int(cur.lastrowid)
 
-    def next_pending_message(self, recipient: str) -> dict | None:
+    def next_task(self) -> dict | None:
+        """The task to work on: a running one continues first, else FIFO pending."""
         with self._lock:
             row = self._conn.execute(
-                """SELECT * FROM messages WHERE status = 'pending' AND recipient = ?
-                   ORDER BY id ASC LIMIT 1""",
-                (recipient,),
+                """SELECT * FROM tasks WHERE status = 'running' ORDER BY id ASC LIMIT 1"""
             ).fetchone()
+            if row is None:
+                row = self._conn.execute(
+                    """SELECT * FROM tasks WHERE status = 'pending' ORDER BY id ASC LIMIT 1"""
+                ).fetchone()
         return dict(row) if row else None
 
-    def _release_stuck_messages(self, stale_iso: str) -> int:
-        """Release RUNNING messages that are old or whose claimer is dead."""
-        released = 0
-        running = self._conn.execute(
-            "SELECT id, claimed_at, claimed_by FROM messages WHERE status = 'running'"
-        ).fetchall()
-        for row in running:
-            if (
-                row["claimed_at"] is None
-                or row["claimed_at"] < stale_iso
-                or _owner_is_dead(row["claimed_by"])
-            ):
-                released += self._conn.execute(
-                    """UPDATE messages
-                       SET status = 'pending', claimed_at = NULL, claimed_by = NULL
-                       WHERE id = ? AND status = 'running'""",
-                    (row["id"],),
-                ).rowcount
-        return released
-
-    def recover_stale_messages(self, stale_after_s: float = STALE_MESSAGE_S) -> int:
-        """Give back messages stuck RUNNING (crashed/killed session).
-
-        Called on every heartbeat tick, so a killed turn is retried even when
-        the mailbox is otherwise empty.
-        """
-        stale_iso = (
-            datetime.now(UTC) - timedelta(seconds=stale_after_s)
-        ).replace(microsecond=0).isoformat()
+    def get_task(self, task_id: int) -> dict | None:
         with self._lock:
-            try:
-                self._conn.execute("BEGIN IMMEDIATE")
-                released = self._release_stuck_messages(stale_iso)
-                self._conn.commit()
-            except Exception:
-                self._conn.rollback()
-                raise
-        return released
+            row = self._conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        return dict(row) if row else None
 
-    def claim_messages(
-        self,
-        recipient: str,
-        owner: str,
-        *,
-        limit: int = 5,
-        stale_after_s: float = STALE_MESSAGE_S,
-    ) -> list[dict]:
-        """Atomically claim up to `limit` PENDING messages for `recipient`.
-
-        Batching matters: several messages posted back-to-back by the same agent
-        (a report then an update) must cost ONE turn, not one turn each.
-
-        Global turn-taking is enforced: if a message is still RUNNING (claimed
-        less than `stale_after_s` ago), nothing is claimed. RUNNING messages
-        older than that (crashed process) are released first, in the same
-        transaction.
-        """
-        now = datetime.now(UTC).replace(microsecond=0)
-        now_iso = now.isoformat()
-        stale_iso = (now - timedelta(seconds=stale_after_s)).isoformat()
+    def set_task_status(
+        self, task_id: int, status: str, note: str | None = None
+    ) -> None:
+        """Set task state. started_at on running, finished_at on terminal states."""
+        now = utcnow_iso()
         with self._lock:
-            try:
-                self._conn.execute("BEGIN IMMEDIATE")
-                self._release_stuck_messages(stale_iso)
-                busy = self._conn.execute(
-                    "SELECT 1 FROM messages WHERE status = 'running' LIMIT 1"
+            row = self._conn.execute("SELECT status FROM tasks WHERE id = ?", (task_id,)).fetchone()
+            updates = ["status = ?"]
+            params: list[Any] = [status]
+            if status == "running" and (row is None or row["status"] != "running"):
+                updates.append("started_at = ?")
+                params.append(now)
+            if status in ("done", "failed", "review", "cancelled"):
+                updates.append("finished_at = ?")
+                params.append(now)
+            if note is not None:
+                updates.append("note = ?")
+                params.append(note[:NOTE_MAX_CHARS])
+            params.append(task_id)
+            self._conn.execute(
+                f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?", params
+            )
+            self._conn.commit()
+
+    def touch_task_activation(self, task_id: int) -> None:
+        """Stamp when the task was last worked on (the watchdog reads it)."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE tasks SET last_activation_at = ? WHERE id = ?",
+                (utcnow_iso(), task_id),
+            )
+            self._conn.commit()
+
+    def has_open_task(
+        self, kind: str | None = None, source_id: str | None = None
+    ) -> bool:
+        """True if a pending/running task exists (optionally of a given kind/source)."""
+        with self._lock:
+            if kind or source_id:
+                conditions, params = [], []
+                if kind:
+                    conditions.append("payload LIKE ?")
+                    params.append(f'%"kind": "{kind}"%')
+                if source_id:
+                    conditions.append("payload LIKE ?")
+                    params.append(f'%"source_id": "{source_id}"%')
+                row = self._conn.execute(
+                    f"""SELECT 1 FROM tasks
+                        WHERE status IN ('pending', 'running') AND {' AND '.join(conditions)}
+                        LIMIT 1""",
+                    params,
                 ).fetchone()
-                if busy is not None:
-                    self._conn.commit()
-                    return []
+            else:
+                row = self._conn.execute(
+                    "SELECT 1 FROM tasks WHERE status IN ('pending', 'running') LIMIT 1"
+                ).fetchone()
+        return row is not None
+
+    def count_tasks(self, status: str | None = None) -> int:
+        with self._lock:
+            if status:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) AS n FROM tasks WHERE status = ?", (status,)
+                ).fetchone()
+            else:
+                row = self._conn.execute("SELECT COUNT(*) AS n FROM tasks").fetchone()
+        return int(row["n"]) if row else 0
+
+    def list_tasks(self, status: str | None = None, limit: int = 50) -> list[dict]:
+        with self._lock:
+            if status:
                 rows = self._conn.execute(
-                    """SELECT * FROM messages
-                       WHERE status = 'pending' AND recipient = ?
-                       ORDER BY id ASC LIMIT ?""",
-                    (recipient, max(1, limit)),
+                    "SELECT * FROM tasks WHERE status = ? ORDER BY id DESC LIMIT ?",
+                    (status, limit),
                 ).fetchall()
-                claimed: list[dict] = []
-                for row in rows:
-                    cur = self._conn.execute(
-                        """UPDATE messages
-                           SET status = 'running', claimed_at = ?, claimed_by = ?
-                           WHERE id = ? AND status = 'pending'""",
-                        (now_iso, _claim_owner(owner), row["id"]),
-                    )
-                    if cur.rowcount:
-                        message = dict(row)
-                        message.update(
-                            status="running",
-                            claimed_at=now_iso,
-                            claimed_by=owner,
-                            handled_at=None,
-                        )
-                        claimed.append(message)
-                self._conn.commit()
-            except Exception:
-                self._conn.rollback()
-                raise
-        return claimed
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM tasks ORDER BY id DESC LIMIT ?", (limit,)
+                ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ── per-task temporary mailbox ───────────────────────────────────────
+    def post_message(
+        self, sender: str, recipient: str, body: str, task_id: int
+    ) -> int:
+        """A message lives INSIDE one task's mailbox (never taskless)."""
+        if task_id is None:
+            raise ValueError("a message must belong to a task")
+        with self._lock:
+            cur = self._conn.execute(
+                """INSERT INTO messages (task_id, sender, recipient, body, status, created_at)
+                   VALUES (?, ?, ?, ?, 'pending', ?)""",
+                (task_id, sender, recipient, body.strip(), utcnow_iso()),
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def pending_task_recipients(self, task_id: int) -> list[str]:
+        """Recipients with unconsumed messages in this task's mailbox."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT DISTINCT recipient FROM messages
+                   WHERE task_id = ? AND status = 'pending' ORDER BY recipient""",
+                (task_id,),
+            ).fetchall()
+        return [r["recipient"] for r in rows]
+
+    def pending_task_messages(self, task_id: int, recipient: str) -> list[dict]:
+        """Unconsumed messages of the task addressed to one agent (id order)."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT * FROM messages
+                   WHERE task_id = ? AND recipient = ? AND status = 'pending'
+                   ORDER BY id ASC""",
+                (task_id, recipient),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def task_message_count(self, task_id: int) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM messages WHERE task_id = ? AND status = 'pending'",
+                (task_id,),
+            ).fetchone()
+        return int(row["n"]) if row else 0
+
+    def delete_task_messages(self, task_id: int) -> int:
+        """The temporary mailbox dies with the task (the journal keeps the trace)."""
+        with self._lock:
+            cur = self._conn.execute("DELETE FROM messages WHERE task_id = ?", (task_id,))
+            self._conn.commit()
+            return cur.rowcount
 
     # ── cross-process leases (single browser driver) ─────────────────────
     def try_lease(self, name: str, ttl_s: float, owner: str = "") -> bool:
@@ -741,10 +806,7 @@ class Database:
         terminal = status in ("handled", "failed", "review", "archived")
         with self._lock:
             self._conn.execute(
-                """UPDATE messages
-                   SET status = ?, handled_at = ?, note = ?,
-                       claimed_at = NULL, claimed_by = NULL
-                   WHERE id = ?""",
+                "UPDATE messages SET status = ?, handled_at = ?, note = ? WHERE id = ?",
                 (status, utcnow_iso() if terminal else None, note, message_id),
             )
             self._conn.commit()
@@ -787,8 +849,7 @@ class Database:
     def running_messages(self) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(
-                "SELECT id, sender, recipient, claimed_at FROM messages"
-                " WHERE status = 'running'"
+                "SELECT id, sender, recipient FROM messages WHERE status = 'running'"
             ).fetchall()
         return [dict(r) for r in rows]
 

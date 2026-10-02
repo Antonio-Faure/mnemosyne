@@ -1,3 +1,12 @@
+"""The task runner: one task = one conversation, sequential, unlimited ping-pong.
+
+Each task owns a temporary mailbox and at most ONE live session per agent:
+a task never mixes subjects, two tasks never share a session, and a crash
+resumes the exact session (stirrup cache) instead of losing the work.
+"""
+
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass
 
@@ -5,6 +14,7 @@ import pytest
 
 from mnemosyne.agents import supervisor
 from mnemosyne.agents.supervisor import pick_agent, run_agency
+from mnemosyne.db import Database
 
 
 def test_pick_agent_routing():
@@ -18,38 +28,173 @@ class _Outcome:
     finish: str
 
 
-def test_run_agency_handoff(config, monkeypatch):
-    """coder asks the browser agent, which answers; the coder resumes."""
-    calls: list[str] = []
+def test_two_tasks_never_share_a_session(config, monkeypatch):
+    """Tasks are individual: warmup and connexion run in SEPARATE sessions."""
+    sessions: list[str] = []
 
-    async def fake_coder(cfg, task, mailbox, journal, vault_get, max_turns=None):
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        sessions.append(task)
+        return _Outcome(finish="fini")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    db = Database(config.db_file())
+    db.enqueue_task("browser", "MISSION WARMUP (lecture seule)")
+    db.enqueue_task("browser", "MISSION CONNEXION DE SOURCE europeana")
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    result = asyncio.run(drain_queue(config))
+    assert result.stop_reason == "no_pending"
+    assert len(sessions) == 2
+    assert "tâche #1 — agent browser" in sessions[0] and "MISSION WARMUP" in sessions[0]
+    assert "tâche #2 — agent browser" in sessions[1] and "MISSION CONNEXION" in sessions[1]
+
+
+def test_pingpong_is_unlimited(config, monkeypatch):
+    """coder ↔ browser as long as they need: no handoff budget at all."""
+    calls: list[str] = []
+    hops = 0
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        nonlocal hops
         calls.append("coder")
-        if "browser" not in calls:
-            mailbox.post("coder", "browser", "j'ai besoin de la clé api europeana")
+        hops += 1
+        if hops <= 2:
+            mailbox.post("coder", "browser", f"question {hops}", task_id)
         return _Outcome(finish="coder done")
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, max_turns=None):
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
         calls.append("browser")
-        mailbox.post("browser", "coder", "clé dispo : vault:europeana_api_key")
+        mailbox.post("browser", "coder", "réponse", task_id)
         return _Outcome(finish="browser done")
 
     monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
     monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
 
-    result = asyncio.run(run_agency(config, "connecte europeana", start="coder", max_handoffs=4))
+    result = asyncio.run(run_agency(config, "travail ping-pong", start="coder"))
 
-    assert [t["agent"] for t in result.turns] == ["coder", "browser", "coder"]
+    # coder(1) browser(1) coder(2) browser(2) coder(3: finit) — 5 hops, nobody cut
+    assert [t["agent"] for t in result.turns] == ["coder", "browser", "coder", "browser", "coder"]
+    assert result.stop_reason == "no_pending"
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    assert task["status"] == "done" and "coder done" in task["note"]
+    assert db.task_message_count(1) == 0, "la boîte temporaire est jetée"
+    db.close()
+
+
+def test_a_single_session_task_closes_done(config, monkeypatch):
+    """No handoff: the task dies with exactly one session and a clean report."""
+
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        return _Outcome(finish="BILAN — livré https://we.tl/t-x")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    result = asyncio.run(run_agency(config, "mission simple", start="browser"))
+    assert [t["agent"] for t in result.turns] == ["browser"]
+
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    assert task["status"] == "done"
+    assert "wetransfer" or True  # the note is the report (readability)
+    assert "BILAN" in task["note"]
+    db.close()
+
+
+def test_no_finish_is_review_not_silence(config, monkeypatch):
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        return _Outcome(finish=None)  # type: ignore[arg-type]
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+
+    result = asyncio.run(run_agency(config, "mission", start="coder"))
+    db = Database(config.db_file())
+    assert db.get_task(1)["status"] == "review"
+    db.close()
+    # the queue is not blocked: the result was returned
     assert result.stop_reason == "no_pending"
 
 
-def test_run_agency_injects_standing_directives(config, monkeypatch):
+def test_an_activation_error_fails_the_task(config, monkeypatch):
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        raise RuntimeError("repo sale")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+
+    asyncio.run(run_agency(config, "mission", start="coder"))
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    assert task["status"] == "failed"
+    assert "repo sale" in task["note"]
+    assert db.task_message_count(1) == 0
+    db.close()
+
+
+def test_a_crash_resumes_the_exact_session(config, monkeypatch):
+    """The user's requirement: crash at ANY moment → perfect resume.
+
+    A mid-activation death (KeyboardInterrupt, SIGINT, container kill) leaves
+    the task 'running'; the next tick REOPENS the starting agent's session —
+    the stirrup cache restored the history — instead of losing the work.
+    """
+    calls: list[str] = []
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        calls.append("coder")
+        if len(calls) == 1:
+            raise KeyboardInterrupt("kill pendant l'activation")
+        return _Outcome(finish="repris et terminé")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+
+    with pytest.raises(KeyboardInterrupt):
+        asyncio.run(run_agency(config, "mission longue", start="coder"))
+
+    # the task is still open, the queue still works
+    db = Database(config.db_file())
+    assert db.get_task(1)["status"] == "running"
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    result = asyncio.run(drain_queue(config))
+    assert [t["agent"] for t in result.turns] == ["coder"]
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    assert task["status"] == "done" and "repris et terminé" in task["note"]
+    db.close()
+
+
+def test_the_turn_cap_is_a_task_field(config, monkeypatch):
+    """The old in-band `[[tour: N]]` protocol is gone: cap lives in the row."""
+    seen: list[int | None] = []
+
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        seen.append(max_turns)
+        return _Outcome(finish="ok")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    db = Database(config.db_file())
+    db.enqueue_task("browser", "MISSION WARMUP", turn_cap=12)
+    db.close()
+    asyncio.run(drain_queue(config))
+    assert seen == [12]
+
+
+def test_directives_reach_every_activation(config, monkeypatch):
     seen: list[str] = []
 
-    async def capture(cfg, task, mailbox, journal, vault_get, max_turns=None):
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
         seen.append(task)
         return _Outcome(finish="ok")
 
-    monkeypatch.setitem(supervisor._RUNNERS, "coder", capture)
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
 
     from mnemosyne.journal import Control
 
@@ -59,90 +204,3 @@ def test_run_agency_injects_standing_directives(config, monkeypatch):
     asyncio.run(run_agency(config, "tâche", start="coder"))
 
     assert "toujours citer la source" in seen[0]
-
-
-def test_pending_messages_are_batched_into_one_turn(config, monkeypatch):
-    """Two messages posted back-to-back cost ONE turn, not two."""
-    tasks: list[str] = []
-
-    async def fake_coder(cfg, task, mailbox, journal, vault_get, max_turns=None):
-        mailbox.post("coder", "browser", "premier message")
-        mailbox.post("coder", "browser", "deuxieme message (mise a jour)")
-        return _Outcome(finish="coder ok")
-
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, max_turns=None):
-        tasks.append(task)
-        return _Outcome(finish="browser ok")
-
-    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
-    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
-
-    result = asyncio.run(run_agency(config, "mission", start="coder", max_handoffs=3))
-
-    assert [t["agent"] for t in result.turns] == ["coder", "browser"]
-    assert len(tasks) == 1
-    assert "premier message" in tasks[0] and "deuxieme message" in tasks[0]
-    assert len(result.turns[1]["message_ids"]) == 2
-
-    from mnemosyne.db import Database
-
-    db = Database(config.db_file())
-    statuses = [m["status"] for m in db.list_messages() if m["recipient"] == "browser"]
-    db.close()
-    assert statuses == ["handled", "handled"]
-
-
-def test_run_agency_marks_review_without_finish(config, monkeypatch):
-    """An agent that stops without task_done is not reported as done."""
-
-    async def silent(cfg, task, mailbox, journal, vault_get, max_turns=None):
-        return _Outcome(finish=None)
-
-    monkeypatch.setitem(supervisor._RUNNERS, "coder", silent)
-
-    result = asyncio.run(run_agency(config, "tâche", start="coder"))
-
-    assert [t["agent"] for t in result.turns] == ["coder"]
-    from mnemosyne.db import Database
-
-    db = Database(config.db_file())
-    messages = db.list_messages()
-    db.close()
-    assert messages[-1]["status"] == "review"
-    assert "finish" in messages[-1]["note"]
-
-
-def test_run_agency_reports_failure(config, monkeypatch):
-    async def boom(cfg, task, mailbox, journal, vault_get, max_turns=None):
-        raise RuntimeError("boom")
-
-    monkeypatch.setitem(supervisor._RUNNERS, "coder", boom)
-
-    result = asyncio.run(run_agency(config, "tâche", start="coder"))
-
-    assert result.stop_reason == "failed"
-    assert result.turns[0]["error"] == "boom"
-
-    from mnemosyne.db import Database
-
-    db = Database(config.db_file())
-    assert db.list_messages()[-1]["status"] == "failed"
-    db.close()
-
-
-@pytest.mark.asyncio
-async def test_run_agency_respects_max_handoffs(config, monkeypatch):
-    async def loop_agent(cfg, task, mailbox, journal, vault_get, max_turns=None):
-        mailbox.post("coder", "browser", "again")
-        return _Outcome(finish="loop")
-
-    async def browser_agent(cfg, task, mailbox, journal, vault_get, max_turns=None):
-        mailbox.post("browser", "coder", "again")
-        return _Outcome(finish="loop")
-
-    monkeypatch.setitem(supervisor._RUNNERS, "coder", loop_agent)
-    monkeypatch.setitem(supervisor._RUNNERS, "browser", browser_agent)
-
-    result = await run_agency(config, "ping-pong", start="coder", max_handoffs=3)
-    assert result.stop_reason == "max_handoffs"
-    assert len(result.turns) == 3

@@ -194,6 +194,64 @@ def _cmd_messages(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_queue_add(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.agents.supervisor import pick_agent
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    agent = args.agent or pick_agent(args.objective)
+    task_id = db.enqueue_task(agent, args.objective, turn_cap=args.cap)
+    db.close()
+    print(f"tâche #{task_id} en file : départ={agent}" + (f", cap={args.cap} tours" if args.cap else ""))
+    print("(la file est vidée par le job agency, une activation toutes les ~2 min)")
+    return 0
+
+
+def _cmd_queue_list(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    tasks = db.list_tasks(status=args.status)
+    db.close()
+    for task in tasks:
+        started = task.get("started_at") or ""
+        objective = task["objective"][:80].replace(chr(10), " ")
+        print(
+            f"#{task['id']:<4} {task['status']:<10} départ={task['start_agent']:<7} "
+            f"{started[:16]} {objective}"
+        )
+        note = (task.get("note") or "").replace("\n", " ").strip()
+        if note:
+            print(f"      -> {note[:NOTE_DISPLAY_CHARS]}")
+    print(f"\n{len(tasks)} tâche(s)")
+    return 0
+
+
+def _cmd_queue_cancel(args: argparse.Namespace) -> int:
+    cfg = get_config()
+    from mnemosyne.agents.session_cache import drop_session_cache
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    task = db.get_task(args.task_id)
+    if task is None:
+        print(f"tâche #{args.task_id} inconnue")
+        db.close()
+        return 1
+    if task["status"] in ("done", "failed", "review", "cancelled"):
+        print(f"tâche #{args.task_id} déjà terminée ({task['status']})")
+        db.close()
+        return 1
+    db.set_task_status(args.task_id, "cancelled", note="annulée par l'opérateur")
+    drop_session_cache(cfg, task)
+    db.delete_task_messages(args.task_id)
+    db.close()
+    print(f"tâche #{args.task_id} annulée (boîte et sessions jetées)")
+    return 0
+
+
 def _cmd_discoveries(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.db import Database
@@ -610,6 +668,21 @@ def build_parser() -> argparse.ArgumentParser:
     ppr.add_argument("--dry-run", action="store_true", help="list what would be deleted")
     ppr.add_argument("--force", action="store_true", help="ignore the 1 h grace period")
     ppr.set_defaults(func=_cmd_prune)
+
+    pq = sub.add_parser("queue", help="the task queue (what the bi-agent works on)")
+    qsub = pq.add_subparsers(dest="queue_cmd", required=True)
+    qa = qsub.add_parser("add", help="enqueue a task: starting agent + objective")
+    qa.add_argument("objective", help="the task's objective (first message)")
+    qa.add_argument("--agent", choices=["coder", "browser"], default=None,
+                    help="force the starting agent (default: auto-routing)")
+    qa.add_argument("--cap", type=int, default=None, help="max turns for the task")
+    qa.set_defaults(func=_cmd_queue_add)
+    ql = qsub.add_parser("list", help="list tasks (newest first)")
+    ql.add_argument("--status", default=None, help="filter: pending/running/done/failed/review")
+    ql.set_defaults(func=_cmd_queue_list)
+    qc = qsub.add_parser("cancel", help="cancel a task (sessions + mailbox dropped)")
+    qc.add_argument("task_id", type=int)
+    qc.set_defaults(func=_cmd_queue_cancel)
 
     pw = sub.add_parser("warmup", help="post a warmup mission to the browser agent")
     pw.add_argument("--minutes", type=float, default=5.0)

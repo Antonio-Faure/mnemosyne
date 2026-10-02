@@ -82,10 +82,12 @@ class DevToolProvider(ToolProvider):
         notifier: Notifier | None = None,
         journal: Journal | None = None,
         mailbox=None,
+        task_id: int | None = None,
     ):
         self.repo = Path(repo)
         self.config = config
         self.token = token
+        self.task_id = task_id
         self.git = Git(self.repo, self.token)
         self.notifier = notifier
         self.journal = journal

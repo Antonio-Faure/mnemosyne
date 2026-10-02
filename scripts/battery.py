@@ -344,6 +344,7 @@ def scenario_vision_wiring() -> None:
             "print(capture_screenshot('shot.png', max_dim=1800))"
         )
         shot = provider._fresh_screenshot(started)
+        assert goto is not None  # the navigation run must not have crashed
         captured = shot is not None and shot.stat().st_size > 0
         attachable = False
         if captured:

@@ -36,7 +36,7 @@ async def test_agency_idle_is_free(config):
 async def test_agency_runs_one_pending_message(config, monkeypatch):
     calls: list[str] = []
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, max_turns=None):
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
         calls.append(task)
         return AgentOutcome(finish="rapport ok")
 
@@ -44,9 +44,9 @@ async def test_agency_runs_one_pending_message(config, monkeypatch):
 
     ctx = _ctx(config)
     try:
-        ctx.engine.db.post_message("operator", "browser", "fais le warmup")
+        ctx.engine.db.enqueue_task("browser", "fais le warmup")
         await handle_agency(ctx, Job(kind="agency", payload={}))
-        assert calls == ["fais le warmup"]
-        assert ctx.engine.db.list_messages()[-1]["status"] == "handled"
+        assert len(calls) == 1 and "fais le warmup" in calls[0]
+        assert ctx.engine.db.get_task(1)["status"] == "done"
     finally:
         await ctx.engine.aclose()

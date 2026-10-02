@@ -1,9 +1,10 @@
 """Invariants of the running system, checked on a timer and logged.
 
 The watchdog answers one question: *is something stuck?* It never stops
-anything. A long mission is not a problem: a mission is a problem when it has
-stopped making progress, and that is what the agents report themselves
-(`agents/progress.py` writes a `stall:<agent>` marker).
+anything. A long task is not a problem (sessions keep their context, the
+ping-pong is unlimited): a task is a problem when nobody works on it — the
+agents report their own stalls (`stall:<agent>` markers) and the queue
+operator-facing can be cancelled at any moment.
 
 Alerts therefore mean "look at this", never "cut this off".
 """
@@ -15,8 +16,7 @@ from datetime import UTC, datetime
 from mnemosyne.config import Config
 from mnemosyne.db import Database
 
-#: a mechanical job running longer than this is suspicious (agents are exempt:
-#: they are judged on the stall marker, whatever their duration)
+#: a task nobody works on for this long is suspicious (the agency tick is 2 min)
 STALE_MIN = 45
 PENDING_MIN = 90
 #: a stall marker counts after this age (the agent gets 2 min of silence)
@@ -56,18 +56,24 @@ def check_invariants(
     try:
         stall = _stall_marker(db)
 
-        running = db.running_messages()
-        # A running message is NOT an alert, whatever its age: a long mission is
-        # the normal case. Only the stall marker (written by the agent itself
-        # when it stops progressing) turns into an alert.
-
-        pending = db.pending_messages()
-        for row in pending:
-            age = _age_minutes(row["created_at"])
+        pending_tasks = db.list_tasks(status="pending")
+        for task in pending_tasks:
+            age = _age_minutes(task["created_at"])
             if age is not None and age > pending_min:
                 alerts.append(
-                    f"message #{row['id']} ({row['sender']}->{row['recipient']}) "
-                    f"en attente depuis {age:.0f} min"
+                    f"tâche #{task['id']} en attente dans la file depuis {age:.0f} min"
+                )
+
+        running = db.list_tasks(status="running")
+        agency_alive = any(job["kind"] == "agency" for job in db.running_jobs())
+        for task in running:
+            age = _age_minutes(task.get("last_activation_at"))
+            if age is None:
+                continue
+            if age > stale_min and not agency_alive:
+                alerts.append(
+                    f"tâche #{task['id']} ouverte mais plus personne ne la travaille "
+                    f"({age:.0f} min)"
                 )
 
         for lease_name in ("browser", "agency"):
@@ -75,20 +81,10 @@ def check_invariants(
             if dead_pid:
                 alerts.append(f"bail {lease_name} tenu par un processus disparu ({dead_pid})")
 
-        for job in db.running_jobs():
-            age = _age_minutes(job["locked_at"])
-            if age is None:
-                continue
-            if job["kind"] == "agency":
-                # une session d'agent est jugée sur le patinage, jamais sur la durée
-                continue
-            if age > stale_min:
-                alerts.append(f"job #{job['id']} ({job['kind']}) running depuis {age:.0f} min")
-
         stats = {
-            "pending": len(pending),
+            "pending": len(pending_tasks),
             "running": len(running),
-            "review": db.review_message_count(),
+            "review": db.count_tasks("review"),
             "lease": db.lease_exists("browser"),
             "stall": stall["agent"] if stall else "-",
         }
