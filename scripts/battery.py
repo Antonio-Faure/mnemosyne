@@ -335,8 +335,13 @@ def scenario_vision_wiring() -> None:
     provider = BrowserAgentToolProvider(CONFIG, Mailbox(database))
     try:
         started = time.time()
+        # Two runs, like the real wiring: browser-harness 0.1.13 loses its CDP
+        # attach after goto_url in the SAME run (not attached to an active page),
+        # so the capture must be its own run — which is exactly what the
+        # force_vision second run does in browser_exec.
+        goto = provider._run_harness(f"goto_url('file://{page}')")
         res = provider._run_harness(
-            f"goto_url('file://{page}'); print(capture_screenshot('shot.png', max_dim=1800))"
+            "print(capture_screenshot('shot.png', max_dim=1800))"
         )
         shot = provider._fresh_screenshot(started)
         captured = shot is not None and shot.stat().st_size > 0
