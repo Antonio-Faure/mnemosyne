@@ -157,6 +157,11 @@ def _cmd_agency(args: argparse.Namespace) -> int:
         )
     )
     print(f"start: {result.start} | stop: {result.stop_reason}")
+    if result.stop_reason == "agency_busy":
+        print(
+            "un run d'agent est deja en cours (bail) : la mission reste en file "
+            "et sera servie par le pilote en cours, sans perte."
+        )
     for turn in result.turns:
         summary = turn.get("finish") or turn.get("error") or ""
         print(f"  - {turn.get('agent')} (msg #{turn.get('message_id')}): {str(summary)[:160]}")

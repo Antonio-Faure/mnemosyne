@@ -112,6 +112,11 @@ _RUNNERS = {"coder": _run_coder, "browser": _run_browser}
 #: past the longest plausible session
 BROWSER_LEASE_S = 18000
 
+#: one pilot at a time: two concurrent supervisors would run two coder turns in
+#: the same git worktree and two browser turns against the same Chrome session.
+#: Longer than the browser lease, since a pilot may chain several turns.
+AGENCY_LEASE_S = 8 * 3600
+
 
 def _task_with_directives(config: Config, task: str) -> str:
     """Append the operator's standing directives (control/directives.md)."""
@@ -255,6 +260,10 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
     db = Database(config.db_file())
     mailbox = Mailbox(db)
     held: bool | None = False
+    # Same pilot lease as run_agency: the heartbeat turn must never overlap a
+    # CLI run (two coder turns would share one git worktree).
+    if not db.try_lease("agency", ttl_s=AGENCY_LEASE_S, owner=f"heartbeat:{os.getpid()}"):
+        return None
     try:
         released = db.recover_stale_messages()
         if released:
@@ -281,6 +290,7 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
     finally:
         if held:
             db.release_lease("browser")
+        db.release_lease("agency")
         db.close()
 
 
@@ -298,8 +308,16 @@ async def run_agency(
     mailbox = Mailbox(db)
     db.recover_stale_messages()
     target = start or pick_agent(task)
-    mailbox.post("operator", target, task)
     result = AgencyResult(start=target)
+    if not db.try_lease("agency", ttl_s=AGENCY_LEASE_S, owner=f"cli:{os.getpid()}"):
+        # Another pilot is alive. We still post the task, so nothing is lost: the
+        # running pilot drains the mailbox turn by turn and will serve it.
+        mailbox.post("operator", target, task)
+        log.info("agency lease held elsewhere; task left in the mailbox")
+        db.close()
+        result.stop_reason = "agency_busy"
+        return result
+    mailbox.post("operator", target, task)
     last: str | None = None
     failures = 0
 
@@ -341,5 +359,6 @@ async def run_agency(
         if failures:
             result.stop_reason = "failed"
     finally:
+        db.release_lease("agency")
         db.close()
     return result
