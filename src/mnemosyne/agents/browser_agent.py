@@ -180,22 +180,40 @@ class BrowserAgentToolProvider(ToolProvider):
         self.git = Git(self.worktree, token)
 
     def _refresh_worktree(self) -> None:
-        """Fast-forward the helpers worktree so newly published helpers are visible.
+        """Track the base branch so helpers published on main become visible.
 
-        Never fails the turn: a worktree we cannot update is still usable.
+        The worktree follows an `agent/*` branch after a publish, and a squash
+        merge makes that branch diverge, so a fast-forward alone would never
+        bring new helpers. We therefore re-point a local branch at the base
+        branch (published commits stay in the repo), and we never touch a
+        worktree that has uncommitted helper edits.
         """
         if not self._worktree_is_usable():
             return
+        try:
+            dirty = subprocess.run(
+                ["git", "-C", str(self.worktree), "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.debug("helpers worktree refresh failed (%s)", exc)
+            return
+        if dirty.returncode == 0 and dirty.stdout.strip():
+            log.debug("helpers worktree has local changes; keeping it as is")
+            return
+        base = self.config.dev.base_branch
         for args in (
-            ["fetch", "--quiet", "origin", self.config.dev.base_branch],
-            ["merge", "--ff-only", "--quiet", "origin/" + self.config.dev.base_branch],
+            ["fetch", "--quiet", "origin", base],
+            ["checkout", "-B", f"helpers/{base}", "--quiet", f"origin/{base}"],
         ):
             try:
                 probe = subprocess.run(
                     ["git", "-C", str(self.worktree), *args],
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=180,
                 )
             except Exception as exc:  # noqa: BLE001
                 log.debug("helpers worktree refresh failed (%s)", exc)
@@ -203,6 +221,7 @@ class BrowserAgentToolProvider(ToolProvider):
             if probe.returncode != 0:
                 log.debug("helpers worktree refresh: %s", probe.stderr.strip()[:160])
                 return
+        log.info("helpers worktree aligned on origin/%s", base)
 
     def _worktree_is_usable(self) -> bool:
         """A .git file is not enough: the gitdir it points at must exist.
