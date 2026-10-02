@@ -169,3 +169,39 @@ async def test_every_browser_tool_goes_through_the_single_watch(config):
         assert recorded == expected, recorded
     finally:
         db.close()
+
+
+async def test_the_wrapper_is_a_real_tool_provider_for_stirrup(config):
+    """stirrup checks isinstance(tool, ToolProvider) on the tools list: a bare
+    wrapper would be treated as a static Tool and crash on `.name`. The browser
+    E2E probe caught this — no coder session had run since the wrap."""
+    pytest.importorskip("stirrup")
+    from mnemosyne.agents.progress import watch_provider
+    from stirrup.core.models import ToolProvider
+
+    from mnemosyne.db import Database
+
+    db = Database(config.db_file())
+    provider = _FakeBrowserProvider(db)
+    try:
+        wrapped = watch_provider(provider, provider.progress, "navigateur")
+        assert isinstance(wrapped, ToolProvider), "le wrapper doit passer le isinstance"
+    finally:
+        db.close()
+
+
+class _FakeBrowserProvider:
+    """Minimal ToolProvider stand-in (worktree-free) for the isinstance check."""
+
+    def __init__(self, db):
+        from mnemosyne.agents.progress import ProgressWatch
+
+        self.progress = ProgressWatch(agent="browser", db=db)
+        self.entered = False
+
+    async def __aenter__(self):
+        self.entered = True
+        return []
+
+    async def __aexit__(self, *exc):
+        return None

@@ -148,9 +148,14 @@ def watch_provider(provider, watch: ProgressWatch, label: str):
 
     One wrapper instead of touching each tool: a new tool must be covered the
     day it is added, on both agents (coder via run_dev_agent, browser via
-    run_browser_agent).
+    run_browser_agent). The wrapper MUST be a ToolProvider itself: stirrup
+    checks `isinstance(tool, ToolProvider)` on the tools list, and a bare
+    wrapper would be treated as a static Tool (crash: providers have no
+    `.name`).
     """
-    class _Watched:
+    from stirrup.core.models import ToolProvider
+
+    class _Watched(ToolProvider):
         def __init__(self, inner):
             self._inner = inner
 
