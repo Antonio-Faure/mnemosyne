@@ -6,10 +6,8 @@ grepped in one go. Scenarios touch only their own rows.
 
 from __future__ import annotations
 
-import json
 import os
 import signal
-import socket
 import subprocess
 import sys
 import time
@@ -67,212 +65,154 @@ def scenario_lease_exclusive() -> None:
         database.close()
 
 
-def scenario_batch_one_turn() -> None:
-    """Three messages in a row are absorbed by ONE turn."""
-    from mnemosyne.agents.mailbox import Mailbox
-    from mnemosyne.agents.supervisor import _batched_task, _split_turn_cap
+def scenario_queue_sequential() -> None:
+    """Tasks are individual: two queue entries run in TWO separate sessions."""
+    from mnemosyne.agents.session_cache import session_task_text
 
     database = db()
     try:
-        mailbox = Mailbox(database)
-        sent = [mailbox.post("operator", "coder", f"battery message {i}") for i in range(3)]
-        claimed = mailbox.claim_all_for("coder", owner="battery")
-        cleaned, cap = _split_turn_cap(claimed)
-        task = _batched_task(cleaned)
-        for mid in sent:
-            mailbox.mark(mid, "handled", "battery")
-        ok = len(claimed) == 3 and cap is None and "message 2/3" in task
-        out("batch_one_turn", ok, f"claimed={len(claimed)} cap={cap}")
+        t1 = database.enqueue_task("browser", "battery: MISSION WARMUP", turn_cap=40)
+        t2 = database.enqueue_task("browser", "battery: MISSION CONNEXION")
+        text1 = session_task_text("browser", database.get_task(t1))
+        text2 = session_task_text("browser", database.get_task(t2))
+        # the two tasks never share a session: different frozen texts, no cap leak
+        ok = (text1 != text2 and "tâche #1 — agent browser" in text1
+              and "tâche #2 — agent browser" in text2)
+        database.set_task_status(t1, "cancelled", note="battery")
+        database.set_task_status(t2, "cancelled", note="battery")
+        for task_id in (t1, t2):
+            database.delete_task_messages(task_id)
+        out("queue_sequential", ok, f"t1={t1} t2={t2}")
     finally:
         database.close()
 
 
-def scenario_turn_cap() -> None:
-    """A `[[tour: N]]` mission caps its own turn."""
-    from mnemosyne.agents.supervisor import _split_turn_cap
+def scenario_turn_cap_field() -> None:
+    """The turn cap is a task field (the in-band [[tour: N]] protocol is gone)."""
+    database = db()
+    try:
+        task_id = database.enqueue_task("browser", "battery: cap probe", turn_cap=25)
+        task = database.get_task(task_id)
+        ok = task["turn_cap"] == 25
+        database.set_task_status(task_id, "cancelled", note="battery")
+        database.delete_task_messages(task_id)
+        out("turn_cap_field", ok, f"cap={task['turn_cap']}")
+    finally:
+        database.close()
 
-    cleaned, cap = _split_turn_cap(
-        [{"body": "[[tour: 40]]\nMISSION WARMUP", "sender": "warmup", "created_at": "t"}]
-    )
-    ok = cap == 40 and "[[tour:" not in cleaned[0]["body"]
-    out("turn_cap", ok, f"cap={cap}")
 
-
-def scenario_crash_recovery() -> None:
-    """A claim left by a dead process is released at once."""
-    import json
-
+def scenario_task_pingpong_unlimited() -> None:
+    """A task's mailbox: agent-to-agent, task-scoped, dies with the task."""
     from mnemosyne.agents.mailbox import Mailbox
 
     database = db()
     try:
+        task_id = database.enqueue_task("coder", "battery: ping-pong probe")
         mailbox = Mailbox(database)
-        mid = mailbox.post("operator", "coder", "battery: crash recovery probe")
-        claimed = mailbox.claim_all_for("coder", owner="battery")
-        if not claimed:  # the coder is busy with a real turn
-            mailbox.mark(mid, "handled", "battery: occupé, test sauté")
-            out("crash_recovery", True, "skipped: coder busy")
-            return
-        database._conn.execute(
-            "UPDATE messages SET claimed_by = ? WHERE id = ?",
-            (
-                json.dumps(
-                    {"who": "cli", "pid": 4_000_000, "host": socket.gethostname(), "started": 1}
-                ),
-                mid,
-            ),
-        )
-        database._conn.commit()
-        released = database.recover_stale_messages(stale_after_s=99999)
-        status = database._conn.execute(
-            "SELECT status FROM messages WHERE id = ?", (mid,)
-        ).fetchone()["status"]
-        mailbox.mark(mid, "handled", "battery: crash recovery ok")
-        out(
-            "crash_recovery",
-            bool(claimed) and released >= 1 and status in ("pending", "running"),
-            f"released={released} status={status}",
-        )
+        mailbox.post("coder", "browser", "battery: question", task_id)
+        mailbox.post("browser", "coder", "battery: réponse", task_id)
+        hops = mailbox.pending_count(task_id)
+        # taskless messages cannot exist
+        refused = False
+        try:
+            Mailbox(database).post("coder", "browser", "orphelin", None)
+        except ValueError:
+            refused = True
+        mailbox.mark(mailbox.pending_for(task_id, "coder")[0]["id"], "handled", "battery")
+        mailbox.mark(mailbox.pending_for(task_id, "browser")[0]["id"], "handled", "battery")
+        drained = mailbox.pending_count(task_id) == 0
+        database.set_task_status(task_id, "cancelled", note="battery")
+        database.delete_task_messages(task_id)
+        out("task_pingpong", refused and hops == 2 and drained,
+            f"hops={hops} refused={refused} drained={drained}")
     finally:
         database.close()
 
 
 def heartbeat_service_is_pid1() -> bool:
-    """True when the container's main process is the heartbeat service.
-
-    The service is itself a pilot (it takes `lease:agency` every tick), so a
-    kill-and-recover test cannot be attributed to our own process: the message
-    may be legitimately owned by a live pilot. We skip it with a reason rather
-    than pass it silently.
-    """
-    try:
-        cmdline = Path("/proc/1/cmdline").read_bytes().decode("utf-8", "ignore")
-    except OSError:
-        return False
-    parts = [p for p in cmdline.split("\0") if p]
-    if len(parts) < 2:
-        return False
-    return Path(parts[-2]).name == "mnemosyne" and parts[-1] == "run"
-
-
-def claim_holder_gone(message_id: int) -> bool:
-    """True when the `running` message of `message_id` has no live claimer."""
-    from mnemosyne.db import _holder_is_gone
-
+    """True when the container's `mnemosyne run` (pid 1) holds the agency lease."""
     database = db()
     try:
-        row = database._conn.execute(
-            "SELECT status, claimed_by FROM messages WHERE id = ?", (message_id,)
-        ).fetchone()
+        holder = database.get_kv("lease:agency")
+        return bool(isinstance(holder, dict) and holder.get("pid") == 1)
     finally:
         database.close()
-    if not row or row["status"] != "running" or not row["claimed_by"]:
-        return True  # nothing is running: the release already happened
-    try:
-        payload = json.loads(row["claimed_by"])
-    except json.JSONDecodeError:
-        return True
-    return _holder_is_gone(payload)
 
 
 def scenario_kill_agency_process() -> None:
-    """Kill a real browser turn mid-flight: its message must come back quickly."""
-    from mnemosyne.agents.mailbox import Mailbox
+    """Kill a real activation mid-flight: the next pilot RESUMES the task.
+
+    The task model makes this trivial: the task row stays 'running', the
+    session cache stays on disk, and whoever ticks next (the service, or a
+    fresh drain) reopens the exact session. The agent is told to finish at
+    once if it ever gets reactivated, so the resume is observable.
+    """
+    from mnemosyne.agents.supervisor import _RUNNERS  # noqa: F401 (existence check)
 
     if heartbeat_service_is_pid1():
         out(
             "kill_agency_process",
             True,
-            "skipped: le service heartbeat est pid 1 (bail agency), "
-            "impossible d'attribuer la reclamation a notre processus",
+            "skipped: le service heartbeat est pid 1 (bail agency) — la reprise "
+            "est déjà vérifiée en unitaire (test_a_crash_resumes_the_exact_session)",
         )
         return
 
-    database = db()
-    try:
-        mid = Mailbox(database).post(
-            "operator", "browser", "battery: mission longue (elle sera tuée)"
-        )
-    finally:
-        database.close()
     proc = subprocess.Popen(
-        ["mnemosyne", "agency", "battery mission longue", "--to", "browser", "--max", "1"],
+        [
+            "mnemosyne", "agency",
+            "battery: tu seras tué en plein vol — si tu es réactivé plus tard, "
+            "termine IMMÉDIATEMENT par finish avec un bilan factuel de ce que "
+            "tu as vu",
+            "--to", "browser",
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    claimed = False
-    for _ in range(60):  # wait for the turn to actually claim it
+    task_id = None
+    for _ in range(24):  # wait for the pilot to actually claim the task
         database = db()
         try:
-            row = database._conn.execute(
-                "SELECT status FROM messages WHERE id = ?", (mid,)
-            ).fetchone()
+            running = database.list_tasks(status="running")
+            if running:
+                task_id = running[-1]["id"]
+                break
         finally:
             database.close()
-        if row and row["status"] == "running":
-            claimed = True
-            break
         time.sleep(10)
-    if not claimed:
+    if task_id is None:
         proc.kill()
-        database = db()
-        try:
-            database.mark_message(mid, "handled", "battery:Boîte occupée, test sauté")
-        finally:
-            database.close()
-        out("kill_agency_process", True, "skipped: mailbox busy (tour en cours)")
+        out("kill_agency_process", False, "aucune tâche claimée en 4 min")
         return
     os.kill(proc.pid, signal.SIGKILL)
-    # The container runs `mnemosyne run` as pid 1, so the service is itself a
-    # pilot: the message we just posted may legitimately be claimed by it, and
-    # then there is nothing to recover. We only assert crash recovery when the
-    # holder is really gone.
-    holder_gone = claim_holder_gone(mid)
-    if not holder_gone:
-        out(
-            "kill_agency_process",
-            True,
-            f"skipped: message #${mid} détenu par un pilote vivant (service)",
-        )
-        return
-    # Recovery is the job of the *next* pilot (heartbeat tick or any new run),
-    # exactly as in production. We play that pilot here in a fresh process, so
-    # the scenario does not depend on an ambient heartbeat being up.
     started = time.time()
-    released = None
-    while time.time() - started < 300:
+    closed: dict | None = None
+    while time.time() - started < 600:
         subprocess.run(
             [
-                sys.executable,
-                "-c",
-                "from mnemosyne.db import Database;\n"
-                "db = Database('data/mnemosyne.db');\n"
-                "print(db.recover_stale_messages());\n"
-                "db.close()",
+                sys.executable, "-c",
+                "from mnemosyne.agents.supervisor import run_pending_once;\n"
+                "from mnemosyne.config import get_config;\n"
+                "import asyncio;\n"
+                "asyncio.run(run_pending_once(get_config()))",
             ],
             capture_output=True,
-            timeout=120,
+            timeout=300,
         )
         database = db()
         try:
-            row = database._conn.execute(
-                "SELECT status FROM messages WHERE id = ?", (mid,)
-            ).fetchone()
+            task = database.get_task(task_id)
         finally:
             database.close()
-        if row and row["status"] != "running":
-            released = round(time.time() - started)
+        if task and task["status"] in ("done", "review", "failed"):
+            closed = task
             break
-        time.sleep(5)
-    database = db()
-    try:
-        database.mark_message(mid, "handled", "battery: tué volontairement")
-    finally:
-        database.close()
+        time.sleep(10)
     out(
         "kill_agency_process",
-        claimed and released is not None and released < 240,
-        f"claimed={claimed} released_after={released}s",
+        bool(closed and closed["status"] == "done"),
+        f"status={closed['status'] if closed else 'toujours ouverte'} "
+        f"note={(closed['note'] or '')[:100] if closed else ''}",
     )
 
 
@@ -362,9 +302,9 @@ def scenario_vision_wiring() -> None:
 SCENARIOS = {
     "guard": scenario_guard_double_click,
     "lease": scenario_lease_exclusive,
-    "batch": scenario_batch_one_turn,
-    "turncap": scenario_turn_cap,
-    "crash": scenario_crash_recovery,
+    "queue": scenario_queue_sequential,
+    "turncap": scenario_turn_cap_field,
+    "pingpong": scenario_task_pingpong_unlimited,
     "kill": scenario_kill_agency_process,
     "prompts": scenario_native_finish_in_prompts,
     "heartbeat": scenario_heartbeat,

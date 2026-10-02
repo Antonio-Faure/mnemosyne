@@ -203,7 +203,8 @@ def _cmd_queue_add(args: argparse.Namespace) -> int:
     agent = args.agent or pick_agent(args.objective)
     task_id = db.enqueue_task(agent, args.objective, turn_cap=args.cap)
     db.close()
-    print(f"tâche #{task_id} en file : départ={agent}" + (f", cap={args.cap} tours" if args.cap else ""))
+    cap_note = f", cap={args.cap} tours" if args.cap else ""
+    print(f"tâche #{task_id} en file : départ={agent}{cap_note}")
     print("(la file est vidée par le job agency, une activation toutes les ~2 min)")
     return 0
 
