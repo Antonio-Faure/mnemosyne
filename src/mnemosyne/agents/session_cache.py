@@ -75,6 +75,26 @@ def inject_reply(config: Config, agent: str, task: dict, reply_text: str) -> str
     return text
 
 
+def persist_session(config: Config, agent, agent_name: str) -> None:
+    """Save the session state AFTER a successful activation (finish included).
+
+    stirrup only caches on non-success exits (`should_cache` in its __aexit__:
+    exception, or no finish) — a clean finish writes NOTHING, which would kill
+    the ping-pong (the next hop would find no session). The state is on the
+    Agent instance after run(); we save it with the same CacheManager.
+    """
+    from stirrup.core.cache import CacheManager
+
+    state = getattr(agent, "_current_run_state", None)
+    task_hash = getattr(agent, "_current_task_hash", None)
+    if state is None or task_hash is None:
+        log.warning("aucun état de session à persister (%s)", agent_name)
+        return
+    CacheManager(cache_base_dir=cache_base_dir(config), clear_on_success=False).save_state(
+        task_hash, state
+    )
+
+
 def drop_session_cache(config: Config, task: dict) -> None:
     """The temporary sessions die with the task (both agents, exact hashes)."""
     from stirrup.core.cache import compute_task_hash

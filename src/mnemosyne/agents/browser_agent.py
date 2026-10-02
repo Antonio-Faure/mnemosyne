@@ -448,7 +448,7 @@ async def run_browser_agent(
     task_id: int | None = None,
     max_turns: int | None = None,
 ) -> AgentOutcome:
-    from mnemosyne.agents.session_cache import cache_base_dir
+    from mnemosyne.agents.session_cache import cache_base_dir, persist_session
 
     cache_base_dir(config)  # sessions persistantes : le cache vit sur le volume data
     client = build_agent_client(config, session="browser-agent", vault_get=vault_get)
@@ -482,6 +482,7 @@ async def run_browser_agent(
         clear_cache_on_success=False,
     ) as session:
         finish, history, _metadata = await session.run(task)
+    persist_session(config, agent, "browser")  # le finish doit aussi laisser un cache
     usage = client.usage.summary()
     # one generation per turn: the usage counter is the reliable turn count
     turns = int(usage.get("calls") or 0) or len(history)

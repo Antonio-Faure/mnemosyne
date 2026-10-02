@@ -14,6 +14,7 @@ from stirrup import Agent
 
 from mnemosyne.agents.outcome import AgentOutcome
 from mnemosyne.agents.progress import ProgressWatch, watch_provider
+from mnemosyne.agents.session_cache import cache_base_dir, persist_session
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.db import Database
@@ -63,6 +64,7 @@ async def run_dev_agent(
     max_turns: int | None = None,
 ) -> AgentOutcome:
     repo_path = Path(repo or config.root).resolve()
+    cache_base_dir(config)  # sessions persistantes sur le volume data
     _ensure_clean(repo_path)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
     client = build_agent_client(
@@ -106,6 +108,7 @@ async def run_dev_agent(
             clear_cache_on_success=False,
         ) as session:
             finish, history, _metadata = await session.run(task)
+        persist_session(config, agent, "codeur")  # le finish laisse un cache aussi
     finally:
         watch_db.close()
     usage = client.usage.summary()
