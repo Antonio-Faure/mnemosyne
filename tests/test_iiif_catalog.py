@@ -38,9 +38,6 @@ IIIF_SOURCES = {
         "csg-0657/manifest.json"
     ),
     "vam": "https://iiif.vam.ac.uk/collections/O117445/manifest.json",
-    "archive_org": (
-        "https://iiif.archive.org/iiif/3/proceedings1922mcle/manifest.json"
-    ),
 }
 
 
@@ -71,3 +68,12 @@ def test_descriptor_uses_generic_iiif_connector(source_id: str) -> None:
     descriptor = SourceDescriptor(**_load(source_id))
     connector = build_connector(descriptor, _FakeHttp())
     assert isinstance(connector, IIIFConnector)
+
+
+def test_restricted_licenses_are_not_enabled():
+    """Non-commercial / restrictive sources stay off until the policy allows them."""
+    for source_id in ("cudl", "ecodices", "wellcome", "vatican", "vam"):
+        raw = yaml.safe_load((SOURCES_DIR / f"{source_id}.yaml").read_text(encoding="utf-8"))
+        assert raw.get("enabled") is False, f"{source_id} must be disabled"
+        # the manifest is still recorded, so enabling it is a one-line change
+        assert raw.get("extra", {}).get("manifest")

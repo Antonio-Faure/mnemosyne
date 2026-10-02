@@ -7,6 +7,7 @@ base_url: https://digi.vatlib.it
 auth: none
 license: varies
 rights: "Biblioteca Apostolica Vaticana — check per record"
+enabled: false   # usage gratuit non commercial d'apres le site — activer si la politique du projet l'autorise
 rate_limit_per_s: 1.0
 priority: 40
 tags: [library, vatican, manuscripts, iiif, keyless]

@@ -7,6 +7,7 @@ base_url: https://cudl.lib.cam.ac.uk
 auth: none
 license: "https://creativecommons.org/licenses/by-nc/4.0/"
 rights: "CC BY-NC — Cambridge University Library"
+enabled: false   # CC BY-NC 4.0 (usage non commercial) — activer si la politique du projet l'autorise
 rate_limit_per_s: 1.0
 priority: 40
 tags: [university-library, united-kingdom, manuscripts, iiif, keyless]

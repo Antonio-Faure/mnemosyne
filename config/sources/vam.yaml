@@ -7,6 +7,7 @@ base_url: https://iiif.vam.ac.uk
 auth: none
 license: varies
 rights: "V&A — many public domain, check per record"
+enabled: false   # V&A Terms and Conditions (restrictif) — activer si la politique du projet l'autorise
 rate_limit_per_s: 1.0
 priority: 40
 tags: [museum, united-kingdom, iiif, keyless]

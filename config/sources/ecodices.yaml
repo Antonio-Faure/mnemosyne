@@ -7,6 +7,7 @@ base_url: https://www.e-codices.unifr.ch
 auth: none
 license: "https://creativecommons.org/licenses/by-nc/4.0/"
 rights: "CC BY-NC — e-codices"
+enabled: false   # CC BY-NC 4.0 (usage non commercial) — activer si la politique du projet l'autorise
 rate_limit_per_s: 1.0
 priority: 40
 tags: [university-library, switzerland, manuscripts, iiif, keyless]
