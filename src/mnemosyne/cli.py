@@ -390,7 +390,6 @@ def _cmd_history(args: argparse.Namespace) -> int:
 def _cmd_warmup(args: argparse.Namespace) -> int:
     """Post a warmup mission to the browser agent right now."""
     cfg = get_config()
-    from mnemosyne.agents.mailbox import Mailbox
     from mnemosyne.agents.warmup_schedule import pick_goal
     from mnemosyne.db import Database
 
@@ -407,13 +406,17 @@ def _cmd_warmup(args: argparse.Namespace) -> int:
         "helper, n'écris à personne. Termine par finish avec un bilan factuel."
     )
     db = Database(cfg.db_file())
-    if db.count_pending_from("warmup"):
+    if db.has_open_task(kind="warmup"):
         db.close()
         print("une mission warmup est déjà en attente — rien à poster")
         return 0
-    Mailbox(db).post("warmup", "browser", mission)
+    today = datetime.now().date().isoformat()
+    db.enqueue_task(
+        "browser", mission, turn_cap=cfg.agents.warmup_max_turns, payload={"kind": "warmup"}
+    )
+    db.incr_counter(f"warmup:{today}")
     db.close()
-    print(f"mission warmup « {goal['name']} » (~{minutes:.0f} min) postée au navigateur")
+    print(f"mission warmup « {goal['name']} » (~{minutes:.0f} min) mise en file")
     return 0
 
 

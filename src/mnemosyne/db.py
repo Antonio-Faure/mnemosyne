@@ -80,7 +80,6 @@ CREATE TABLE IF NOT EXISTS messages (
     note        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, recipient);
-CREATE INDEX IF NOT EXISTS idx_messages_task ON messages(task_id, recipient);
 
 CREATE TABLE IF NOT EXISTS tasks (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -229,6 +228,10 @@ class Database:
                 if name not in cols:
                     kind = "INTEGER" if name == "task_id" else "TEXT"
                     self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
+        # the per-task mailbox index needs the migrated column, so it lives here
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_messages_task ON messages(task_id, recipient)"
+        )
         # messages rebuilt by the task model: the old claim columns are dropped
         # from the schema; leave them in place (SQLite cannot easily drop), they
         # are simply never written again.
@@ -819,15 +822,6 @@ class Database:
                 ).fetchone()
             else:
                 row = self._conn.execute("SELECT COUNT(*) AS n FROM messages").fetchone()
-        return int(row["n"]) if row else 0
-
-    def count_pending_from(self, sender: str) -> int:
-        """Pending messages posted by one sender (e.g. a single warmup mission)."""
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT COUNT(*) AS n FROM messages WHERE status = 'pending' AND sender = ?",
-                (sender,),
-            ).fetchone()
         return int(row["n"]) if row else 0
 
     def set_kv(self, key: str, value: Any) -> None:

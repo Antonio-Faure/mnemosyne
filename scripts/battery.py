@@ -75,9 +75,12 @@ def scenario_queue_sequential() -> None:
         t2 = database.enqueue_task("browser", "battery: MISSION CONNEXION")
         text1 = session_task_text("browser", database.get_task(t1))
         text2 = session_task_text("browser", database.get_task(t2))
-        # the two tasks never share a session: different frozen texts, no cap leak
-        ok = (text1 != text2 and "tâche #1 — agent browser" in text1
-              and "tâche #2 — agent browser" in text2)
+        # the two tasks never share a session: different frozen texts
+        ok = (
+            text1 != text2
+            and f"tâche #{t1} — agent browser" in text1
+            and f"tâche #{t2} — agent browser" in text2
+        )
         database.set_task_status(t1, "cancelled", note="battery")
         database.set_task_status(t2, "cancelled", note="battery")
         for task_id in (t1, t2):

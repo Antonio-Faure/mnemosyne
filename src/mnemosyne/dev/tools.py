@@ -286,11 +286,15 @@ class DevToolProvider(ToolProvider):
         async def send_exec(p: SendMessageParam):
             if self.mailbox is None:
                 return _fail("no mailbox configured")
+            if self.task_id is None:
+                return _fail(
+                    "aucune tâche ouverte : impossible d'écrire dans une boîte de messages"
+                )
             try:
-                mid = self.mailbox.post("coder", p.to, p.body)
+                mid = self.mailbox.post("coder", p.to, p.body, self.task_id)
             except ValueError as exc:
                 return _fail(str(exc))
-            return _ok(f"message #{mid} sent to {p.to}")
+            return _ok(f"message #{mid} envoyé (tâche #{self.task_id})")
 
         tools = [
             Tool(name="list_files", description="List files in a directory.",
