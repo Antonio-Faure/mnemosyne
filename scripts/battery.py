@@ -311,9 +311,10 @@ def scenario_vision_wiring() -> None:
     import base64
     import io
 
+    from stirrup.core.models import ImageContentBlock
+
     from mnemosyne.agents.browser_agent import BrowserAgentToolProvider
     from mnemosyne.agents.mailbox import Mailbox
-    from stirrup.core.models import ImageContentBlock
 
     def pixel_png(word: str) -> bytes:
         from PIL import Image, ImageDraw
