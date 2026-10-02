@@ -71,29 +71,48 @@ Outils/permissions :
   (token GitHub) pour pousser les helpers ;
 - **il n'édite pas** le code du produit.
 
-### 2.3 Communication entre les deux agents
+### 2.3 Communication : la file de tâches et la boîte temporaire
 
-- **Boîte aux lettres durable** : chaque message = `de`, `à`, `corps`, statut
-  (`pending`/`running`/`handled`/`review`/`failed`), horodatage. Le **claim est
-  atomique** (un seul écrivain par message) et un message resté `running` après
-  un crash est repris automatiquement. Un outil `send_message` sur **chaque**
-  agent écrit dedans.
-- **Superviseur déterministe** (le heartbeat, PAS un LLM) : il lit la boîte,
-  **lance l'agent destinataire quand l'émetteur s'est arrêté**, puis rend la
-  main. Les agents ne se lancent **jamais** eux-mêmes.
-- **Un seul agent à la fois** (turn-taking) → un seul pilote Chrome.
+- **Deux couches séparées** :
+  - **La file d'attente des tâches** (table `tasks`) est la couche
+    *manipulable* : l'opérateur y ajoute, y voit, y annule
+    (`mnemosyne queue add|list|cancel`). Chaque tâche = **qui commence**
+    (l'agent qui reçoit le premier message) + **l'objectif** (+ cap de tours
+    optionnel). Une tâche = **un objectif** : warmup et connexion de source
+    sont DEUX entrées de file, jamais mélangées.
+  - **La boîte de messages** est la couche *interne* : **temporaire**, propre
+    à une tâche, intouchable par l'opérateur, jetée à la fin de la tâche. Un
+    message sans tâche n'existe pas.
+- **Sessions persistantes** : chaque tâche ouvre au plus **une session par
+  agent**. Si l'agent de départ n'écrit pas à l'autre → 1 session ; s'il écrit
+  → la session de l'autre agent s'ouvre (2 sessions). **Le ping-pong est
+  illimité** : chaque réponse est injectée dans la session EXISTANTE de
+  l'agent concerné (cache stirrup, `resume=True`,
+  `clear_cache_on_success=False`, sur le volume data) — chaque agent garde le
+  contexte complet de sa partie de la tâche. Plus de deux sessions :
+  uniquement la compaction native de stirrup (`context_summarization_cutoff`).
+- **Fin de tâche** : une activation se termine ET la boîte de la tâche est
+  vide → la tâche se ferme (`done` si `finish` avec bilan, `review` sans
+  `finish`, `failed` sur erreur). Les caches des deux sessions et la boîte
+  sont jetés avec la tâche.
+- **Crash** : la reprise est parfaite à tout moment — la tâche reste
+  `running`, le tick suivant **réouvre la session** de départ (cache stirrup),
+  sans perdre le travail déjà fait.
+- **Superviseur déterministe** (le heartbeat, PAS un LLM) : il draine la file,
+  UNE activation à la fois, séquentiellement (les deux têtes partagent Chrome
+  et le worktree git). Les agents ne se lancent **jamais** eux-mêmes.
 - **Secrets via le vault, jamais dans les messages** : l'agent navigateur
   stocke la clé (`remember("europeana_api_key", …)`, réservé aux clés non
   critiques) et envoie une **référence** ; le moteur l'exporte en variable
   d'environnement au démarrage (`docs/CREDENTIALS.md`).
-- **Canal opérateur désactivé** (stationné) : les agents ne s'écrivent qu'entre
-  eux ; un message adressé à `operator` est refusé. Les blocages se terminent par
-  un résumé factuel (`task_done`) et l'opérateur regarde le journal.
-- **Bornes anti-boucle** : nombre max d'échanges (`max_handoffs`) ; « note du
-  jour » alimentée par chaque agent (journal).
-- **Routage au lancement** : selon l'intention, on lance `agent codeur` (produit)
-  ou `agent navigateur` (web). L'opérateur peut aussi déposer un message dans la
-  boîte et laisser le superviseur router.
+- **Canal opérateur désactivé** (stationné) : l'opérateur écrit dans la FILE
+  (`queue add`), pas dans la boîte. Les blocages se terminent par un résumé
+  factuel (`finish`) et l'opérateur regarde la file et le journal.
+- **Aucune limite de ping-pong** : volontaire — le contexte persistant fait
+  que chaque agent sait où il en est ; l'interventionnabilité de la file
+  (annuler une tâche) est le garde-fou.
+- **Routage au lancement** : selon l'intention, `pick_agent` choisit l'agent
+  de départ (heuristique), `--agent` force le choix.
 
 ### 2.4 Exemple de référence (Europeana)
 
@@ -140,32 +159,31 @@ Outils/permissions :
 - Warmup auto (1–2/jour, sites pondérés) : **une mission « lecture seule » postée au navigateur** (plafonnée en tours), vault, Telegram, journal.
 
 **Bi-agent (fait) :**
-1. **Boîte aux lettres** durable : table `messages` (`src/mnemosyne/db.py`) +
-   `src/mnemosyne/agents/mailbox.py`.
-2. **Superviseur** déterministe : `src/mnemosyne/agents/supervisor.py`
-   (`run_agency`) — un agent à la fois, hand-offs bornés, routage auto.
-4. **Une passe par lot** : plusieurs messages en attente pour le même agent sont
-   réclamés ensemble (`claim_messages`, plafond 5) et traités dans **un seul tour**
-   (le dernier message est souvent une mise à jour du précédent) — sinon un agent
-   qui poste deux fois fait tourner l'autre deux fois (deux PR identiques).
-5. **Fin de session native** : c'est l'outil `finish` de Stirrup qui termine un
-   tour (bilan dans `reason`, fichiers touchés dans `paths`). Aucun `task_done`
-   maison : un outil ordinaire ne termine pas la session (l'agent Rappelleait
-   `task_done` dix fois de suite en croyant avoir fini).
-3. **`send_message`** côté codeur (`DevToolProvider`) et côté navigateur.
-4. **Agent navigateur** : `src/mnemosyne/agents/browser_agent.py` (Stirrup) —
+1. **File de tâches + boîte temporaire par tâche** : table `tasks` + messages
+   rattachés à une tâche (`src/mnemosyne/db.py`) + `mailbox.py` (enveloppe).
+2. **Superviseur déterministe** : `src/mnemosyne/agents/supervisor.py`
+   (`run_agency` / `drain_queue` / `run_pending_once`) — une activation à la
+   fois, sessions persistantes par (tâche, agent), ping-pong illimité.
+3. **Fin de session native** : c'est l'outil `finish` de Stirrup qui termine
+   une activation (bilan dans `reason`, fichiers touchés dans `paths`). Aucun
+   `task_done` maison (l'agent le rappelait dix fois de suite).
+4. **`send_message`** dans la boîte de la tâche, côté codeur et côté navigateur.
+5. **Agent navigateur** : `src/mnemosyne/agents/browser_agent.py` (Stirrup) —
    outil `browser(code)` qui exécute browser-harness, édition **allowlist
-   helpers** (`data/agent-workspace/helpers/`), `send_message`, `task_done`.
-5. **CLI** : `mnemosyne agency "<tâche>" [--to coder|browser] [--max N]` et
-   `mnemosyne messages`.
-6. Le **codeur** tourne aussi dans le conteneur (dépôt monté sur `/repo`,
+   helpers** (`data/agent-workspace/helpers-worktree/`), `send_message`.
+6. **CLI** : `mnemosyne queue add|list|cancel`, `mnemosyne agency "<tâche>"
+   [--to coder|browser]`, `mnemosyne messages`.
+7. Le **codeur** tourne aussi dans le conteneur (dépôt monté sur `/repo`,
    `MNEMOSYNE_DEV_REPO=/repo`, worktree isolé) → `agency` fait tourner les deux.
 
 **Bi-agent — suite (fait) :**
 - **Autonomie heartbeat** : job `agency` (toutes les 2 min, coût nul s'il n'y a
-  rien) → `supervisor.run_pending_once()` exécute **un** message en attente
-  (codeur ou navigateur), turn-taking. Vérifié : un message posté est traité
-  seul par le heartbeat.
+  rien) → `supervisor.run_pending_once()` exécute **une** activation (la tâche
+  en cours d'abord, sinon la plus ancienne en file). Vérifié : un crash au
+  milieu d'une activation se reprend à la session exacte.
+- **Cycle de missions** : le job `warmup` alterne **1 warmup → 1 connexion de
+  source** (candidat = source auth sans clé au vault ; sans candidat, fallback
+  warmup). Chaque jambe est une tâche distincte de la file.
 - **Git des helpers** : l'agent navigateur écrit dans
   `harness/helpers/` via un **worktree git dédié**
   (`data/agent-workspace/helpers-worktree`) et `publish_helpers(summary)`
@@ -175,56 +193,55 @@ Outils/permissions :
   navigateur.
 
 **Durcissement (fait) :**
-- Claim **atomique** des messages + reprise des `running` orphelins ; statut
-  `review` quand l'agent n'a pas dit `task_done` ; `stop_reason` honnête
-  (`failed` > `busy`/`max_handoffs` > `no_pending`).
- - Un seul pilote Chrome : **bail inter-processus** (`lease:browser`) tenu par le
-   tour navigateur et par le warmup (qui est reporté si le bi-agent tourne).
- - **Un seul pilote superviseur à la fois** (`lease:agency`, 8 h, porteur
-   pid/host/starttime comme les autres) : deux `run_agency` concurrents
-   partageraient le même worktree git (deux tours codeur) et le même Chrome.
-   Constaté en conditions réelles : un `agency --to browser` et un
-   `agency --to coder` lancés à 3 s d'intervalle, le second prenant en charge le
-   message du premier. Avec le bail, le second poste sa mission, rend la main
-   (`stop: agency_busy`, la mission reste en file et le pilote en cours la sert)
-   — aucune perte. Le superviseur est un **sérialiseur**, pas un filtre : il
-   dispatche vers l'agent *destinataire* du message, `--to` ne choisit que le
-   premier agent de la chaîne (les handoffs restent possibles).
- - Legacy mono-agent **supprimé** (onboarding/outreach/browse/develop, job
-   `onboard` auto) ; `connect-next` passe par le superviseur.
- - Cycle de vie d'une découverte : `new` → `connecting` → `connected` /
-   `failed`. **`connected` = une branche avec commits existe, pas une source qui
-   marche** : le codeur passe au superviseur, l'humain relit la PR. Une PR peut
-   donc être fermée après `connected` (exemple réel : `adore_ugent`, Omeka S dont
-   `/api` renvoie du HTML et qui n'expose ni `/iiif/3/search` ni manifeste de
-   collection — le connecteur générique IIIF ne peut pas y travailler ; il
-   faudrait un connecteur dédié `omeka_s`). `failed` = pas de branche, donc
-   rejouable ; `new` = jamais tenté.
-- Directives permanentes (`control/directives.md`) **injectées** dans chaque tour.
+- Une seule tâche à la fois (`lease:agency` par **activation**) ; la tâche en
+  cours d'exécution passe avant les nouvelles (séquentiel, pas de course) ;
+  `stop_reason` honnête.
+  - Un seul pilote Chrome : **bail inter-processus** (`lease:browser`) tenu par
+    les activations navigateur (et reporté si le warmup tourne).
+  - Le superviseur est un **sérialiseur**, pas un filtre : le `--to` ne choisit
+    que l'agent de départ (les handoffs restent possibles, illimités).
+  - Legacy mono-agent **supprimé** (onboarding/outreach/browse/develop, job
+    `onboard` auto) ; `connect-next` passe par le superviseur.
+  - Cycle de vie d'une découverte : `new` → `connecting` → `connected` /
+    `failed`. **`connected` = une branche avec commits existe, pas une source qui
+    marche** : le codeur passe au superviseur, l'humain relit la PR. Une PR peut
+    donc être fermée après `connected` (exemple réel : `adore_ugent`, Omeka S dont
+    `/api` renvoie du HTML et qui n'expose ni `/iiif/3/search` ni manifeste de
+    collection — le connecteur générique IIIF ne peut pas y travailler ; il
+    faudrait un connecteur dédié `omeka_s`). `failed` = pas de branche, donc
+    rejouable ; `new` = jamais tenté.
+- Directives permanentes (`control/directives.md`) **injectées** dans chaque
+  activation (le texte de tâche est figé, les directives voyagent à côté).
 - Mémoire morte supprimée ; plafond de sortie Stirrup gardé haut (32k) ;
   environnement filtré pour `browser-harness` ; lectures du dépôt encadrées.
-- Sessions navigateur : **400 tours** max ; à **75 tours** (puis tous les 50) un
-  **tip anti-acharnement** est injecté dans le contexte : l'agent peut écrire son
-  problème dans ses **output tokens** (bilan final) — le Master (l'humain ou une
-  autre IA) le lira et corrigera ; timeouts alignés (job heartbeat 4 h, bail
-  navigateur 5 h, reprise des messages 5 h).
- - **Aucun plafond de temps.** Une mission longue doit aller au bout : on ne juge
-   pas sur l'horloge mais sur le **progrès**. J'avais d'abord mis une limite de
-   45 min (l'agent de la vidéo Europeana avait mis 30 min, un tour « batterie »
-   51 min) — c'était une erreur : cela coupait indistinctement le travail en
-   cours. Remplacé par `agents/progress.py` (`ProgressWatch`) : chaque appel
-   d'outil est horodaté et fingerprinté ; **une action jamais vue = progrès**.
-   L'agent n'estujahpressé que s'il **patine** — aucune action distincte depuis
-   `stall_after_s` (15 min) ou `stall_repeat` (6) appels identiques d'affilée —
-   et la note dit explicitement « si tu es bloqué, fais ton bilan ; si tu
-   avances, continue, tu n'as aucune limite de temps ». Une boucle silencieuse
-   est coupée net, un long travail ne l'est jamais. Le chien de garde du soak
-   alerte toujours (information, pas arrêt).
+- Sessions navigateur : **400 tours** max (cap de la tâche) ; le détecteur de
+  patinage injecte une note neutre dans la session : l'agent peut écrire son
+  problème dans ses **output tokens** (bilan final) — l'opérateur le lira et
+  corrigera ; disjoncteur des jobs mécaniques 1 h.
+  - **Aucun plafond de temps.** Une mission longue doit aller au bout : on ne
+    juge pas sur l'horloge mais sur le **progrès**. J'avais d'abord mis une
+    limite de 45 min (l'agent de la vidéo Europeana avait mis 30 min, un tour
+    « batterie » 51 min) — c'était une erreur : cela coupait indistinctement le
+    travail en cours. Remplacé par `agents/progress.py` (`ProgressWatch`) :
+    chaque appel d'outil est horodaté et fingerprinté ; **une action jamais
+    vue = progrès**. L'agent n'est pressé que s'il **patine** — aucune action
+    distincte depuis `stall_after_s` (15 min) ou `stall_repeat` (6) appels
+    identiques d'affilée — et la note dit explicitement « si tu es bloqué, fais
+    ton bilan ; si tu avances, continue, tu n'as aucune limite de temps ». Le
+    chien de garde alerte (information, pas arrêt) : un job mécanique hangé
+    (disonjoncteur 1 h), une tâche ouverte que plus personne ne travaille, un
+    bail tenu par un processus disparu.
 - **Échanges = relations d'intérêt** : un agent n'écrit à l'autre que s'il a
   besoin de quelque chose ou pour signaler un vrai problème. Pas de rapport
-  obligatoire, pas d'accusé de réception — le bilan de fin de mission est le
-  `task_done` (journal), pas un message.
+  obligatoire, pas d'accusé de réception — le bilan de fin de tâche est le
+  `finish` (note de la tâche), pas un message.
 
+**Reste :**
+- Exemple de référence de l'identité : **archivist** = l'archiviste **à deux
+  têtes** — le bi-agent ENTIER est le personnage ; `identity.agent_email`
+  (`archivist.mnemosyne@gmail.com`) est sa carte d'identité partagée, utilisée
+  par la tête navigateur quand elle touche le web. Voir aussi
+  `docs/CHOIX-ARCHI-NAVIGATEUR.md`.
 **Reste :**
 - **Canal opérateur** : désactivé pour l'instant (l'opérateur réfléchit à une
   nouvelle stratégie). L'ancien design « notification Telegram des messages →

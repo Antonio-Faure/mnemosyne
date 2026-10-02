@@ -96,6 +96,22 @@ agents — browser-use n'aurait aucun des quatre réflexes.
 Nuance d'honnêteté : on emprunte quand même ses *mains* (stirrup[browser] →
 `BrowserSession`) — on refuse son cerveau, pas sa couche CDP.
 
+## L'identité : archivist = l'archiviste à deux têtes
+
+Le personnage qui touche le web n'est pas « l'agent navigateur » : c'est le
+bi-agent ENTIER — **un archiviste à deux têtes**. `identity.agent_email`
+(`archivist.mnemosyne@gmail.com`) est sa carte d'identité partagée :
+
+- la tête **navigateur** l'utilise pour tout ce qui touche le web (comptes,
+  e-mails, livraisons) — c'est elle qui « signe » ;
+- la tête **codeur** signe ce qu'elle produit de son côté (branches `agent/*`,
+  PRs) mais ne touche jamais au web ;
+- les deux têtes sont alternées par le superviseur : une seule travaille à la
+  fois, elles se passent le relais par la boîte de messages de la tâche.
+
+Résultat : tout ce que le système fait sur le web est traçable à UNE identité
+cohérente — celle de l'archiviste — et jamais à deux identités concurrentes.
+
 ## Et notre cas précis (mnemosyne)
 
 Nous sommes les exemples 2+3+4+5 réunis : règles de sécurité imposées,
