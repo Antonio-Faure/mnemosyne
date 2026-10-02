@@ -190,13 +190,13 @@ def scenario_kill_agency_process() -> None:
     os.kill(proc.pid, signal.SIGKILL)
     started = time.time()
     closed: dict | None = None
-    while time.time() - started < 600:
+    while time.time() - started < 1200:  # a resumed session may work several minutes
         subprocess.run(
             [
                 sys.executable, "-c",
-                "from mnemosyne.agents.supervisor import run_pending_once;\n"
-                "from mnemosyne.config import get_config;\n"
-                "import asyncio;\n"
+                "from mnemosyne.agents.supervisor import run_pending_once;\\n"
+                "from mnemosyne.config import get_config;\\n"
+                "import asyncio;\\n"
                 "asyncio.run(run_pending_once(get_config()))",
             ],
             capture_output=True,
@@ -210,7 +210,7 @@ def scenario_kill_agency_process() -> None:
         if task and task["status"] in ("done", "review", "failed"):
             closed = task
             break
-        time.sleep(10)
+        time.sleep(15)
     out(
         "kill_agency_process",
         bool(closed and closed["status"] == "done"),

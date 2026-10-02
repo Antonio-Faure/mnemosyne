@@ -152,7 +152,6 @@ def _cmd_agency(args: argparse.Namespace) -> int:
             cfg,
             args.task,
             start=args.to,
-            max_handoffs=args.max,
             journal=Journal(cfg.journal_path),
             vault_get=vault.get if vault else None,
         )
@@ -304,7 +303,6 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
                 cfg,
                 task,
                 start="coder",
-                max_handoffs=6,
                 journal=Journal(cfg.journal_path),
                 vault_get=vault.get if vault else None,
             )
