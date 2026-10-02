@@ -33,7 +33,9 @@ class ApiConfig(BaseModel):
 class HeartbeatConfig(BaseModel):
     tick_seconds: int = 15
     max_workers: int = 4
-    #: must exceed the longest agent session (browser sessions can hit 400 turns)
+    #: safety net for *mechanical* jobs only — they are internally bounded
+    #: (httpx 30s/request, plafonné loops). Agent sessions (kind=agency) are
+    #: exempt in scheduler._run_job: judged on progress, never on a clock.
     job_timeout_s: int = 14400
     stale_lock_s: int = 600
 

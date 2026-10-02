@@ -189,9 +189,17 @@ class Heartbeat:
             self.engine.db.fail_job(job.id, f"no handler for kind={job.kind}")
             return
         try:
-            updates = await asyncio.wait_for(
-                handler(self.ctx, job), timeout=self.config.heartbeat.job_timeout_s
-            )
+            if job.kind == "agency":
+                # An agent session is judged on progress (the stall marker),
+                # never on a clock: no wall cap, whatever the mission length.
+                updates = await handler(self.ctx, job)
+            else:
+                # Mechanical jobs are internally bounded (httpx 30s/request,
+                # plafonné loops); the timeout only protects the heartbeat loop
+                # from a hung handler freezing _tick forever.
+                updates = await asyncio.wait_for(
+                    handler(self.ctx, job), timeout=self.config.heartbeat.job_timeout_s
+                )
         except GovernorBlocked as exc:
             log.warning("job %s blocked: %s", job.kind, exc)
             self._reschedule(job, in_seconds=60, error=str(exc))

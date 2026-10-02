@@ -312,6 +312,11 @@ class Database:
             self._conn.commit()
             return int(cur.lastrowid)
 
+    def get_job(self, job_id: int) -> Job | None:
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        return _row_to_job(row) if row else None
+
     def claim_due_jobs(self, now: str, limit: int) -> list[Job]:
         """Atomically claim up to `limit` due jobs, marking them RUNNING."""
         with self._lock:
