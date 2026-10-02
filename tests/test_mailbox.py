@@ -12,9 +12,9 @@ def _mailbox(config) -> tuple[Database, Mailbox]:
 def test_post_and_next(config):
     db, mb = _mailbox(config)
     mid = mb.post("operator", "coder", "connect europeana")
-    msg = mb.next_for("coder")
+    msg = db.next_pending_message("coder")
     assert msg is not None and msg["id"] == mid and msg["status"] == "pending"
-    assert mb.next_for("browser") is None
+    assert db.next_pending_message("browser") is None
     db.close()
 
 
@@ -22,7 +22,7 @@ def test_mark_handled(config):
     db, mb = _mailbox(config)
     mid = mb.post("coder", "browser", "need the europeana api key")
     mb.mark(mid, "handled", "done")
-    assert mb.next_for("browser") is None
+    assert db.next_pending_message("browser") is None
     history = mb.history()
     assert history[-1]["status"] == "handled" and history[-1]["note"] == "done"
     db.close()
@@ -57,14 +57,14 @@ def test_claim_is_single_writer(config):
     db, mb = _mailbox(config)
     other = Database(config.db_file())
     mid = mb.post("operator", "coder", "travail")
-    claimed = mb.claim_for("coder", owner="a")
-    assert claimed is not None and claimed["id"] == mid
-    assert claimed["status"] == "running"
+    claimed = mb.claim_all_for("coder", owner="a", limit=1)
+    assert claimed and claimed[0]["id"] == mid
+    assert claimed[0]["status"] == "running"
 
     # another process (or the background job) must not start a second turn
-    assert Mailbox(other).claim_for("coder", owner="b") is None
+    assert Mailbox(other).claim_all_for("coder", owner="b") == []
     mb.post("operator", "browser", "autre")
-    assert Mailbox(other).claim_for("browser", owner="b") is None
+    assert Mailbox(other).claim_all_for("browser", owner="b") == []
 
     db.close()
     other.close()
@@ -74,10 +74,10 @@ def test_stale_running_is_recovered(config):
     """A message left running by a crash is claimable again."""
     db, mb = _mailbox(config)
     mid = mb.post("operator", "coder", "travail")
-    db.claim_next_message("coder", owner="crashed")
+    db.claim_messages("coder", "crashed", limit=1)
     db.mark_message(mid, "running")  # simulate: claimed_at lost on crash
-    again = db.claim_next_message("coder", owner="retry")
-    assert again is not None and again["id"] == mid
+    again = db.claim_messages("coder", "retry", limit=1)
+    assert again and again[0]["id"] == mid
     db.close()
 
 
@@ -108,10 +108,3 @@ def test_claim_all_respects_the_batch_cap(config):
     db.close()
 
 
-def test_archive_pending_messages(config):
-    db, mb = _mailbox(config)
-    db.post_message("browser", "operator", "rapport de mission")
-    assert db.archive_pending_messages("operator", "operator channel disabled") == 1
-    assert mb.next_for("operator") is None
-    assert mb.history()[-1]["status"] == "archived"
-    db.close()

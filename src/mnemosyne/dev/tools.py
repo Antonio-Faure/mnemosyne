@@ -63,9 +63,6 @@ class SendMessageParam(BaseModel):
     body: str = Field(description="Message (never include secrets — use vault references)")
 
 
-class DoneParam(BaseModel):
-    summary: str = Field(description="What was done")
-
 
 def _ok(content: str) -> ToolResult[ToolUseCountMetadata]:
     return ToolResult(content=content, metadata=ToolUseCountMetadata())

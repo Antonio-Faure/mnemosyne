@@ -64,10 +64,6 @@ class SendMessageParams(BaseModel):
     body: str = Field(description="Message (never include secrets — use vault references)")
 
 
-class DoneParams(BaseModel):
-    summary: str = Field(description="Short factual summary of what was done")
-
-
 class RememberParams(BaseModel):
     key: str = Field(description="Vault key, e.g. 'europeana_api_key'")
     value: str = Field(description="Secret value to store (never sent in a message)")
@@ -429,4 +425,4 @@ async def run_browser_agent(
         journal.append(f"navigateur usage: {usage}", source="browser")
         if summary:
             journal.append(f"navigateur — {summary}", source="browser")
-    return AgentOutcome(finish=summary, outcome={"usage": usage, "turns": turns})
+    return AgentOutcome(finish=summary, turns=turns, outcome={"usage": usage})

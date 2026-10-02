@@ -7,7 +7,7 @@ recipient when the sender has stopped. Messages survive crashes (SQLite).
 
 from __future__ import annotations
 
-from mnemosyne.db import Database
+from mnemosyne.db import STALE_MESSAGE_S, Database
 from mnemosyne.logger import get_logger
 
 log = get_logger("mailbox")
@@ -36,28 +36,13 @@ class Mailbox:
         log.info("mail #%s %s → %s: %s", message_id, sender, recipient, body.strip()[:160])
         return message_id
 
-    def next_for(self, recipient: str) -> dict | None:
-        return self.db.next_pending_message(recipient)
-
-    def claim_for(
-        self, recipient: str, owner: str = "agency", stale_after_s: float = 18000
-    ) -> dict | None:
-        """Atomically claim the oldest pending message for `recipient`.
-
-        Single writer per message, global turn-taking (see
-        `Database.claim_next_message`). Returns None when nothing is claimable.
-        """
-        return self.db.claim_next_message(
-            recipient, owner=owner, stale_after_s=stale_after_s
-        )
-
     def claim_all_for(
         self,
         recipient: str,
         owner: str = "agency",
         *,
         limit: int = MAX_BATCH,
-        stale_after_s: float = 18000,
+        stale_after_s: float = STALE_MESSAGE_S,
     ) -> list[dict]:
         """Claim every pending message for `recipient` (up to `limit`) at once.
 
@@ -78,6 +63,3 @@ class Mailbox:
 
     def history(self, limit: int = 50) -> list[dict]:
         return self.db.list_messages(limit=limit)
-
-    def pending_count(self) -> int:
-        return self.db.count_messages(status="pending")

@@ -15,6 +15,9 @@ from typing import Any
 from mnemosyne.models import Asset, Job, JobState, SourceState
 from mnemosyne.util import ensure_dir, utcnow_iso
 
+#: how long a RUNNING message may stay claimed before a crashed turn is retried
+STALE_MESSAGE_S = 18000
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sources (
     id            TEXT PRIMARY KEY,
@@ -553,15 +556,6 @@ class Database:
             ).fetchone()
         return dict(row) if row else None
 
-    def claim_next_message(
-        self, recipient: str, owner: str, stale_after_s: float = 18000
-    ) -> dict | None:
-        """Claim the oldest pending message for `recipient` (single)."""
-        claimed = self.claim_messages(
-            recipient, owner, limit=1, stale_after_s=stale_after_s
-        )
-        return claimed[0] if claimed else None
-
     def _release_stuck_messages(self, stale_iso: str) -> int:
         """Release RUNNING messages that are old or whose claimer is dead."""
         released = 0
@@ -582,7 +576,7 @@ class Database:
                 ).rowcount
         return released
 
-    def recover_stale_messages(self, stale_after_s: float = 18000) -> int:
+    def recover_stale_messages(self, stale_after_s: float = STALE_MESSAGE_S) -> int:
         """Give back messages stuck RUNNING (crashed/killed session).
 
         Called on every heartbeat tick, so a killed turn is retried even when
@@ -607,7 +601,7 @@ class Database:
         owner: str,
         *,
         limit: int = 5,
-        stale_after_s: float = 18000,
+        stale_after_s: float = STALE_MESSAGE_S,
     ) -> list[dict]:
         """Atomically claim up to `limit` PENDING messages for `recipient`.
 
@@ -660,17 +654,6 @@ class Database:
                 self._conn.rollback()
                 raise
         return claimed
-
-    def archive_pending_messages(self, recipient: str, note: str | None = None) -> int:
-        """Archive (stop processing) every pending message addressed to `recipient`."""
-        with self._lock:
-            cur = self._conn.execute(
-                """UPDATE messages SET status = 'archived', handled_at = ?, note = ?
-                   WHERE recipient = ? AND status = 'pending'""",
-                (utcnow_iso(), note, recipient),
-            )
-            self._conn.commit()
-            return cur.rowcount
 
     # ── cross-process leases (single browser driver) ─────────────────────
     def try_lease(self, name: str, ttl_s: float, owner: str = "") -> bool:

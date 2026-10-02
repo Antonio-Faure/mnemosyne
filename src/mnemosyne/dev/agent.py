@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import os
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
 from stirrup import Agent
 
+from mnemosyne.agents.outcome import AgentOutcome
 from mnemosyne.agents.progress import ProgressWatch, watch_provider
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
@@ -29,13 +29,6 @@ _FALLBACK = (
     "You are {name}, the coder agent of mnemosyne. MISSION: {task}. "
     "Read agents/coder.md for your full instructions."
 )
-
-
-@dataclass
-class DevOutcome:
-    finish: str | None
-    branch: str | None
-    turns: int = 0
 
 
 def _ensure_clean(repo: Path) -> None:
@@ -67,7 +60,7 @@ async def run_dev_agent(
     journal: Journal | None = None,
     mailbox=None,
     max_turns: int | None = None,
-) -> DevOutcome:
+) -> AgentOutcome:
     repo_path = Path(repo or config.root).resolve()
     _ensure_clean(repo_path)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
@@ -112,6 +105,6 @@ async def run_dev_agent(
     log.info("dev agent usage (cache-aware): %s (tours=%d)", usage, turns)
     if journal:
         journal.append(f"dev agent usage: {usage}", source="dev")
-    return DevOutcome(
+    return AgentOutcome(
         finish=finish_text(finish), branch=provider.branch, turns=turns
     )

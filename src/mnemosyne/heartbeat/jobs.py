@@ -161,7 +161,6 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     mailbox = Mailbox(db)
     mailbox.post("warmup", "browser", mission)
     db.incr_counter(key)
-    db.set_kv("warmup_last", job.run_at)
     note = (
         f"warmup « {goal['name']} » ~{minutes:.0f} min posté au navigateur "
         f"(session {count + 1}/{target})"
