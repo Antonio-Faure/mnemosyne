@@ -70,11 +70,24 @@ if 'deepseek' in self.llm.model.lower():   →   if False and 'deepseek' in ...
    attachable en `ImageContentBlock`. Si une future version de browser-use ou
    stirrup recoupe la vision, la sonde échoue au lieu de rendre l'agent aveugle
    en silence.
-2. **E2E réel** : une mission au navigateur (« lis le mot dans l'image ») — si
-   l'agent lit le mot que `read_page` ne peut pas voir, la chaîne complète
-   (harness → PNG → ImageContentBlock → deepseek vision) est prouvée.
+2. **E2E réel : PROUVÉ le 2026-10-02** — mission #86 (« lis le mot dans
+   l'image ») : `handled`, la note de l'agent cite le mot `OREGANO`, que
+   `read_page` ne peut pas voir (absent du DOM). Chaîne complète prouvée en
+   prod : harness (CDP) → PNG → `ImageContentBlock` → stirrup →
+   deepseek-v4.1-flash. Log : `vision: capture shot.png (6 ko) attachée au
+   résultat`.
 
-## 5. État upstream (browser-use, pas browser-harness)
+## 5. Bug découvert par la sonde E2E (fixé le jour même)
+
+Le wrapper de patinage (`watch_provider`) n'héritait de rien : stirrup fait
+`isinstance(tool, ToolProvider)` sur la liste `tools=`, traitait le wrapper
+comme un Static Tool et lisait `.name` dessus (crash au démarrage de session).
+Aucune mission coder n'avait tourné depuis le branchement du wrapper — le bug
+dormait des deux côtés, la sonde vision l'a fait sortir. Fix : `_Watched`
+hérite de `ToolProvider` + test d'invariant
+(`test_the_wrapper_is_a_real_tool_provider_for_stirrup`).
+
+## 6. État upstream (browser-use, pas browser-harness)
 
 - Commentaire posté : browser-use #4327
   (https://github.com/browser-use/browser-use/issues/4327#issuecomment-5957459809)
@@ -83,7 +96,7 @@ if 'deepseek' in self.llm.model.lower():   →   if False and 'deepseek' in ...
   `use_vision: bool | None` de la PR #1393.
 - Pas d'engagement mainteneur connu au moment du commentaire.
 
-## 6. Bug du harness découvert au passage
+## 7. Bug du harness découvert au passage
 
 **browser-harness 0.1.13 perd son attache CDP après `goto_url` dans le MÊME
 run** : `goto_url(...); capture_screenshot(...)` échoue avec
