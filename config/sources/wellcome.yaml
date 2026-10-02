@@ -1,0 +1,22 @@
+id: wellcome
+name: Wellcome Collection
+institution: Wellcome Collection, London
+country: GB
+protocol: iiif
+base_url: https://iiif.wellcomecollection.org
+auth: none
+license: "https://creativecommons.org/licenses/by-nc/4.0/"
+rights: "CC BY-NC — Wellcome Collection"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [library, united-kingdom, iiif, keyless]
+seeds:
+  - "medical history"
+  - "anatomy illustration"
+notes: >-
+  IIIF Presentation manifest for a single Wellcome item (b18035723) served at
+  presentation/<work-id>. Keyless. Onboarded as a single-manifest IIIF source via
+  the generic iiif.py connector. Rights: CC BY-NC.
+extra:
+  manifest: https://iiif.wellcomecollection.org/presentation/b18035723
+  collection_id: "b18035723"

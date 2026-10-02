@@ -1,0 +1,22 @@
+id: vatican
+name: Vatican Library — DigiVatLib
+institution: Biblioteca Apostolica Vaticana
+country: VA
+protocol: iiif
+base_url: https://digi.vatlib.it
+auth: none
+license: varies
+rights: "Biblioteca Apostolica Vaticana — check per record"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [library, vatican, manuscripts, iiif, keyless]
+seeds:
+  - "codex"
+  - "greek manuscript"
+notes: >-
+  IIIF Presentation manifest for a single digitized manuscript (Barb.gr.252)
+  served by DigiVatLib (iiif/<shelfmark>/manifest.json). Keyless. Onboarded as a
+  single-manifest IIIF source via the generic iiif.py connector.
+extra:
+  manifest: https://digi.vatlib.it/iiif/MSS_Barb.gr.252/manifest.json
+  collection_id: "MSS_Barb.gr.252"

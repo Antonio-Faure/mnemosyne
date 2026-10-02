@@ -1,0 +1,22 @@
+id: ecodices
+name: e-codices — Virtual Manuscript Library of Switzerland
+institution: e-codices (University of Fribourg)
+country: CH
+protocol: iiif
+base_url: https://www.e-codices.unifr.ch
+auth: none
+license: "https://creativecommons.org/licenses/by-nc/4.0/"
+rights: "CC BY-NC — e-codices"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [university-library, switzerland, manuscripts, iiif, keyless]
+seeds:
+  - "Handschrift"
+  - "codex"
+notes: >-
+  IIIF Presentation manifest for a single manuscript (csg-0657) served at
+  metadata/iiif/<shelfmark>/manifest.json. Keyless. Onboarded as a
+  single-manifest IIIF source via the generic iiif.py connector. Rights: CC BY-NC.
+extra:
+  manifest: https://www.e-codices.unifr.ch/metadata/iiif/csg-0657/manifest.json
+  collection_id: "csg-0657"

@@ -1,0 +1,22 @@
+id: cudl
+name: Cambridge Digital Library (CUDL)
+institution: Cambridge University Library
+country: GB
+protocol: iiif
+base_url: https://cudl.lib.cam.ac.uk
+auth: none
+license: "https://creativecommons.org/licenses/by-nc/4.0/"
+rights: "CC BY-NC — Cambridge University Library"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [university-library, united-kingdom, manuscripts, iiif, keyless]
+seeds:
+  - "medieval manuscript"
+  - "music manuscript"
+notes: >-
+  IIIF Presentation manifest for a single manuscript (MS Add. 3996) served at
+  iiif/<shelfmark>. Keyless. Onboarded as a single-manifest IIIF source via the
+  generic iiif.py connector. Rights: CC BY-NC.
+extra:
+  manifest: https://cudl.lib.cam.ac.uk/iiif/MS-ADD-03996
+  collection_id: "MS-ADD-03996"

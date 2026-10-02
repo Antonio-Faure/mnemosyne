@@ -1,0 +1,23 @@
+id: archive_org
+name: Internet Archive (IIIF)
+institution: Internet Archive
+country: US
+protocol: iiif
+base_url: https://iiif.archive.org
+auth: none
+license: "Public Domain"
+rights: "Public Domain — Internet Archive"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [aggregator, united-states, books, iiif, keyless]
+seeds:
+  - "proceedings 1922"
+  - "digitized book"
+notes: >-
+  IIIF Presentation manifest for a single digitized book (proceedings1922mcle)
+  served at iiif/3/<identifier>/manifest.json. Keyless. Distinct from the
+  metadata-oriented `internet_archive` source; this one uses the IIIF Image API
+  and the generic iiif.py connector.
+extra:
+  manifest: https://iiif.archive.org/iiif/3/proceedings1922mcle/manifest.json
+  collection_id: "proceedings1922mcle"

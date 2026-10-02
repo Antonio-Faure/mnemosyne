@@ -1,0 +1,22 @@
+id: yale
+name: Yale University Library Digital Collections
+institution: Yale University Library, New Haven
+country: US
+protocol: iiif
+base_url: https://collections.library.yale.edu
+auth: none
+license: varies
+rights: "Yale University Library — many public domain, check per record"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [university-library, united-states, manuscripts, iiif, keyless]
+seeds:
+  - "cipher manuscript"
+  - "medieval manuscript"
+notes: >-
+  IIIF Presentation manifest for a single item (Cipher manuscript, id 2002046)
+  served at manifests/<id>. Keyless. Onboarded as a single-manifest IIIF source
+  via the generic iiif.py connector.
+extra:
+  manifest: https://collections.library.yale.edu/manifests/2002046
+  collection_id: "2002046"

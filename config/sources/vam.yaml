@@ -1,0 +1,22 @@
+id: vam
+name: Victoria and Albert Museum
+institution: Victoria and Albert Museum, London
+country: GB
+protocol: iiif
+base_url: https://iiif.vam.ac.uk
+auth: none
+license: varies
+rights: "V&A — many public domain, check per record"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [museum, united-kingdom, iiif, keyless]
+seeds:
+  - "drawing"
+  - "photography"
+notes: >-
+  IIIF Presentation manifest for a single museum object (O117445) served at
+  collections/<id>/manifest.json. Keyless. Onboarded as a single-manifest IIIF
+  source via the generic iiif.py connector.
+extra:
+  manifest: https://iiif.vam.ac.uk/collections/O117445/manifest.json
+  collection_id: "O117445"

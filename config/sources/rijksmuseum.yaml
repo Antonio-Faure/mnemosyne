@@ -1,0 +1,24 @@
+id: rijksmuseum
+name: Rijksmuseum (IIIF via Europeana)
+institution: Rijksmuseum, Amsterdam
+country: NL
+protocol: iiif
+base_url: https://iiif.europeana.eu
+auth: none
+license: "https://creativecommons.org/publicdomain/mark/1.0/"
+rights: "Public Domain Mark — Rijksmuseum SK-A-3262"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, netherlands, iiif, europeana, keyless]
+seeds:
+  - "Rembrandt"
+  - "17th century painting"
+notes: >-
+  IIIF Presentation manifest for a single Rijksmuseum object (SK-A-3262) exposed
+  through Europeana's IIIF presentation endpoint
+  (presentation/<dataset>/<id>/manifest). Keyless. Distinct from the
+  metadata-oriented `europeana` (REST) source; this one uses the IIIF Presentation
+  API and the generic iiif.py connector (no institution-specific code).
+extra:
+  manifest: https://iiif.europeana.eu/presentation/90402/SK_A_3262/manifest
+  collection_id: "90402/SK_A_3262"

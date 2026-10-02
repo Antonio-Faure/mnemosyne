@@ -1,0 +1,23 @@
+id: artic
+name: Art Institute of Chicago
+institution: Art Institute of Chicago (AIC)
+country: US
+protocol: iiif
+base_url: https://api.artic.edu
+auth: none
+license: "Public Domain (CC0-1.0)"
+rights: "Public Domain — The Bedroom, Vincent van Gogh (1888)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, united-states, painting, iiif, keyless]
+seeds:
+  - "Van Gogh The Bedroom"
+  - "19th century painting"
+notes: >-
+  IIIF Presentation manifest for a single artwork (The Bedroom, Van Gogh) served
+  by the public AIC API (artworks/<id>/manifest.json). Keyless. Onboarded as a
+  single-manifest IIIF source; the generic src/mnemosyne/sources/iiif.py
+  connector normalizes the first canvas image via the IIIF Image API.
+extra:
+  manifest: https://api.artic.edu/api/v1/artworks/28560/manifest.json
+  collection_id: "28560"
