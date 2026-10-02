@@ -44,6 +44,26 @@ assert '"maximumDurationBudget": 180' in patch, "browser_harness video.py change
 p.write_text(patch)
 PY
 
+# browser-use disables vision by model-name heuristic: any model containing
+# "deepseek" gets use_vision forced to False (PR #1399, written when DeepSeek
+# was text-only). deepseek-v4.1-flash HAS native vision and there is no escape
+# hatch — so the heuristic is disabled at build. The pinned browser-use version
+# makes the patch predictable; if upstream changes, the no-op below prints it
+# and the battery vision probe catches any regression (see docs/VISION-DEEPSEEK.md).
+RUN python - <<'PY'
+import pathlib
+p = pathlib.Path(
+    "/usr/local/lib/python3.12/site-packages/browser_use/agent/service.py"
+)
+t = p.read_text()
+needle = "if 'deepseek' in self.llm.model.lower():"
+if needle in t:
+    p.write_text(t.replace(needle, "if False and 'deepseek' in self.llm.model.lower():"))
+    print("vision patch: deepseek heuristic disabled")
+else:
+    print("vision patch: pattern not found (upstream changed) — no-op, check the probe")
+PY
+
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

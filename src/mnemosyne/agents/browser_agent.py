@@ -13,12 +13,20 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 from stirrup import Agent
-from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, ToolUseCountMetadata
+from stirrup.core.models import (
+    EmptyParams,
+    ImageContentBlock,
+    Tool,
+    ToolProvider,
+    ToolResult,
+    ToolUseCountMetadata,
+)
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.agents.outcome import AgentOutcome
@@ -310,9 +318,46 @@ class BrowserAgentToolProvider(ToolProvider):
         out = (res.stdout or "") + (("\n[stderr]\n" + res.stderr) if res.stderr.strip() else "")
         return out[-_MAX_OUTPUT:] or "(no output)"
 
+    def _fresh_screenshot(self, started_epoch: float) -> Path | None:
+        """Newest PNG the harness wrote during this run (harness cwd = helpers
+        dir, so a relative `capture_screenshot('shot.png')` lands there)."""
+        newest: tuple[float, Path] | None = None
+        for path in self.helpers_dir.glob("*.png"):
+            try:
+                mtime = path.stat().st_mtime
+            except OSError:
+                continue
+            if mtime >= started_epoch and (newest is None or mtime > newest[0]):
+                newest = (mtime, path)
+        return newest[1] if newest else None
+
     def _tools(self) -> list[Tool]:
         async def browser_exec(p: BrowserCodeParams):
-            return _ok(await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code))
+            started = time.time()
+            text = await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code)
+            shot = self._fresh_screenshot(started)
+            if shot is None and self.config.agents.force_vision:
+                # vision on: every browser step arrives with a page capture.
+                # The second run is passive (Page.captureScreenshot never
+                # disturbs the page), and only fires when the step produced
+                # no capture of its own.
+                await asyncio.to_thread(
+                    self._run_harness, "capture_screenshot('shot.png', max_dim=1800)"
+                )
+                shot = self._fresh_screenshot(started)
+            if shot is None:
+                return _ok(text)
+            png = shot.read_bytes()
+            shot.unlink(missing_ok=True)  # consumed: no re-attach on the next step
+            log.info(
+                "vision: capture %s (%.0f ko) attachée au résultat",
+                shot.name,
+                len(png) / 1024,
+            )
+            return ToolResult(
+                content=[text or "(no output)", ImageContentBlock(data=png)],
+                metadata=ToolUseCountMetadata(),
+            )
 
         async def list_exec(_: EmptyParams):
             names = sorted(f.name for f in self.helpers_dir.glob("*.py"))

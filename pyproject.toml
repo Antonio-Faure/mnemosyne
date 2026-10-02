@@ -32,7 +32,10 @@ agent = [
     "openai>=1.40",
 ]
 browser = [
-    "stirrup[browser]",
+    # pinned: the vision chain (screenshot -> ImageContentBlock) is validated on
+    # these versions; a drift changes browser-use's vision heuristic
+    "stirrup[browser]==0.2.0",
+    "browser-use==0.11.13",
     "openai>=1.40",
 ]
 media = [

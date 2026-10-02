@@ -6,4 +6,6 @@ pydantic-settings>=2.4
 PyYAML>=6.0
 cryptography>=43.0
 python-dotenv>=1.0
-browser-harness>=0.1
+# pinned: the vision patch in the Dockerfile targets browser-use's service.py
+# (see docs/VISION-DEEPSEEK.md); a drifting version would silently no-op it
+browser-harness==0.1.13

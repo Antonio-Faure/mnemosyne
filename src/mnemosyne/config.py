@@ -122,8 +122,11 @@ class AgentsConfig(BaseModel):
         ]
     )
     warmup_max_turns: int = 40
-    #: browser-use disables vision for models named "deepseek"; deepseek-v4.1-flash
-    #: has native vision, so force it back on.
+    #: With force_vision, every browser step arrives with a page capture: the
+    #: wrapper attaches it as ImageContentBlock (auto second harness run when
+    #: the step produced none). browser-use's old name heuristic ("deepseek" ->
+    #: no vision) is disabled at image build; deepseek-v4.1-flash has native
+    #: vision and the stirrup chain carries screenshots to the model.
     force_vision: bool = True
     #: automatic warmup scheduling (human-like)
     warmup_per_day_min: int = 1

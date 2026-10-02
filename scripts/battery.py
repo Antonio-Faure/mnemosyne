@@ -301,6 +301,57 @@ def scenario_heartbeat() -> None:
     out("heartbeat", True, f"jobs_running={jobs} lease={lease}")
 
 
+def scenario_vision_wiring() -> None:
+    """The vision chain: harness page capture -> fresh PNG -> ImageContentBlock.
+
+    A word written only in the pixels of an image (never in the DOM) must be
+    capturable: if a future browser-use/stirrup version cuts vision again,
+    this probe fails instead of the agent silently going blind.
+    """
+    import base64
+    import io
+
+    from mnemosyne.agents.browser_agent import BrowserAgentToolProvider
+    from mnemosyne.agents.mailbox import Mailbox
+    from stirrup.core.models import ImageContentBlock
+
+    def pixel_png(word: str) -> bytes:
+        from PIL import Image, ImageDraw
+
+        img = Image.new("RGB", (420, 130), "white")
+        ImageDraw.Draw(img).text((30, 45), word, fill="black")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+
+    page = Path(CONFIG.data_path) / "vision-probe.html"
+    png = base64.b64encode(pixel_png("OREGANO")).decode()
+    page.write_text(
+        f'<html><body><img src="data:image/png;base64,{png}"></body></html>'
+    )
+
+    database = db()
+    provider = BrowserAgentToolProvider(CONFIG, Mailbox(database))
+    try:
+        started = time.time()
+        res = provider._run_harness(
+            f"goto_url('file://{page}'); print(capture_screenshot('shot.png', max_dim=1800))"
+        )
+        shot = provider._fresh_screenshot(started)
+        captured = shot is not None and shot.stat().st_size > 0
+        attachable = False
+        if captured:
+            attachable = ImageContentBlock(data=shot.read_bytes()) is not None
+            shot.unlink(missing_ok=True)
+        out(
+            "vision_wiring",
+            captured and attachable,
+            f"capture={'ok' if captured else 'MANQUANTE'} tail={res[-100:]}",
+        )
+    finally:
+        database.close()
+
+
 SCENARIOS = {
     "guard": scenario_guard_double_click,
     "lease": scenario_lease_exclusive,
@@ -310,6 +361,7 @@ SCENARIOS = {
     "kill": scenario_kill_agency_process,
     "prompts": scenario_native_finish_in_prompts,
     "heartbeat": scenario_heartbeat,
+    "vision": scenario_vision_wiring,
 }
 
 
