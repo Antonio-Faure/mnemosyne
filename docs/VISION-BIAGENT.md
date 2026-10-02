@@ -180,8 +180,16 @@ Outils/permissions :
   (`failed` > `busy`/`max_handoffs` > `no_pending`).
 - Un seul pilote Chrome : **bail inter-processus** (`lease:browser`) tenu par le
   tour navigateur et par le warmup (qui est reporté si le bi-agent tourne).
-- Legacy mono-agent **supprimé** (onboarding/outreach/browse/develop, job
-  `onboard` auto) ; `connect-next` passe par le superviseur.
+ - Legacy mono-agent **supprimé** (onboarding/outreach/browse/develop, job
+   `onboard` auto) ; `connect-next` passe par le superviseur.
+ - Cycle de vie d'une découverte : `new` → `connecting` → `connected` /
+   `failed`. **`connected` = une branche avec commits existe, pas une source qui
+   marche** : le codeur passe au superviseur, l'humain relit la PR. Une PR peut
+   donc être fermée après `connected` (exemple réel : `adore_ugent`, Omeka S dont
+   `/api` renvoie du HTML et qui n'expose ni `/iiif/3/search` ni manifeste de
+   collection — le connecteur générique IIIF ne peut pas y travailler ; il
+   faudrait un connecteur dédié `omeka_s`). `failed` = pas de branche, donc
+   rejouable ; `new` = jamais tenté.
 - Directives permanentes (`control/directives.md`) **injectées** dans chaque tour.
 - Mémoire morte supprimée ; plafond de sortie Stirrup gardé haut (32k) ;
   environnement filtré pour `browser-harness` ; lectures du dépôt encadrées.
