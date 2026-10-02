@@ -10,13 +10,12 @@ rights: "Yale University Library — many public domain, check per record"
 rate_limit_per_s: 1.0
 priority: 40
 tags: [university-library, united-states, manuscripts, iiif, keyless]
-seeds:
-  - "cipher manuscript"
-  - "medieval manuscript"
 notes: >-
   IIIF Presentation manifest for a single item (Cipher manuscript, id 2002046)
   served at manifests/<id>. Keyless. Onboarded as a single-manifest IIIF source
-  via the generic iiif.py connector.
+  via the generic iiif.py connector. Single-object source: search `seeds` are
+  meaningless here — the connector reads the one manifest declared in
+  `extra.manifest`.
 extra:
   manifest: https://collections.library.yale.edu/manifests/2002046
   collection_id: "2002046"
