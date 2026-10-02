@@ -168,6 +168,10 @@ def _cmd_agency(args: argparse.Namespace) -> int:
     return 0
 
 
+#: how much of a stored note `mnemosyne messages` prints (the DB keeps 1000).
+NOTE_DISPLAY_CHARS = 200
+
+
 def _cmd_messages(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.db import Database
@@ -180,6 +184,12 @@ def _cmd_messages(args: argparse.Namespace) -> int:
             f"#{m['id']:<4} {m['status']:<8} "
             f"{m['sender']} -> {m['recipient']}: {m['body'][:110]}"
         )
+        # The note is the run's actual outcome (what was done, what is left, the
+        # delivery link). Without it, the mailbox only showed the questions.
+        note = (m.get("note") or "").replace("\n", " ").strip()
+        if note:
+            shown = note if len(note) <= NOTE_DISPLAY_CHARS else note[:NOTE_DISPLAY_CHARS] + "…"
+            print(f"      -> {shown}")
     print(f"\n{len(messages)} message(s)")
     return 0
 

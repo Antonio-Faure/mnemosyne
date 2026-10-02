@@ -131,6 +131,22 @@ def _task_with_directives(config: Config, task: str) -> str:
     return f"{task}\n\n---\nCONSIGNES PERMANENTES DE L'OPÉRATEUR :\n{directives}"
 
 
+#: The note is the mailbox record of the run: an agent's factual report carries
+#: the delivery link, the verified duration, what is left. 200 chars cut exactly
+#: that (a WeTransfer link no longer fits), so we keep 1000 and let the CLI
+#: shorten for display.
+NOTE_MAX_CHARS = 1000
+
+
+def outcome_status_note(finish: str, error: str | None) -> tuple[str, str]:
+    """Status and stored note of a turn, with the report kept readable."""
+    if error is not None:
+        return "failed", error[:NOTE_MAX_CHARS]
+    if finish:
+        return "handled", finish[:NOTE_MAX_CHARS]
+    return "review", "agent stopped without calling finish"
+
+
 def _acquire_browser_lease(db: Database, agent: str) -> bool | None:
     """True = lease held, False = not needed, None = needed but taken."""
     if agent != "browser":
@@ -223,12 +239,7 @@ async def _execute_turn(
         error = str(exc)
         log.error("agent %s failed: %s", agent, exc)
     finish = finish_text(getattr(outcome, "finish", None)) or ""
-    if error is not None:
-        status, note = "failed", error[:200]
-    elif finish:
-        status, note = "handled", finish[:200]
-    else:
-        status, note = "review", "agent stopped without calling finish"
+    status, note = outcome_status_note(finish, error)
     for message in messages:
         mailbox.mark(message["id"], status, note)
     turns = _turns_of(outcome)
