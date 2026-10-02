@@ -142,7 +142,7 @@ class DevConfig(BaseModel):
     #: this is the mounted repo (e.g. /repo), so both agents live in one process.
     repo_path: str | None = None
     #: the dev agent resends its whole transcript every step, so keep turns low
-    max_turns: int = 18
+    max_turns: int = 40
     #: tool output caps (chars/entries) — they live in the transcript forever
     read_max_chars: int = 3000
     list_max_entries: int = 60
