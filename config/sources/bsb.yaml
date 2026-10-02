@@ -10,13 +10,12 @@ rights: "Public Domain Mark — Bayerische Staatsbibliothek"
 rate_limit_per_s: 1.0
 priority: 40
 tags: [library, germany, manuscripts, iiif, keyless]
-seeds:
-  - "Handschrift"
-  - "Inkunabel"
 notes: >-
   IIIF Presentation v2 manifest for a single digitized object (bsb00083127)
   served at iiif/presentation/v2/<id>/manifest. Keyless. Onboarded as a
-  single-manifest IIIF source via the generic iiif.py connector.
+  single-manifest IIIF source via the generic iiif.py connector. Single-object
+  source: search `seeds` are meaningless here — the connector reads the one
+  manifest declared in `extra.manifest`.
 extra:
   manifest: https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb00083127/manifest
   collection_id: "bsb00083127"
