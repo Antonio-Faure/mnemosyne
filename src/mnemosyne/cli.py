@@ -263,6 +263,32 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
     return 0 if status == "connected" else 1
 
 
+def _cmd_prune(args: argparse.Namespace) -> int:
+    """Delete old browser session recordings (the harness never does)."""
+    cfg = get_config()
+    from mnemosyne.browser.recordings import prune_recordings, recordings_root
+
+    root = recordings_root(args.root) if args.root else recordings_root()
+    if not root.is_dir():
+        print(f"aucun enregistrement sous {root}")
+        return 0
+    before = sum(1 for p in root.iterdir() if p.is_dir() and not p.name.startswith("."))
+    result = prune_recordings(
+        root=root,
+        keep=args.keep if args.keep is not None else cfg.agents.recordings_keep,
+        grace_s=0 if args.force else 3600,
+        dry_run=args.dry_run,
+    )
+    verb = "à supprimer" if args.dry_run else "supprimés"
+    print(f"enregistrements : {before} -> conservés {result.kept}, {verb} {len(result.removed)}")
+    print(f"espace libéré   : {result.freed_bytes / 1e6:.0f} Mo")
+    if result.skipped_active:
+        print(f"actifs (intacts): {', '.join(result.skipped_active)}")
+    for name in result.removed:
+        print(f"  - {name}")
+    return 0
+
+
 def _cmd_history(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.browser.history import read_history
@@ -553,6 +579,22 @@ def build_parser() -> argparse.ArgumentParser:
     phist = sub.add_parser("history", help="report the agent Chrome history (warmup growth)")
     phist.add_argument("--top", type=int, default=15)
     phist.set_defaults(func=_cmd_history)
+
+    ppr = sub.add_parser("prune", help="delete old browser session recordings (disk hygiene)")
+    ppr.add_argument(
+        "--keep",
+        type=int,
+        default=None,
+        help="recordings to keep (default: agents.recordings_keep)",
+    )
+    ppr.add_argument(
+        "--root",
+        default=None,
+        help="recordings directory (default: harness workspace)",
+    )
+    ppr.add_argument("--dry-run", action="store_true", help="list what would be deleted")
+    ppr.add_argument("--force", action="store_true", help="ignore the 1 h grace period")
+    ppr.set_defaults(func=_cmd_prune)
 
     pw = sub.add_parser("warmup", help="post a warmup mission to the browser agent")
     pw.add_argument("--minutes", type=float, default=5.0)

@@ -97,6 +97,9 @@ class AgentsConfig(BaseModel):
     max_tokens: int = 32768
     context_window_tokens: int = 128000
     output_dir: str = "data/agent-runs"
+    #: harness session recordings (~37 MB each, never pruned by the harness):
+    #: keep the N most recent, delete the older ones at the start of a session.
+    recordings_keep: int = 8
     #: warmup browsing: history/archive sites the agent wanders like a human
     warmup_sites: list[str] = Field(
         default_factory=lambda: [

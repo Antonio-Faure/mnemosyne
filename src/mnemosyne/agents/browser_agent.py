@@ -22,6 +22,7 @@ from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, Too
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.agents.outcome import AgentOutcome
+from mnemosyne.browser.recordings import prune_recordings
 from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.dev.git_ops import Git, GitError
@@ -174,10 +175,26 @@ class BrowserAgentToolProvider(ToolProvider):
         self.worktree = Path(config.data_path) / "agent-workspace" / "helpers-worktree"
         self._ensure_worktree()
         self._refresh_worktree()
+        self._prune_recordings()
         self.helpers_dir = self.worktree / "harness" / "helpers"
         ensure_dir(self.helpers_dir)
         self.token = token
         self.git = Git(self.worktree, token)
+
+    def _prune_recordings(self) -> None:
+        """Bound the disk: the harness never deletes its own recordings."""
+        try:
+            result = prune_recordings(keep=self.config.agents.recordings_keep)
+        except Exception as exc:  # noqa: BLE001 - housekeeping must never block a run
+            log.debug("prune recordings failed (%s)", exc)
+            return
+        if result.removed:
+            log.info(
+                "recordings: %d conservés, %d supprimés (%.0f Mo libérés)",
+                result.kept,
+                len(result.removed),
+                result.freed_bytes / 1e6,
+            )
 
     def _refresh_worktree(self) -> None:
         """Track the base branch so helpers published on main become visible.

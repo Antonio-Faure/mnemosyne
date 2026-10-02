@@ -80,6 +80,9 @@ agents:
   turn_tip_every: 50
   # required by Stirrup; kept high so reasoning is not truncated
   max_tokens: 32768
+  # le harness ne supprime jamais ses enregistrements (~37 Mo par session) :
+  # on garde les N plus recents, purge au demarrage de chaque session navigateur
+  recordings_keep: 8
   context_window_tokens: 128000
   output_dir: data/agent-runs
   warmup_max_turns: 40
