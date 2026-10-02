@@ -208,6 +208,14 @@ Outils/permissions :
   problème dans ses **output tokens** (bilan final) — le Master (l'humain ou une
   autre IA) le lira et corrigera ; timeouts alignés (job heartbeat 4 h, bail
   navigateur 5 h, reprise des messages 5 h).
+ - **Plafond de temps par tour** (`agents.turn_deadline_s`, 45 min ; 0 = désactivé) :
+   un plafond de tours ne borne pas le temps — 400 tours rapides font 20 min, mais
+   40 tours lents (page bloquée, API qui rate-limite) gardaient le bail `agency`
+   pendant des heures et affamaient toute la file (constaté : un tour navigateur
+   « batterie » à 51 min, 4 missions en attente derrière, watchdog alerté). Passé
+   le délai, l'agent est **pressé de finir** (`finish(reason=...)` avec bilan
+   factuel) tous les `deadline_tip_every` tours (5), sans coupe brutale : on garde
+   un rapport honnête plutôt qu'une session tronquée sans conclusion.
 - **Échanges = relations d'intérêt** : un agent n'écrit à l'autre que s'il a
   besoin de quelque chose ou pour signaler un vrai problème. Pas de rapport
   obligatoire, pas d'accusé de réception — le bilan de fin de mission est le
