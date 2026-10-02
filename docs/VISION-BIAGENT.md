@@ -178,8 +178,18 @@ Outils/permissions :
 - Claim **atomique** des messages + reprise des `running` orphelins ; statut
   `review` quand l'agent n'a pas dit `task_done` ; `stop_reason` honnête
   (`failed` > `busy`/`max_handoffs` > `no_pending`).
-- Un seul pilote Chrome : **bail inter-processus** (`lease:browser`) tenu par le
-  tour navigateur et par le warmup (qui est reporté si le bi-agent tourne).
+ - Un seul pilote Chrome : **bail inter-processus** (`lease:browser`) tenu par le
+   tour navigateur et par le warmup (qui est reporté si le bi-agent tourne).
+ - **Un seul pilote superviseur à la fois** (`lease:agency`, 8 h, porteur
+   pid/host/starttime comme les autres) : deux `run_agency` concurrents
+   partageraient le même worktree git (deux tours codeur) et le même Chrome.
+   Constaté en conditions réelles : un `agency --to browser` et un
+   `agency --to coder` lancés à 3 s d'intervalle, le second prenant en charge le
+   message du premier. Avec le bail, le second poste sa mission, rend la main
+   (`stop: agency_busy`, la mission reste en file et le pilote en cours la sert)
+   — aucune perte. Le superviseur est un **sérialiseur**, pas un filtre : il
+   dispatche vers l'agent *destinataire* du message, `--to` ne choisit que le
+   premier agent de la chaîne (les handoffs restent possibles).
  - Legacy mono-agent **supprimé** (onboarding/outreach/browse/develop, job
    `onboard` auto) ; `connect-next` passe par le superviseur.
  - Cycle de vie d'une découverte : `new` → `connecting` → `connected` /
