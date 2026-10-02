@@ -65,6 +65,37 @@ patinage. En browser-use : l'historique de la lib, dans son format.
 - **L'agent fait partie d'un SYSTÈME** (orchestrateur déterministe, autres
   agents, règles imposées, secrets, audit) → **stirrup + browser-harness**.
 
+## La distinction qui compte : agent fermé vs agent de système
+
+La formulation la plus juste (et celle qui décide vraiment) :
+
+- **browser-use est un agent FERMÉ** : très agentique **à l'intérieur** (une
+  boucle LLM autogérée, qui décide vraiment), mais fermé **à la frontière** —
+  ses mains sont un catalogue figé au lancement (actions intégrées + customs
+  écrites À L'AVANCE via `@action`), il ne peut pas écrire ses propres helpers
+  pendant sa mission, et son monde s'arrête à sa tâche : pas de boîte à
+  lettres, pas de collègue, pas de superviseur.
+- **stirrup + harness est un agent OUVERT** : les mains sont un **interpréteur
+  Python**, pas un catalogue — l'agent peut écrire une fonction pendant sa
+  mission, la réutiliser au pas suivant, la garder en git, en faire une PR.
+  Et il participe à un système : mailbox, vault, finish structuré, détection
+  de patinage, orchestrateur déterministe.
+
+Le paradoxe à garder en tête : « beaucoup de ce que browser-use fait est très
+automatisé » est exact, et c'est une conséquence directe du catalogue. La
+boucle choisit **dans un menu** ; la nôtre **écrit dans un langage**. C'est
+plus agentique, pas moins : le catalogue borne l'espace d'action, l'interpréteur
+le limite seulement aux règles de sécurité que nous imposons.
+
+En termes d'essaim : **browser-use est un excellent sous-agent, un mauvais
+collègue.** Un agent d'essaim doit savoir recevoir des ordres (mailbox),
+rendre des comptes (finish structuré), coopérer (messages), et être
+ordonnancé par un tiers déterministe. Mnemosyne est un mini essaim de deux
+agents — browser-use n'aurait aucun des quatre réflexes.
+
+Nuance d'honnêteté : on emprunte quand même ses *mains* (stirrup[browser] →
+`BrowserSession`) — on refuse son cerveau, pas sa couche CDP.
+
 ## Et notre cas précis (mnemosyne)
 
 Nous sommes les exemples 2+3+4+5 réunis : règles de sécurité imposées,
