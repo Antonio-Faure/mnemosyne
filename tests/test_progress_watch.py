@@ -176,9 +176,9 @@ async def test_the_wrapper_is_a_real_tool_provider_for_stirrup(config):
     wrapper would be treated as a static Tool and crash on `.name`. The browser
     E2E probe caught this — no coder session had run since the wrap."""
     pytest.importorskip("stirrup")
-    from mnemosyne.agents.progress import watch_provider
     from stirrup.core.models import ToolProvider
 
+    from mnemosyne.agents.progress import watch_provider
     from mnemosyne.db import Database
 
     db = Database(config.db_file())
