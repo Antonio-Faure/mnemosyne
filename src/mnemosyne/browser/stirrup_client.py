@@ -144,11 +144,23 @@ class _CompletionsProxy:
 
 class _ChatProxy:
     def __init__(
-        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
+        self,
+        inner: Any,
+        sink: UsageSink,
+        *,
+        tip_at: int = 0,
+        tip_every: int = 0,
+        deadline_s: float = 0.0,
+        deadline_tip_every: int = 5,
     ) -> None:
         self._inner = inner
         self.completions = _CompletionsProxy(
-            inner.completions, sink, tip_at=tip_at, tip_every=tip_every
+            inner.completions,
+            sink,
+            tip_at=tip_at,
+            tip_every=tip_every,
+            deadline_s=deadline_s,
+            deadline_tip_every=deadline_tip_every,
         )
 
     def __getattr__(self, name: str) -> Any:
@@ -157,10 +169,24 @@ class _ChatProxy:
 
 class _ClientProxy:
     def __init__(
-        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
+        self,
+        inner: Any,
+        sink: UsageSink,
+        *,
+        tip_at: int = 0,
+        tip_every: int = 0,
+        deadline_s: float = 0.0,
+        deadline_tip_every: int = 5,
     ) -> None:
         self._inner = inner
-        self.chat = _ChatProxy(inner.chat, sink, tip_at=tip_at, tip_every=tip_every)
+        self.chat = _ChatProxy(
+            inner.chat,
+            sink,
+            tip_at=tip_at,
+            tip_every=tip_every,
+            deadline_s=deadline_s,
+            deadline_tip_every=deadline_tip_every,
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)

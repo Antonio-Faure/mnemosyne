@@ -71,3 +71,21 @@ async def test_turn_tip_still_wins_before_deadline():
     contents = [c["messages"][-1]["content"] for c in inner.calls if len(c["messages"]) == 2]
     assert contents and all("Cela fait" in c for c in contents)
     assert TURN_TIP.format(turns=2).split(".")[0] in contents[0]
+
+
+def test_deadline_is_wired_from_config_to_the_completions_proxy():
+    """Regression: the kwargs must reach the proxy through the three wrappers.
+
+    Found in a real run: ZenChatClient passed deadline_s to _ClientProxy, which
+    did not accept it, and every mission failed with a TypeError.
+    """
+    from mnemosyne.browser.stirrup_client import build_agent_client
+    from mnemosyne.config import get_config
+
+    cfg = get_config()
+    cfg.agents.turn_deadline_s = 1234
+    cfg.agents.deadline_tip_every = 3
+    client = build_agent_client(cfg, vault_get=lambda _k: "sk-test")
+    proxy = client._client.chat.completions
+    assert proxy._deadline_s == 1234
+    assert proxy._deadline_tip_every == 3
