@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from mnemosyne.config import get_config
