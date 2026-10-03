@@ -48,11 +48,6 @@ class Notifier:
             log.error("telegram send failed: %s", exc)
             return False
 
-    async def ask(self, question: str, *, detail: str = "") -> bool:
-        """Send a question to the operator (they reply on Telegram)."""
-        body = question if not detail else f"{question}\n\n{detail}"
-        return await self.send(f"Question — {body}\n\n(Réponds ici, je lirai ta réponse.)", "ask")
-
     async def get_me(self) -> dict | None:
         if not self.token:
             return None

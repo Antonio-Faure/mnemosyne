@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from mnemosyne.config import ReputationConfig, WarmupPhase
 from mnemosyne.db import Database
@@ -25,7 +25,6 @@ log = get_logger("governor")
 _ACTION_CAPS = {
     "harvest": "harvest_per_day",
     "outbound": "outbound_per_day",
-    "onboard": "outbound_per_day",
 }
 
 _MAX_PRESSURE = 8.0
@@ -117,9 +116,6 @@ class Governor:
             "block on %s → cooldown %.0fs, pressure %.1f", domain, cooldown, self._pressure
         )
 
-    async def report_ok(self, domain: str) -> None:
-        self._pressure = max(self._pressure * 0.9, _MIN_PRESSURE)
-
     def status(self) -> dict:
         phase = self.phase()
         return {
@@ -140,8 +136,3 @@ class Governor:
                 if until > time.monotonic()
             },
         }
-
-
-def next_midnight_iso() -> str:
-    tomorrow = datetime.now(UTC).date() + timedelta(days=1)
-    return datetime.combine(tomorrow, datetime.min.time(), tzinfo=UTC).isoformat()

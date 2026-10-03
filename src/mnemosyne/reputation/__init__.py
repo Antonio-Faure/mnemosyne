@@ -1,3 +1,3 @@
-from mnemosyne.reputation.governor import Governor, GovernorBlocked, next_midnight_iso
+from mnemosyne.reputation.governor import Governor, GovernorBlocked
 
-__all__ = ["Governor", "GovernorBlocked", "next_midnight_iso"]
+__all__ = ["Governor", "GovernorBlocked"]

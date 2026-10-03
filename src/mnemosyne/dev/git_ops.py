@@ -53,9 +53,6 @@ class Git:
             raise GitError(f"git {' '.join(args)} failed: {detail}")
         return res
 
-    def current_branch(self) -> str:
-        return self.run(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
-
     def start_branch(self, name: str) -> str:
         self.run(["checkout", "-B", name])
         return name

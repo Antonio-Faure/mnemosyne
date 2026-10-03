@@ -14,26 +14,8 @@ class SourceState(StrEnum):
     """Lifecycle of a provider inside the catalog (see heartbeat)."""
 
     DISCOVERED = "discovered"
-    RESEARCHED = "researched"
-    ONBOARDING = "onboarding"
-    PENDING = "pending"
-    CREDENTIALED = "credentialed"
     CONNECTED = "connected"
     DEGRADED = "degraded"
-    BROKEN = "broken"
-
-
-#: Allowed transitions of the provider state machine.
-TRANSITIONS: dict[SourceState, set[SourceState]] = {
-    SourceState.DISCOVERED: {SourceState.RESEARCHED, SourceState.BROKEN},
-    SourceState.RESEARCHED: {SourceState.ONBOARDING, SourceState.CONNECTED, SourceState.BROKEN},
-    SourceState.ONBOARDING: {SourceState.PENDING, SourceState.CREDENTIALED, SourceState.BROKEN},
-    SourceState.PENDING: {SourceState.CREDENTIALED, SourceState.BROKEN},
-    SourceState.CREDENTIALED: {SourceState.CONNECTED, SourceState.BROKEN},
-    SourceState.CONNECTED: {SourceState.DEGRADED, SourceState.BROKEN},
-    SourceState.DEGRADED: {SourceState.CONNECTED, SourceState.BROKEN},
-    SourceState.BROKEN: {SourceState.DISCOVERED, SourceState.ONBOARDING, SourceState.RESEARCHED},
-}
 
 
 class AuthKind(StrEnum):

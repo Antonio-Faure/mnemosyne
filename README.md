@@ -48,7 +48,7 @@ src/mnemosyne/
 Every provider is a durable job in a persisted state machine:
 
 ```
-DISCOVERED → RESEARCHED → ONBOARDING → PENDING → CREDENTIALED → CONNECTED → DEGRADED → BROKEN
+DISCOVERED → CONNECTED → DEGRADED
 ```
 
 The scheduler survives crashes and restarts (SQLite WAL). On any 403/429/captcha
@@ -86,7 +86,7 @@ docker compose up -d          # mnemosyne + dedicated Chrome (Xvfb + VNC + CDP 9
 
 - API: http://localhost:8080
 - noVNC (human intervention): http://localhost:6080
-- Chrome CDP (browser-use) is internal: `mnemosyne` shares Chrome's network
+- Chrome CDP (browser-harness) is internal: `mnemosyne` shares Chrome's network
   namespace and reaches it at `127.0.0.1:9222`.
 
 The Chrome profile (holding the agent's own Google account) persists in a volume.
@@ -150,9 +150,9 @@ mnemosyne llm test     # one round-trip
 - **P0+P1 (this repo)**: heartbeat, catalog, governor, 5 keyless providers
   (Gallica, Wikidata, Wikimedia Commons, Internet Archive, Openverse),
   normalization/dedup/provenance, unified API.
-- **P2 (in progress)**: Stirrup agent loop + browser-use over CDP, deterministic
-  tools, onboarding & outreach agents, Gmail-via-browser, governed by warmup.
-  Install with `pip install -e '.[browser]'`. See `docs/P2-AGENTS.md`.
+- **P2 (done)**: bi-agent Stirrup (coder + browser) over CDP via browser-harness,
+  task queue + persistent sessions, warmup and source connections governed.
+  See `docs/VISION-BIAGENT.md`.
 - **P3 (started)**: autonomous provider discovery via Wikidata IIIF manifests →
   hosts, stored as candidates (`discover` job, `mnemosyne discover`).
 - **P4**: connector self-repair, dashboard, scale to hundreds of sources.

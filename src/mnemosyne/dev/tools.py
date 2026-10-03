@@ -109,9 +109,6 @@ class DevToolProvider(ToolProvider):
         return None
 
     # ── helpers ──────────────────────────────────────────────────────────
-    def _abs(self, rel: str) -> Path:
-        return (self.repo / rel).resolve()
-
     def _check_inside(self, rel: str) -> Path:
         repo = self.repo.resolve()
         target = (repo / rel).resolve()
@@ -134,8 +131,7 @@ class DevToolProvider(ToolProvider):
         )
 
     async def _escalate(self, message: str) -> None:
-        # a git/write failure is not a question the operator can answer — alert,
-        # don't ask. (The explicit `ask_operator` tool still asks.)
+        # a git/write failure is not a question the operator can answer — alert it.
         if self.notifier and self.notifier.enabled:
             await self.notifier.send(message, "warn")
         if self.journal:

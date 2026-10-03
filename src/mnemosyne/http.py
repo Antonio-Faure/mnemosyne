@@ -99,10 +99,6 @@ class HttpClient:
         resp = await self.get(url, accept="application/json", **kwargs)
         return resp.json()
 
-    async def get_text(self, url: str, **kwargs: Any) -> str:
-        resp = await self.get(url, accept="text/plain, text/html;q=0.9, */*;q=0.8", **kwargs)
-        return resp.text
-
     async def get_bytes(self, url: str, **kwargs: Any) -> bytes:
         resp = await self.get(url, accept="image/*, */*;q=0.5", **kwargs)
         return resp.content

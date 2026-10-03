@@ -395,7 +395,6 @@ def _cmd_warmup(args: argparse.Namespace) -> int:
     goal = pick_goal()
     minutes = args.minutes or 5.0
     mission = (
-        f"[[tour: {cfg.agents.warmup_max_turns}]]\n"
         f"MISSION WARMUP (~{minutes:.0f} min, lecture seule) — objectif « {goal['name']} ».\n"
         f"Sites : {', '.join(goal.get('sites') or cfg.agents.warmup_sites)}\n"
         f"{goal.get('instruction', 'Parcourt ces sites comme un curieux.')}\n"
@@ -695,7 +694,6 @@ def build_parser() -> argparse.ArgumentParser:
     pagency.add_argument("task", help="what the agency must achieve")
     pagency.add_argument("--to", choices=["coder", "browser"], default=None,
                          help="force the starting agent (default: auto-routing)")
-    pagency.add_argument("--max", type=int, default=6, help="max hand-offs")
     pagency.set_defaults(func=_cmd_agency)
 
     pmsgs = sub.add_parser("messages", help="show the inter-agent mailbox")

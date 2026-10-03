@@ -26,7 +26,7 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup ag
 - `src/mnemosyne/api/` — FastAPI aggregation service
 - `src/mnemosyne/vault/` — encrypted credentials · `src/mnemosyne/notify/` — Telegram
 - `src/mnemosyne/browser/` — CDP client, history reader · `src/mnemosyne/journal.py` — daily + per-service journals
-- `src/mnemosyne/identity.py` — transparency (identity + repo URL) · `src/mnemosyne/memory/` — bounded memory
+- `src/mnemosyne/identity.py` — transparency (identity + repo URL)
 - `harness/` — helpers (agent-written, versioned) + vendored interaction skills
 - `config/config.yaml`, `config/sources/*.yaml` — settings + provider descriptors
 
@@ -58,7 +58,7 @@ Dev: `pip install -e '.[dev]'` then `ruff check .` and `pytest`.
 - **Never commit secrets.** Keys/logins/sessions live in the vault (`vault/`, git-ignored) or `.env` (git-ignored). `.env.example` only names variables. Never put a secret in an agent message — send a `vault:<key>` reference. Source keys are stored as `<key_env>.lower()` and exported to env at `Engine` start (`docs/CREDENTIALS.md`).
 - Chrome runs as **uid 1000 with its sandbox enabled**; never `--no-sandbox`. Exposed ports are **loopback only**; the agent's traffic must not transit Tailscale (`make egress`).
 - **Governor mandatory** for any rate-limited/sensitive action (HTTP, account creation, outbound email). On 403/429/captcha the whole system slows down.
-- **Transparent outreach**: every email/contact form states who the agent is and links the repo — build it with `identity.disclosure()`, never by hand. Human-in-the-loop for anything irreversible. The operator channel is currently **disabled** (no `operator` recipient, no agent questions): on a blocker, stop cleanly with a factual `task_done`; the operator reads the journal. Telegram remains an outbound alert only.
+- **Transparent identity**: the agent always states who it is and links the repo — build it with `identity.disclosure()`, never by hand. Human-in-the-loop for anything irreversible. The operator channel is currently **disabled** (no `operator` recipient, no agent questions): on a blocker, stop cleanly with a factual `finish`; the operator reads the task note and the journal. Telegram remains an outbound alert only.
 - **Provenance on every asset** (source, page URL, license/rights, date).
 - **Bounded context**: agent turns are bounded Stirrup sessions (`agents.max_turns`), tool outputs are truncated, and turns go through the durable mailbox instead of replaying history. Stirrup requires an output ceiling — keep `agents.max_tokens` high (32k). Record `usage`.
 

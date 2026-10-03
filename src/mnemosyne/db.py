@@ -814,16 +814,6 @@ class Database:
             )
             self._conn.commit()
 
-    def count_messages(self, status: str | None = None) -> int:
-        with self._lock:
-            if status:
-                row = self._conn.execute(
-                    "SELECT COUNT(*) AS n FROM messages WHERE status = ?", (status,)
-                ).fetchone()
-            else:
-                row = self._conn.execute("SELECT COUNT(*) AS n FROM messages").fetchone()
-        return int(row["n"]) if row else 0
-
     def set_kv(self, key: str, value: Any) -> None:
         with self._lock:
             self._conn.execute(
@@ -840,24 +830,6 @@ class Database:
             self._conn.commit()
 
     # ── watchdog reads (mnemosyne.monitor) ───────────────────────────────
-    def running_messages(self) -> list[dict]:
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT id, sender, recipient FROM messages WHERE status = 'running'"
-            ).fetchall()
-        return [dict(r) for r in rows]
-
-    def pending_messages(self) -> list[dict]:
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT id, sender, recipient, created_at FROM messages"
-                " WHERE status = 'pending'"
-            ).fetchall()
-        return [dict(r) for r in rows]
-
-    def review_message_count(self) -> int:
-        return self.count_messages(status="review")
-
     def running_jobs(self) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(

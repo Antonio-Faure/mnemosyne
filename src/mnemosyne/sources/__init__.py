@@ -38,8 +38,4 @@ def build_connector(descriptor: SourceDescriptor, http: HttpClient) -> Connector
     return cls(descriptor, http) if cls else None
 
 
-def supported_source_ids() -> list[str]:
-    return sorted(CONNECTORS)
-
-
-__all__ = ["CONNECTORS", "PROTOCOL_CONNECTORS", "build_connector", "supported_source_ids"]
+__all__ = ["CONNECTORS", "PROTOCOL_CONNECTORS", "build_connector"]
