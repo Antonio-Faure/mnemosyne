@@ -13,7 +13,9 @@ No LLM manager: a simple state machine, one activation at a time.
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -155,6 +157,37 @@ def outcome_status_note(finish: str, error: str | None) -> tuple[str, str]:
     return "review", "agent stopped without calling finish"
 
 
+def _branch_has_commits(config: Config, branch: str) -> bool:
+    """True if the branch exists locally with commits ahead of the base branch."""
+    repo = Path(config.dev.repo_path or config.root)
+    res = subprocess.run(
+        ["git", "rev-list", "--count", f"{config.dev.base_branch}..{branch}"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    return res.stdout.strip().isdigit() and int(res.stdout.strip()) > 0
+
+
+def _settle_discovery(config: Config, db: Database, task: dict, branch: str | None) -> None:
+    """Close the discovery lifecycle of a connect task, like `connect-next` does.
+
+    'connected' = a branch with commits exists — not a source that works (the
+    human reviews the PR); 'failed' = no branch, so the host stays replayable.
+    Non-connect tasks (and tasks posted outside the queue) are left alone.
+    """
+    try:
+        payload = json.loads(task.get("payload") or "{}")
+    except ValueError:
+        return
+    source_id = payload.get("source_id")
+    if payload.get("kind") != "connect" or not source_id:
+        return
+    status = "connected" if branch and _branch_has_commits(config, branch) else "failed"
+    db.set_discovery_status(source_id, status)
+    log.info("découverte %s → %s (tâche #%s)", source_id, status, task["id"])
+
+
 def _acquire_browser_lease(db: Database, agent: str) -> bool | None:
     """True = lease held, False = not needed, None = needed but taken."""
     if agent != "browser":
@@ -235,6 +268,7 @@ async def _activate_session(
         db.set_task_status(task_id, "failed", note=error[:NOTE_MAX_CHARS])
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
+        _settle_discovery(config, db, task, getattr(outcome, "branch", None))
         if journal:
             journal.append(
                 f"tâche #{task_id} échouée : {error[:160]}", level="error", source="agency"
@@ -247,6 +281,7 @@ async def _activate_session(
         db.set_task_status(task_id, status, note=finish[:NOTE_MAX_CHARS] or None)
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
+        _settle_discovery(config, db, task, getattr(outcome, "branch", None))
         if journal:
             journal.append(
                 f"tâche #{task_id} — {status} (agent {agent})"

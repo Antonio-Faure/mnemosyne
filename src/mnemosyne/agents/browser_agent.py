@@ -83,6 +83,16 @@ _RESERVED_VAULT_KEYS = frozenset({"github_token", "opencode_api_key"})
 #: env vars never handed to the harness subprocess (secrets stay in our process)
 _SECRET_ENV_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)", re.I)
 
+#: `browser(code)` is a navigation tool, never a shell: a rogue snippet once ran
+#: git in /repo (checkout + commit + PR). Refuse the escape vectors; the
+#: `browser-harness video …` CLI stays allowed.
+_FORBIDDEN_CODE = re.compile(
+    r"\b__import__\b|\bos\.system\b|\bos\.popen\b|"
+    r"\bsubprocess\b[\s\S]*\bgit\b|\bgit\b[\s\S]*\bsubprocess\b|"
+    r"\bgit\s+(add|commit|push|checkout|switch|branch|remote|reset|clean)\b",
+    re.IGNORECASE,
+)
+
 #: One canonical action path: `click_at_xy` for clicks, js()/cdp() for reading
 #: only. Prepended to every browser(code) snippet — executing in the harness
 #: process, where the helpers are already imported — so retrying a submission
@@ -336,6 +346,12 @@ class BrowserAgentToolProvider(ToolProvider):
 
     def _tools(self) -> list[Tool]:
         async def browser_exec(p: BrowserCodeParams):
+            if _FORBIDDEN_CODE.search(p.code):
+                return _fail(
+                    "refusé — browser(code) pilote Chrome : jamais de git ni de commande "
+                    "système hors browser-harness. Pour modifier le dépôt, écris au "
+                    "codeur (send_message to='coder')."
+                )
             started = time.time()
             text = await asyncio.to_thread(self._run_harness, _HARNESS_GUARD + p.code)
             shot = self._fresh_screenshot(started)

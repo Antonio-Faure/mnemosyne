@@ -26,6 +26,7 @@ def test_pick_agent_routing():
 @dataclass
 class _Outcome:
     finish: str
+    branch: str | None = None
 
 
 def test_two_tasks_never_share_a_session(config, monkeypatch):
@@ -204,3 +205,56 @@ def test_directives_reach_every_activation(config, monkeypatch):
     asyncio.run(run_agency(config, "tâche", start="coder"))
 
     assert "toujours citer la source" in seen[0]
+
+
+def test_connect_task_settles_its_discovery(config, monkeypatch):
+    """A queue connect task flips its discovery: connected with a branch."""
+    from mnemosyne.discovery.models import DiscoveryRecord
+
+    record = DiscoveryRecord.build("example.org")
+    db = Database(config.db_file())
+    db.save_discoveries([record])
+    db.enqueue_task(
+        "coder", "Connect example.org", payload={"kind": "connect", "source_id": record.id}
+    )
+    db.close()
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        return _Outcome(finish="connecté", branch="agent/example-iiif")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+    monkeypatch.setattr(supervisor, "_branch_has_commits", lambda cfg, branch: True)
+    from mnemosyne.agents.supervisor import drain_queue
+
+    asyncio.run(drain_queue(config))
+
+    db = Database(config.db_file())
+    status = next(r.status for r in db.list_discoveries() if r.id == record.id)
+    db.close()
+    assert status == "connected"
+
+
+def test_connect_task_without_branch_fails_its_discovery(config, monkeypatch):
+    """No branch pushed => the host stays replayable ('failed')."""
+    from mnemosyne.discovery.models import DiscoveryRecord
+
+    record = DiscoveryRecord.build("blocked.example")
+    db = Database(config.db_file())
+    db.save_discoveries([record])
+    db.enqueue_task(
+        "coder", "Connect blocked.example", payload={"kind": "connect", "source_id": record.id}
+    )
+    db.close()
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        return _Outcome(finish="bloqué : hôte injoignable")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+    from mnemosyne.agents.supervisor import drain_queue
+
+    asyncio.run(drain_queue(config))
+
+    db = Database(config.db_file())
+    status = next(r.status for r in db.list_discoveries() if r.id == record.id)
+    db.close()
+    assert status == "failed"

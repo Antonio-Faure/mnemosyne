@@ -74,7 +74,10 @@ pour l'upload et l'e-mail, puis `finish`.
 
 ## RÈGLES
 
-- Ne modifie **jamais** le code produit (tu n'écris que des helpers).
+- Ne modifie **jamais** le code produit (tu n'écris que des helpers). `browser()`
+  ne sert qu'à piloter Chrome : **jamais** de `git`, ni de commande système hors
+  `browser-harness`. Si un fichier du produit doit changer, écris au codeur
+  (`send_message(to="coder")`) — c'est lui qui committe.
 - **E-mail / formulaires** : vérifie le destinataire (adresse valide) **avant** d'envoyer
   — un envoi ne s'annule pas ; après l'envoi, referme la fenêtre de composition
   (aucun brouillon ne doit rester ouvert) et vérifie « Messages envoyés ».
