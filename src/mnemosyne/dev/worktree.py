@@ -9,11 +9,17 @@ from pathlib import Path
 def add_worktree(repo: str | Path, path: str | Path, base_branch: str) -> Path:
     repo = Path(repo)
     path = Path(path)
+    # The path is disposable: a killed run can leave it as a broken registration,
+    # a locked worktree, or a plain directory — each defeats `worktree add`.
+    # Clean up in escalation order until the path is really gone.
     subprocess.run(
         ["git", "-C", str(repo), "worktree", "remove", "--force", str(path)],
-        capture_output=True,
-        text=True,
+        capture_output=True, text=True,
     )
+    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True, text=True)
+    import shutil
+
+    shutil.rmtree(path, ignore_errors=True)
     subprocess.run(
         ["git", "-C", str(repo), "fetch", "origin", base_branch],
         capture_output=True,
