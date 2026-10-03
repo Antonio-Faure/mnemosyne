@@ -77,6 +77,11 @@ factuels complets, et le ping-pong permet de demander la précision.
 
 - `session(resume=True, clear_cache_on_success=False)` : l'historique complet
   de la session est sauvé à chaque fin d'activation et restauré à la suivante.
+  ⚠️ stirrup 0.2.0 ne sauve le cache que sur **sortie anormale** (exception ou
+  absence de finish) — un finish propre n'écrit rien ; `persist_session()`
+  sauve donc l'état nous-mêmes après chaque activation (le même CacheManager,
+  la même clé). Signalé upstream :
+  https://github.com/ArtificialAnalysis/Stirrup/issues/91
 - La clé de cache est dérivée du **texte de tâche figé**
   (`session_task_text` : `[tâche #N — agent X] + objectif`) — le texte ne
   change JAMAIS entre les activations ; les réponses entrantes sont injectées
