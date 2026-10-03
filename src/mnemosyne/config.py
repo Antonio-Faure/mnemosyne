@@ -157,8 +157,9 @@ class DevConfig(BaseModel):
     #: git checkout the coder agent works on (default: the repo root). In Docker
     #: this is the mounted repo (e.g. /repo), so both agents live in one process.
     repo_path: str | None = None
-    #: the dev agent resends its whole transcript every step, so keep turns low
-    max_turns: int = 40
+    #: hard safety net, not a deadline: a connexion (read + connector + tests +
+    #: PR) legitimately needs dozens of turns; the stall detector catches spins
+    max_turns: int = 120
     #: tool output caps (chars/entries) — they live in the transcript forever
     read_max_chars: int = 3000
     list_max_entries: int = 60

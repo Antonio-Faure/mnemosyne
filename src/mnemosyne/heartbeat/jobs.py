@@ -220,7 +220,7 @@ async def handle_agency(ctx: JobContext, job: Job) -> dict | None:
 
     ran = await run_pending_once(ctx.config, journal=ctx.journal, vault_get=_vault_get(ctx))
     if ran:
-        log.info("agency background ran agent: %s", ran)
+        log.info("agency background ran agent: %s", ran.get("agent"))
     return None
 
 

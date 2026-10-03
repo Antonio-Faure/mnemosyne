@@ -68,7 +68,7 @@ discovery:
 
 # Coder agent (bi-agent; also reachable via `mnemosyne agency --to coder`).
 dev:
-  max_turns: 40        # un tour codeur (descriptors + tests + PR) tient rarement en 18 tours
+  max_turns: 120       # une connexion (lecture + connecteur + tests + PR) dépasse 40 tours
   read_max_chars: 3000
   list_max_entries: 60
   grep_max_chars: 2500

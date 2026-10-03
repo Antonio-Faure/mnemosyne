@@ -25,6 +25,14 @@ from mnemosyne.util import atomic_write_text
 
 class PathParam(BaseModel):
     path: str = Field(description="Repo-relative path")
+    offset: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Character offset to start from — for files longer than the cap, the "
+            "truncation footer gives the offset for the next call"
+        ),
+    )
 
 
 class DirParam(BaseModel):
@@ -161,8 +169,18 @@ class DevToolProvider(ToolProvider):
                 text = target.read_text(encoding="utf-8")
             except OSError as exc:
                 return _fail(f"read failed: {exc}")
+            total = len(text)
+            if p.offset >= total and total:
+                return _ok(f"(offset {p.offset} is past the end: file is {total} chars)")
             cap = self.config.read_max_chars
-            return _ok(text[:cap] + ("\n…(truncated)" if len(text) > cap else ""))
+            chunk = text[p.offset : p.offset + cap]
+            end = p.offset + len(chunk)
+            if end < total:
+                chunk += (
+                    f"\n…(chars {p.offset}-{end} of {total}; "
+                    f"call read_file with offset={end} for the rest)"
+                )
+            return _ok(chunk)
 
         async def grep_exec(p: GrepParam):
             # never scan .venv/.git/data: huge and irrelevant
@@ -299,7 +317,7 @@ class DevToolProvider(ToolProvider):
         tools = [
             Tool(name="list_files", description="List files in a directory.",
                  parameters=DirParam, executor=list_exec),
-            Tool(name="read_file", description="Read a repo file.",
+            Tool(name="read_file", description="Read a repo file (offset pages long files).",
                  parameters=PathParam, executor=read_exec),
             Tool(name="grep", description="Search the repo.",
                  parameters=GrepParam, executor=grep_exec),

@@ -56,6 +56,8 @@ termine par `finish` avec un bilan factuel du blocage (le journal s'en charge)
 
 - Lis **au plus un** connecteur existant comme modèle. Ne relis pas un fichier
   déjà lu. Ne liste pas tout l'arbre.
+- Un fichier long se lit en plusieurs fois avec `read_file(path, offset=…)` —
+  le pied de page donne l'offset suivant. Ne le découpe **pas** au grep.
 - Préfère `grep` pour localiser, puis lis seulement le fichier pertinent.
 - Garde les sorties d'outils courtes ; ne télécharge pas de grosses pages.
 

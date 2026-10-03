@@ -257,9 +257,13 @@ async def _activate_session(
             "branch": getattr(outcome, "branch", None), "error": None}
 
 
-async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> str | None:
+async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> dict | None:
     """Background activation: the running task continues first, else the oldest
     pending task starts. Called by the heartbeat. Idle => no agent, no cost.
+
+    Returns the activation record (agent, task_id, finish, turns, branch) so
+    callers can act on it — e.g. connect-next reads the branch to close the
+    discovery lifecycle.
 
     Ping-pong is unlimited BY DESIGN: each activation is one job; the task
     stays 'running' until one of its sessions finishes with an empty mailbox.
@@ -301,8 +305,9 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> s
         log.info(note)
         if journal:
             journal.append(note, source="agency")
-        await _activate_session(config, db, mailbox, journal, vault_get, agent, task, messages)
-        return agent
+        return await _activate_session(
+            config, db, mailbox, journal, vault_get, agent, task, messages
+        )
     finally:
         if held_browser:
             db.release_lease("browser")
@@ -321,10 +326,10 @@ async def drain_queue(
     resumes them."""
     result = AgencyResult(start="queue")
     while True:
-        agent = await run_pending_once(config, journal=journal, vault_get=vault_get)
-        if agent is None:
+        info = await run_pending_once(config, journal=journal, vault_get=vault_get)
+        if info is None:
             break
-        result.turns.append({"agent": agent})
+        result.turns.append(info)
     return result
 
 
