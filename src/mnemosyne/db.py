@@ -227,7 +227,13 @@ class Database:
             for name in names:
                 if name not in cols:
                     kind = "INTEGER" if name == "task_id" else "TEXT"
-                    self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
+                    try:
+                        self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
+                    except sqlite3.OperationalError as exc:
+                        # two processes may initialise the same file at once: the
+                        # loser of the race finds the column already added
+                        if "duplicate column name" not in str(exc):
+                            raise
         # the per-task mailbox index needs the migrated column, so it lives here
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_messages_task ON messages(task_id, recipient)"
