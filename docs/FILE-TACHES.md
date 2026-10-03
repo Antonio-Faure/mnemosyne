@@ -42,6 +42,30 @@ pending ── tick agency ──► running ── activation session départ
 - **1 session** si l'agent de départ n'écrit jamais à l'autre ; **2 sessions**
   (une par agent) dès que le ping-pong commence ; plus de deux uniquement via
   la **compaction** native de stirrup (`context_summarization_cutoff`).
+
+## Ce que l'autre agent hérite (la règle d'héritage)
+
+Quand la première tête écrit à l'autre, l'agent récepteur reçoit **trois
+étages**, jamais moins :
+
+1. **L'objectif ORIGINAL**, tel qu'écrit à la création de la tâche (le texte
+   de tâche est figé — jamais de jeu de téléphone, chaque tête le voit verbatim) ;
+2. **Le(s) message(s)** de la première tête — le *quoi maintenant*, avec sa
+   contextualisation (ce qu'il a fait, ce qui manque, sous quelle forme) ;
+3. **Les directives permanentes** de l'opérateur (injectées à chaque
+   activation, à côté du texte figé).
+
+Conséquence voulue : si la demande du premier agent contredit l'objectif,
+l'agent récepteur **voit la contradiction** (l'objectif est le plancher) et
+peut la signaler en retour — le ping-pong illimité rend cette correction
+possible. Et aucun hop ne dégrade le contexte : la partie d'un agent est
+mise en cache, la réponse de l'autre arrive par-dessus (preuve réelle :
+tâche #12 — le codeur, à sa 2e activation, a cité sa demande initiale de
+mémoire).
+
+Limite assumée : l'agent récepteur ne voit pas l'historique d'outils de
+l'autre tête, seulement son message — les prompts exigent des messages
+factuels complets, et le ping-pong permet de demander la précision.
 - **Aucune limite de ping-pong** (le `max_handoffs` est mort partout) : le
   contexte persistant fait que chaque agent sait où il en est, et la file est
   le garde-fou (`queue cancel` à tout moment).
