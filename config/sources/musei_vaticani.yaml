@@ -1,0 +1,31 @@
+id: musei_vaticani
+name: Musei Vaticani — Catalogo Online
+institution: Musei Vaticani (Musei e Gallerie Pontificie)
+country: VA
+protocol: iiif
+base_url: https://catalogo.museivaticani.va
+auth: none
+license: varies
+rights: "Copyright Musei Vaticani — check per record (attribution declared in each manifest)"
+enabled: false   # usage/rights to be confirmed by the project's policy before activation
+rate_limit_per_s: 1.0
+priority: 35
+tags: [museum, vatican, antiquities, iiif, keyless]
+seeds:
+  - "mitra"
+  - "scultura"
+  - "marmo"
+  - "sarcofago"
+notes: >-
+  The online catalogue runs CollectiveAccess (Pawtucket) and exposes one IIIF
+  Presentation v2 manifest per catalogued object at
+  https://catalogo.museivaticani.va/service.php/IIIF/<id>/manifest (sample id
+  11869 = a Mitra tauroctono group). Each manifest carries metadata
+  (Identifier/Coverage/Creator), a label/description and a first canvas image
+  served by the IIIF Image API. The host publishes no aggregate Collection
+  manifest (probes for .../IIIF/collection, .../IIIF/collection/1/manifest and
+  .../IIIF/ return 404), so a single manifest entry point is used, like
+  vatican.yaml/albertina.yaml. Onboarded via the GENERIC iiif.py connector.
+extra:
+  manifest: https://catalogo.museivaticani.va/service.php/IIIF/11869/manifest
+  collection_id: "11869"
