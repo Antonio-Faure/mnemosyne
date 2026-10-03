@@ -219,6 +219,18 @@ async def _activate_session(
         log.error("agent %s failed: %s", agent, exc)
 
     finish = finish_text(getattr(outcome, "finish", None)) or ""
+    # the operator may have cancelled the task while this session was running:
+    # never resurrect it — a non-'running' row is left exactly as the operator set it
+    task_now = db.get_task(task_id)
+    if task_now is None or task_now["status"] != "running":
+        log.info(
+            "tâche #%s déjà fermée côté opérateur (%s) — fermeture annulée",
+            task_id,
+            task_now["status"] if task_now else "absente",
+        )
+        return {"agent": agent, "task_id": task_id, "finish": finish, "turns": _turns_of(outcome),
+                "branch": getattr(outcome, "branch", None), "error": error}
+
     if error:
         db.set_task_status(task_id, "failed", note=error[:NOTE_MAX_CHARS])
         drop_session_cache(config, task)
