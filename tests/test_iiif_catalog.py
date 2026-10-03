@@ -4,6 +4,9 @@ These sources are *single-manifest* IIIF hosts (one object per URL), so each
 descriptor points the generic `src/mnemosyne/sources/iiif.py` connector at its
 manifest via `extra.manifest` and records the provider's own stable collection /
 object identifier in `extra.collection_id`.
+
+CUDL is onboarded separately as a *collection-based* IIIF source
+(`extra.collection`) and is covered by `tests/test_cudl.py`.
 """
 
 from __future__ import annotations
@@ -19,7 +22,7 @@ from mnemosyne.sources.iiif import IIIFConnector
 
 SOURCES_DIR = Path(__file__).resolve().parents[1] / "config" / "sources"
 
-#: descriptor id -> canonical IIIF manifest URL (the 10 verified collections)
+#: descriptor id -> canonical IIIF manifest URL (single-manifest collections)
 IIIF_SOURCES = {
     "artic": "https://api.artic.edu/api/v1/artworks/28560/manifest.json",
     "rijksmuseum": (
@@ -32,7 +35,6 @@ IIIF_SOURCES = {
         "https://api.digitale-sammlungen.de/iiif/presentation/v2/"
         "bsb00083127/manifest"
     ),
-    "cudl": "https://cudl.lib.cam.ac.uk/iiif/MS-ADD-03996",
     "ecodices": (
         "https://www.e-codices.unifr.ch/metadata/iiif/"
         "csg-0657/manifest.json"
@@ -75,5 +77,6 @@ def test_restricted_licenses_are_not_enabled():
     for source_id in ("cudl", "ecodices", "wellcome", "vatican", "vam"):
         raw = yaml.safe_load((SOURCES_DIR / f"{source_id}.yaml").read_text(encoding="utf-8"))
         assert raw.get("enabled") is False, f"{source_id} must be disabled"
-        # the manifest is still recorded, so enabling it is a one-line change
-        assert raw.get("extra", {}).get("manifest")
+        # an entry point is still recorded, so enabling it is a one-line change
+        extra = raw.get("extra", {})
+        assert extra.get("manifest") or extra.get("collection")

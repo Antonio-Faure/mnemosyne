@@ -15,9 +15,11 @@ seeds:
   - "medieval manuscript"
   - "music manuscript"
 notes: >-
-  IIIF Presentation manifest for a single manuscript (MS Add. 3996) served at
-  iiif/<shelfmark>. Keyless. Onboarded as a single-manifest IIIF source via the
-  generic iiif.py connector. Rights: CC BY-NC.
+  IIIF entry point is a Collection manifest: the Cairo Genizah collection at
+  iiif/collection/genizah enumerates per-item Presentation manifests served at
+  iiif/<shelfmark> (e.g. iiif/MS-TS-00016-00320). Onboarded as a
+  collection-based IIIF source via the generic iiif.py connector, which walks
+  the v2 `sc:Collection.manifests` list. Keyless. Rights: CC BY-NC.
 extra:
-  manifest: https://cudl.lib.cam.ac.uk/iiif/MS-ADD-03996
-  collection_id: "MS-ADD-03996"
+  collection: https://cudl.lib.cam.ac.uk/iiif/collection/genizah
+  collection_id: "genizah"
