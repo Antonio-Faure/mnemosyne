@@ -60,7 +60,14 @@ token:  ## store the GitHub token in the vault (run ALONE, then paste when promp
 		echo "Lance 'make token' SEUL, puis colle le token quand c'est demande."; \
 		exit 2; \
 	fi
-	@read -s -p "GitHub token (fine-grained): " T; echo; $(PY)/mnemosyne vault set github_token "$$T"; unset T
+	@read -s -p "GitHub token (fine-grained): " T; echo; \
+	if [ "$${#T}" -gt 200 ] || [ -z "$$T" ]; then \
+		echo "REFUSE : longueur $${#T} (un PAT fait ~93 caracteres) — rien n'a ete stocke."; \
+		echo "Tu as probablement colle autre chose que le token. Recommence : make token"; \
+		unset T; exit 2; \
+	fi; \
+	$(PY)/mnemosyne vault set github_token "$$T"; unset T; \
+	$(PY)/python -c "from mnemosyne.config import get_config; from mnemosyne.vault import Vault; import httpx; t = Vault(get_config().vault_file).get('github_token'); r = httpx.get('https://api.github.com/repos/Antonio-Faure/mnemosyne', headers={'Authorization': f'Bearer {t}'}); print('Validation GitHub :', r.status_code, '(200 = token valide, 401 = mauvaise colle)')"
 
 agency:  ## run the bi-agent: make agency TASK="Add the Europeana connector"
 	$(PY)/mnemosyne agency "$(TASK)"
