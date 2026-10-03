@@ -8,9 +8,9 @@ Une source est dite **active** quand son descripteur ne porte pas
 en attendant que la politique du projet les autorise — vérifié par
 `tests/test_iiif_catalog.py::test_restricted_licenses_are_not_enabled`.
 
-- Sources déclarées : **18**
+- Sources déclarées : **19**
 - Sources actives : **13**
-- Sources désactivées : **5**
+- Sources désactivées : **6**
 
 ## Sources actives (13)
 
@@ -30,10 +30,11 @@ en attendant que la politique du projet les autorise — vérifié par
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 
-## Sources désactivées (5)
+## Sources désactivées (6)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
+| buffalolib | Buffalo & Erie County Public Library Digital Collections | Buffalo & Erie County Public Library (B&ECPL) | US | iiif | varies | Copyright B&ECPL — usage non commercial / autorisation écrite |
 | cudl | Cambridge Digital Library (CUDL) | Cambridge University Library | GB | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | ecodices | e-codices — Virtual Manuscript Library of Switzerland | e-codices (University of Fribourg) | CH | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | vam | Victoria and Albert Museum | Victoria and Albert Museum, London | GB | iiif | varies | V&A Terms and Conditions (restrictif) |

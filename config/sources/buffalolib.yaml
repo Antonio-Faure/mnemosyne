@@ -1,0 +1,40 @@
+id: buffalolib
+name: Buffalo & Erie County Public Library Digital Collections
+institution: Buffalo & Erie County Public Library (B&ECPL)
+country: US
+protocol: iiif
+base_url: https://digital.buffalolib.org
+auth: none
+license: varies
+rights: >-
+  Digital image copyright by the Buffalo & Erie County Public Library. Images are
+  not to be used for any commercial purposes without the expressed written
+  permission of the B&ECPL; non-commercial and educational use is permitted.
+  Check per record.
+enabled: false   # licence restrictive (usage non commercial / autorisation ecrite) — activer si la politique du projet l'autorise
+rate_limit_per_s: 1.0
+priority: 45
+tags: [library, usa, manuscripts, iiif, keyless, omeka]
+seeds:
+  - "missal"
+  - "manuscript"
+  - "map"
+  - "photograph"
+notes: >-
+  "B&ECPL Digital Collections" is an Omeka Classic site with the IIIF plugin.
+  Manifests follow the single-object pattern /iiif/<id>/manifest and are IIIF
+  Presentation v2 (top-level keys: @context=presentation/2/context.json, @id,
+  @type=sc:Manifest, label, description, thumbnail, license, attribution,
+  related, metadata, sequences). Keyless. Onboarded as a SINGLE-MANIFEST IIIF
+  source via the generic iiif.py connector. No aggregate Collection manifest and
+  no IIIF Search endpoint are exposed (enumeration of the host's /iiif* space
+  shows only /iiif/<id>/manifest and /iiif-img/<id>/... ; probes of
+  /iiif/collection, /iiif/collection/top, /iiif/collections and /iiif/search are
+  not served), so the sample object is used as the entry point. NOTE: at
+  onboarding time the host drops all packets (TCP connect to 192.135.227.213:443
+  and :80 times out) and was only verifiable through the Internet Archive; the
+  descriptor is kept disabled (restrictive licence) and its manifest URL is the
+  one verified record.
+extra:
+  manifest: https://digital.buffalolib.org/iiif/17168/manifest
+  collection_id: "17168"
