@@ -15,9 +15,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import httpx
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.agents.session_cache import (
@@ -188,6 +191,50 @@ def _settle_discovery(config: Config, db: Database, task: dict, branch: str | No
     log.info("découverte %s → %s (tâche #%s)", source_id, status, task["id"])
 
 
+#: consecutive transient provider failures tolerated before a task is failed
+_TRANSIENT_MAX_ATTEMPTS = 5
+
+
+def _is_transient_provider_error(exc: BaseException) -> bool:
+    """True for retryable LLM/network failures: 5xx, 429, timeouts, drops.
+
+    A provider blip must not kill a 20-minute session: the activation is
+    interrupted, the task stays open, and the next tick resumes it.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        try:
+            from openai import (
+                APIConnectionError,
+                APIStatusError,
+                APITimeoutError,
+                RateLimitError,
+            )
+
+            if isinstance(current, (APIConnectionError, APITimeoutError, RateLimitError)):
+                return True
+            if isinstance(current, APIStatusError) and current.status_code >= 500:
+                return True
+        except ImportError:  # the agent extra is optional
+            pass
+        if isinstance(
+            current,
+            (
+                httpx.ConnectError,
+                httpx.ConnectTimeout,
+                httpx.ReadTimeout,
+                httpx.RemoteProtocolError,
+            ),
+        ):
+            return True
+        if re.search(r"Error code: 5\d\d\b|Connection error|timed out", str(current)):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _acquire_browser_lease(db: Database, agent: str) -> bool | None:
     """True = lease held, False = not needed, None = needed but taken."""
     if agent != "browser":
@@ -237,6 +284,7 @@ async def _activate_session(
 
     outcome = None
     error: str | None = None
+    error_exc: BaseException | None = None
     try:
         outcome = await _RUNNERS[agent](
             config,
@@ -249,6 +297,7 @@ async def _activate_session(
         )
     except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
         error = str(exc)
+        error_exc = exc
         log.error("agent %s failed: %s", agent, exc)
 
     finish = finish_text(getattr(outcome, "finish", None)) or ""
@@ -261,10 +310,36 @@ async def _activate_session(
             task_id,
             task_now["status"] if task_now else "absente",
         )
+        db.delete_kv(f"transient:{task_id}")
         return {"agent": agent, "task_id": task_id, "finish": finish, "turns": _turns_of(outcome),
                 "branch": getattr(outcome, "branch", None), "error": error}
 
     if error:
+        transient_key = f"transient:{task_id}"
+        if error_exc is not None and _is_transient_provider_error(error_exc):
+            attempts = int(db.get_kv(transient_key, 0)) + 1
+            if attempts <= _TRANSIENT_MAX_ATTEMPTS:
+                db.set_kv(transient_key, attempts)
+                log.warning(
+                    "tâche #%s : erreur provider transitoire (%s) — reprise au prochain "
+                    "tick (%d/%d)",
+                    task_id,
+                    error[:80],
+                    attempts,
+                    _TRANSIENT_MAX_ATTEMPTS,
+                )
+                if journal:
+                    journal.append(
+                        f"tâche #{task_id} : erreur provider transitoire — tentative "
+                        f"{attempts}/{_TRANSIENT_MAX_ATTEMPTS}, reprise au prochain tick",
+                        level="warn",
+                        source="agency",
+                    )
+                return {"agent": agent, "task_id": task_id, "finish": "",
+                        "turns": _turns_of(outcome),
+                        "branch": getattr(outcome, "branch", None), "error": error}
+            error = f"{error} — abandon après {attempts} tentatives transitoires"
+        db.delete_kv(transient_key)
         db.set_task_status(task_id, "failed", note=error[:NOTE_MAX_CHARS])
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
@@ -279,6 +354,7 @@ async def _activate_session(
     if mailbox.pending_count(task_id) == 0:
         status = "done" if finish else "review"
         db.set_task_status(task_id, status, note=finish[:NOTE_MAX_CHARS] or None)
+        db.delete_kv(f"transient:{task_id}")
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
         _settle_discovery(config, db, task, getattr(outcome, "branch", None))

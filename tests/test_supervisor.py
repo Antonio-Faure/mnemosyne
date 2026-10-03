@@ -258,3 +258,81 @@ def test_connect_task_without_branch_fails_its_discovery(config, monkeypatch):
     status = next(r.status for r in db.list_discoveries() if r.id == record.id)
     db.close()
     assert status == "failed"
+
+
+def test_transient_provider_error_is_retried(config, monkeypatch):
+    """A 503 is an interruption: the activation resumes instead of failing the task."""
+    calls = {"n": 0}
+
+    async def flaky(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise RuntimeError("Error code: 503")
+        return _Outcome(finish="ok après reprise")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", flaky)
+
+    db = Database(config.db_file())
+    db.enqueue_task("browser", "mission")
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    asyncio.run(drain_queue(config))
+
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    db.close()
+    assert task["status"] == "done"
+    assert calls["n"] == 3
+
+
+def test_transient_provider_error_gives_up_after_attempts(config, monkeypatch):
+    """A provider that stays down does not loop forever: the task fails, with a note."""
+    calls = {"n": 0}
+
+    async def dead(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        calls["n"] += 1
+        raise RuntimeError("Error code: 503")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", dead)
+
+    db = Database(config.db_file())
+    db.enqueue_task("browser", "mission")
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    asyncio.run(drain_queue(config))
+
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    db.close()
+    assert task["status"] == "failed"
+    assert "tentatives transitoires" in (task["note"] or "")
+    assert calls["n"] == supervisor._TRANSIENT_MAX_ATTEMPTS + 1
+
+
+def test_plain_error_still_fails_immediately(config, monkeypatch):
+    """Non-retryable errors keep the old behaviour: one attempt, failed."""
+    calls = {"n": 0}
+
+    async def broken(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        calls["n"] += 1
+        raise ValueError("boom")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", broken)
+
+    db = Database(config.db_file())
+    db.enqueue_task("browser", "mission")
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    asyncio.run(drain_queue(config))
+
+    db = Database(config.db_file())
+    task = db.get_task(1)
+    db.close()
+    assert task["status"] == "failed"
+    assert calls["n"] == 1
