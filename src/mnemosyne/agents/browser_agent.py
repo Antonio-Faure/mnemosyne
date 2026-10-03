@@ -142,6 +142,20 @@ if all(name in globals() for name in ("click_at_xy", "js", "cdp")):
                 "cdp() sert a observer"
             )
         return _mn_real_cdp(method, *args, **kwargs)
+
+if all(name in globals() for name in ("goto_url", "wait_for_load")):
+    # upstream #879: goto_url() is non-blocking; a capture in the same run can
+    # hit the navigation transition (-32000 "Not attached to an active page").
+    # Settle the page before anything else observes it.
+    _mn_real_goto = goto_url
+
+    def goto_url(url):
+        result = _mn_real_goto(url)
+        try:
+            wait_for_load(timeout=15.0)
+        except Exception:
+            pass
+        return result
 # --- end guard ---
 '''
 
