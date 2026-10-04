@@ -12,6 +12,7 @@ from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
 from mnemosyne.sources.openverse import OpenverseConnector
+from mnemosyne.sources.smithsonian import SmithsonianConnector
 from mnemosyne.sources.wikidata import WikidataConnector
 from mnemosyne.sources.wikimedia import WikimediaConnector
 
@@ -25,6 +26,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "openverse": OpenverseConnector,
     "europeana": EuropeanaConnector,
     "dpla": DplaConnector,
+    "smithsonian": SmithsonianConnector,
 }
 
 #: fallback connector by protocol (used by discovered sources, e.g. IIIF hosts)
