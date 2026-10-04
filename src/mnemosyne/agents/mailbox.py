@@ -13,6 +13,11 @@ from mnemosyne.logger import get_logger
 log = get_logger("mailbox")
 
 AGENTS = ("coder", "browser")
+#: the operator is the third correspondent: agents ASK, the operator ANSWERS.
+#: A question lives in the task's mailbox (never in the queue): it is an
+#: exchange inside a running task, not a new mission.
+OPERATOR = "operator"
+CORRESPONDENTS = (*AGENTS, OPERATOR)
 
 
 class Mailbox:
@@ -24,12 +29,9 @@ class Mailbox:
         return "browser" if agent == "coder" else "coder"
 
     def post(self, sender: str, recipient: str, body: str, task_id: int) -> int:
-        """Post a message inside one task's mailbox (agent to agent only)."""
-        if sender not in AGENTS or recipient not in AGENTS:
-            raise ValueError(
-                f"the mailbox is agent-to-agent (use {AGENTS}); "
-                "the operator posts TASKS to the queue, not messages"
-            )
+        """Post a message inside one task's mailbox (agents + operator)."""
+        if sender not in CORRESPONDENTS or recipient not in CORRESPONDENTS:
+            raise ValueError(f"unknown mailbox correspondent (use {CORRESPONDENTS})")
         if sender == recipient:
             raise ValueError("cannot message yourself")
         message_id = self.db.post_message(sender, recipient, body.strip(), task_id)

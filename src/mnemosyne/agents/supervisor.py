@@ -22,11 +22,10 @@ from pathlib import Path
 
 import httpx
 
-from mnemosyne.agents.mailbox import Mailbox
+from mnemosyne.agents.mailbox import AGENTS, Mailbox
 from mnemosyne.agents.session_cache import (
     drop_session_cache,
     inject_reply,
-    session_task_text,
 )
 from mnemosyne.config import Config
 from mnemosyne.db import NOTE_MAX_CHARS, Database
@@ -271,7 +270,11 @@ async def _activate_session(
     task_id = task["id"]
     if messages:
         reply_text = "\n\n".join(
-            f"--- message de {m['sender']} ({m['created_at']}) ---\n{m['body']}"
+            (
+                f"--- réponse de l'opérateur ({m['created_at']}) ---\n{m['body']}"
+                if m["sender"] == "operator"
+                else f"--- message de {m['sender']} ({m['created_at']}) ---\n{m['body']}"
+            )
             for m in messages
         )
         task_text = _task_with_directives(config, inject_reply(config, agent, task, reply_text))
@@ -279,7 +282,7 @@ async def _activate_session(
         for message in messages:
             mailbox.mark(message["id"], "handled")
     else:
-        task_text = _task_with_directives(config, session_task_text(agent, task))
+        task_text = _task_with_directives(config, inject_reply(config, agent, task))
     db.touch_task_activation(task_id)
 
     outcome = None
@@ -390,12 +393,12 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
             return None
         if task["status"] == "pending":
             agent = task["start_agent"]
-            recipients = mailbox.recipients(task["id"])
+            recipients = [r for r in mailbox.recipients(task["id"]) if r in AGENTS]
             agent = recipients[0] if recipients else agent
             messages = mailbox.pending_for(task["id"], agent)
             db.set_task_status(task["id"], "running")
         else:
-            recipients = mailbox.recipients(task["id"])
+            recipients = [r for r in mailbox.recipients(task["id"]) if r in AGENTS]
             if not recipients:
                 # no reply waiting: either the last activation ended cleanly and
                 # is about to close, or the process died mid-activation — either

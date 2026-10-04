@@ -45,14 +45,16 @@ def session_task_text(agent: str, task: dict) -> str:
     return f"[tâche #{task['id']} — agent {agent}]\n\n{task['objective']}"
 
 
-def inject_reply(config: Config, agent: str, task: dict, reply_text: str) -> str:
-    """Feed the other agent's reply to (task, agent) and return the text to run.
+def inject_reply(config: Config, agent: str, task: dict, reply_text: str | None = None) -> str:
+    """Prepare the cached session for this activation; return the text to run.
 
-    If a session exists: the reply is appended to the cached history and the
-    FROZEN task text is returned (changing it would change the cache key and
-    open a fresh session). If no session exists yet (first activation already
-    carrying a reply): the reply joins the task text — it becomes the opening
-    message of the new session.
+    * a reply is appended to the cached history (the text itself stays FROZEN:
+      changing it would change the cache key and open a fresh session);
+    * `run_metadata_by_turn` is dropped from the cache: stirrup's logger
+      aggregates it at run end, and a resumed session would mix cached JSON
+      dicts with live `ToolUseCountMetadata` instances — `dict +
+      ToolUseCountMetadata` crashes the whole run (seen on the DPLA task). It
+      is display-only, so the cache never carries it.
     """
     from stirrup.core.cache import CacheManager, compute_task_hash
     from stirrup.core.models import UserMessage
@@ -62,16 +64,26 @@ def inject_reply(config: Config, agent: str, task: dict, reply_text: str) -> str
     manager = CacheManager(cache_base_dir=cache_base_dir(config), clear_on_success=False)
     state = manager.load_state(task_hash)
     if state is None:
-        log.info("première activation (%s, tâche #%s) avec réponse intégrée", agent, task["id"])
-        return f"{text}\n\n{reply_text}"
-    state.msgs.append(UserMessage(content=reply_text))
-    manager.save_state(task_hash, state)
-    log.info(
-        "session réouverte (%s, tâche #%s) : %d messages d'historique",
-        agent,
-        task["id"],
-        len(state.msgs),
-    )
+        if reply_text:
+            log.info("première activation (%s, tâche #%s) avec réponse intégrée", agent, task["id"])
+            return f"{text}\n\n{reply_text}"
+        return text
+    changed = False
+    if reply_text:
+        state.msgs.append(UserMessage(content=reply_text))
+        changed = True
+    if getattr(state, "run_metadata_by_turn", None):
+        state.run_metadata_by_turn = {}
+        changed = True
+    if changed:
+        manager.save_state(task_hash, state)
+    if reply_text:
+        log.info(
+            "session réouverte (%s, tâche #%s) : %d messages d'historique",
+            agent,
+            task["id"],
+            len(state.msgs),
+        )
     return text
 
 
@@ -90,6 +102,9 @@ def persist_session(config: Config, agent, agent_name: str) -> None:
     if state is None or task_hash is None:
         log.warning("aucun état de session à persister (%s)", agent_name)
         return
+    if getattr(state, "run_metadata_by_turn", None):
+        # never let cached metadata mix with live ToolUseCountMetadata on resume
+        state.run_metadata_by_turn = {}
     CacheManager(cache_base_dir=cache_base_dir(config), clear_on_success=False).save_state(
         task_hash, state
     )

@@ -39,6 +39,7 @@ from mnemosyne.dev.worktree import add_worktree
 from mnemosyne.identity import disclosure
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
+from mnemosyne.operator.models import AskOperatorParams
 from mnemosyne.util import atomic_write_text, ensure_dir, finish_text, load_prompt
 from mnemosyne.vault import Vault
 
@@ -197,9 +198,11 @@ class BrowserAgentToolProvider(ToolProvider):
         token: str | None = None,
         journal: Journal | None = None,
         task_id: int | None = None,
+        vault_get=None,
     ):
         self.config = config
         self.mailbox = mailbox
+        self.vault_get = vault_get
         # messages live INSIDE the task's temporary mailbox
         self.task_id = task_id
         # the supervisor's database handle: one connection per turn, closed by
@@ -451,6 +454,28 @@ class BrowserAgentToolProvider(ToolProvider):
                 return _fail(f"vault write failed: {exc}")
             return _ok(f"stored '{p.key}' in the vault")
 
+        async def ask_exec(p: AskOperatorParams):
+            if self.task_id is None:
+                return _fail("aucune tâche ouverte : impossible de questionner l'opérateur")
+            from mnemosyne.operator.telegram import ask_operator
+
+            try:
+                ask_id = await ask_operator(
+                    self.config,
+                    self._db,
+                    self.vault_get,
+                    agent="browser",
+                    task_id=self.task_id,
+                    question=p.question,
+                    options=[o.model_dump() for o in p.options],
+                )
+            except Exception as exc:  # noqa: BLE001 - never break the session
+                return _fail(f"question non enregistrée : {exc}")
+            return _ok(
+                f"question #{ask_id} posée à l'opérateur — arrête ton tour, "
+                "tu seras réactivé avec sa réponse."
+            )
+
         return [
             Tool(name="browser", description="Run Python against Chrome via browser-harness.",
                  parameters=BrowserCodeParams, executor=browser_exec),
@@ -466,6 +491,10 @@ class BrowserAgentToolProvider(ToolProvider):
                  parameters=RememberParams, executor=remember_exec),
             Tool(name="send_message", description="Message the coder agent.",
                  parameters=SendMessageParams, executor=send_exec),
+            Tool(name="ask_operator",
+                 description=("Ask the human operator a multiple-choice question (only for "
+                              "blockers no agent can solve). Ends your turn until the answer."),
+                 parameters=AskOperatorParams, executor=ask_exec),
         ]
 
 async def run_browser_agent(
@@ -484,7 +513,7 @@ async def run_browser_agent(
     client = build_agent_client(config, session="browser-agent", vault_get=vault_get)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
     provider = BrowserAgentToolProvider(
-        config, mailbox, token=token, journal=journal, task_id=task_id
+        config, mailbox, token=token, journal=journal, task_id=task_id, vault_get=vault_get
     )
     skills = _load_skills(provider.repo)
     agent = Agent(

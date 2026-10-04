@@ -90,6 +90,14 @@ factuels complets, et le ping-pong permet de demander la précision.
 - À la fermeture de la tâche : les deux caches de session sont supprimés
   (`drop_session_cache`) — la boîte temporaire et les sessions meurent ensemble.
 
+## Le canal opérateur (troisième correspondant)
+
+Les agents peuvent poser une question à l'opérateur (`ask_operator`) : un
+message `agent → operator` dans la boîte + des boutons Telegram (un bot par
+agent). La tâche **se gare** (sautée par l'ordonnanceur, coût nul) et **libère
+la place** ; la réponse (`operator → agent`) la réveille au tick suivant, avant
+les tâches nouvelles. Détail : `docs/OPERATEUR-TELEGRAM.md`.
+
 ## Le cycle automatique (warmup ↔ connexion)
 
 Le job `warmup` du heartbeat ne poste plus de messages : il poste des **tâches**
@@ -123,6 +131,7 @@ message au codeur pour brancher le connecteur.
 mnemosyne queue add "objectif de la tâche" [--agent coder|browser] [--cap N]
 mnemosyne queue list [--status pending|running|done|failed|review]
 mnemosyne queue cancel <id>
+mnemosyne answer <id> "réponse"           # répondre à une question d'agent (fallback CLI)
 mnemosyne agency "<tâche>" [--to ...]     # enqueue + drain interactif
 mnemosyne messages                        # historique (audit)
 ```

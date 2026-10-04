@@ -24,6 +24,7 @@ WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
 WATCHDOG_INTERVAL_S = 300  # invariants check, inside the service (no side process)
 AGENCY_INTERVAL_S = 120  # check the bi-agent mailbox every 2 minutes (idle = free)
+OPERATOR_INTERVAL_S = 30  # poll the operator bots (answers wake parked tasks)
 
 
 class Heartbeat:
@@ -91,6 +92,10 @@ class Heartbeat:
         if not self.engine.db.has_open_job("watchdog"):
             self.engine.db.enqueue(
                 Job(kind="watchdog", payload={"interval_s": WATCHDOG_INTERVAL_S}, priority=99)
+            )
+        if self.config.operator.enabled and not self.engine.db.has_open_job("telegram"):
+            self.engine.db.enqueue(
+                Job(kind="telegram", payload={"interval_s": OPERATOR_INTERVAL_S}, priority=15)
             )
         if not self.engine.db.has_open_job("journal"):
             self.engine.db.enqueue(

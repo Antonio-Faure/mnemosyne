@@ -15,11 +15,12 @@ import httpx
 from pydantic import BaseModel, Field
 from stirrup.core.models import EmptyParams, Tool, ToolProvider, ToolResult, ToolUseCountMetadata
 
-from mnemosyne.config import DevConfig
+from mnemosyne.config import Config, DevConfig
 from mnemosyne.dev.git_ops import Git, GitError
 from mnemosyne.dev.guard import DevGuardError, check_readable, check_writable
 from mnemosyne.journal import Journal
 from mnemosyne.notify import Notifier
+from mnemosyne.operator.models import AskOperatorParams
 from mnemosyne.util import atomic_write_text
 
 
@@ -91,9 +92,13 @@ class DevToolProvider(ToolProvider):
         journal: Journal | None = None,
         mailbox=None,
         task_id: int | None = None,
+        app_config: Config | None = None,
+        vault_get=None,
     ):
         self.repo = Path(repo)
         self.config = config
+        self.app_config = app_config
+        self.vault_get = vault_get
         self.token = token
         self.task_id = task_id
         self.git = Git(self.repo, self.token)
@@ -310,6 +315,30 @@ class DevToolProvider(ToolProvider):
                 return _fail(str(exc))
             return _ok(f"message #{mid} envoyé (tâche #{self.task_id})")
 
+        async def ask_exec(p: AskOperatorParams):
+            if self.mailbox is None or self.task_id is None:
+                return _fail("aucune tâche ouverte : impossible de questionner l'opérateur")
+            if self.app_config is None:
+                return _fail("canal opérateur indisponible")
+            from mnemosyne.operator.telegram import ask_operator
+
+            try:
+                ask_id = await ask_operator(
+                    self.app_config,
+                    self.mailbox.db,
+                    self.vault_get,
+                    agent="coder",
+                    task_id=self.task_id,
+                    question=p.question,
+                    options=[o.model_dump() for o in p.options],
+                )
+            except Exception as exc:  # noqa: BLE001 - never break the session
+                return _fail(f"question non enregistrée : {exc}")
+            return _ok(
+                f"question #{ask_id} posée à l'opérateur — arrête ton tour, "
+                "tu seras réactivé avec sa réponse."
+            )
+
         tools = [
             Tool(name="list_files", description="List files in a directory.",
                  parameters=DirParam, executor=list_exec),
@@ -343,6 +372,17 @@ class DevToolProvider(ToolProvider):
                     description="Message the browser agent.",
                     parameters=SendMessageParam,
                     executor=send_exec,
+                )
+            )
+            tools.append(
+                Tool(
+                    name="ask_operator",
+                    description=(
+                        "Ask the human operator a multiple-choice question (only for "
+                        "blockers no agent can solve). Ends your turn until the answer."
+                    ),
+                    parameters=AskOperatorParams,
+                    executor=ask_exec,
                 )
             )
         return tools

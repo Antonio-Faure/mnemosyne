@@ -50,6 +50,20 @@ llm:
       # Fall back to the token opencode caches after you log in to OpenCode Go.
       auth_provider: opencode-go
 
+# Operator channel: agents ASK (ask_operator), you ANSWER (Telegram inline
+# keyboards, one bot per agent; CLI fallback: `mnemosyne answer <task> "..."`).
+# Tokens: env var, else the vault under the lowercased name
+# (e.g. `mnemosyne vault set mnemosyne_coder_bot_token <token>`).
+# A bot cannot message you before you press /start on it.
+operator:
+  enabled: false
+  coder:
+    bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN
+    chat_id: ""     # your Telegram chat id (see `mnemosyne telegram updates`)
+  browser:
+    bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN
+    chat_id: ""
+
 # Public identity disclosed in every email / contact form (transparency).
 identity:
   name: mnemosyne

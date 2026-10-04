@@ -215,18 +215,46 @@ def _cmd_queue_list(args: argparse.Namespace) -> int:
 
     db = Database(cfg.db_file())
     tasks = db.list_tasks(status=args.status)
+    waiting = {t["id"] for t in tasks if db.task_waiting_on_operator(t["id"])}
     db.close()
     for task in tasks:
         started = task.get("started_at") or ""
         objective = task["objective"][:80].replace(chr(10), " ")
+        suffix = "  ⏳ attend ta réponse" if task["id"] in waiting else ""
         print(
             f"#{task['id']:<4} {task['status']:<10} départ={task['start_agent']:<7} "
-            f"{started[:16]} {objective}"
+            f"{started[:16]} {objective}{suffix}"
         )
         note = (task.get("note") or "").replace("\n", " ").strip()
         if note:
             print(f"      -> {note[:NOTE_DISPLAY_CHARS]}")
     print(f"\n{len(tasks)} tâche(s)")
+    return 0
+
+
+def _cmd_answer(args: argparse.Namespace) -> int:
+    """Answer an agent's pending question from the CLI (Telegram fallback)."""
+    cfg = get_config()
+    from mnemosyne.agents.mailbox import OPERATOR, Mailbox
+    from mnemosyne.db import Database
+
+    db = Database(cfg.db_file())
+    asks = [a for a in db.list_asks(status="pending") if a["task_id"] == args.task_id]
+    if not asks:
+        db.close()
+        print(f"aucune question en attente pour la tâche #{args.task_id}")
+        return 1
+    ask = asks[0]
+    mailbox = Mailbox(db)
+    mailbox.post(OPERATOR, ask["agent"], args.text, ask["task_id"])
+    if ask.get("message_id"):
+        mailbox.mark(ask["message_id"], "handled", note="répondu (CLI)")
+    db.answer_ask(ask["id"], args.text)
+    db.close()
+    print(
+        f"réponse envoyée à {ask['agent']} (tâche #{args.task_id}) — "
+        "reprise au prochain tick (~2 min)"
+    )
     return 0
 
 
@@ -685,6 +713,11 @@ def build_parser() -> argparse.ArgumentParser:
     qc = qsub.add_parser("cancel", help="cancel a task (sessions + mailbox dropped)")
     qc.add_argument("task_id", type=int)
     qc.set_defaults(func=_cmd_queue_cancel)
+
+    pans = sub.add_parser("answer", help="answer an agent's pending question (CLI fallback)")
+    pans.add_argument("task_id", type=int)
+    pans.add_argument("text", help="your answer")
+    pans.set_defaults(func=_cmd_answer)
 
     pw = sub.add_parser("warmup", help="post a warmup mission to the browser agent")
     pw.add_argument("--minutes", type=float, default=5.0)

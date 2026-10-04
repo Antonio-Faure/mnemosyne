@@ -40,12 +40,13 @@ def test_a_taskless_message_does_not_exist(mailbox):
         mb.post("browser", "coder", "orphelin", None)
 
 
-def test_only_the_two_agents_exchange(mailbox):
+def test_agents_and_operator_exchange(mailbox):
     _db, mb, task_id = mailbox
+    # the operator is the third correspondent: agents ask, the operator answers
+    assert mb.post("browser", "operator", "ping", task_id) > 0
+    assert mb.post("operator", "coder", "bonjour coder", task_id) > 0
     with pytest.raises(ValueError):
-        mb.post("browser", "operator", "ping", task_id)
-    with pytest.raises(ValueError):
-        mb.post("operator", "coder", "bonjour coder", task_id)
+        mb.post("browser", "stranger", "ping", task_id)
 
 
 def test_cannot_message_yourself(mailbox):

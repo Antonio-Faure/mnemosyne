@@ -95,6 +95,22 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status, id);
 
+CREATE TABLE IF NOT EXISTS operator_asks (
+    id            TEXT PRIMARY KEY,
+    task_id       INTEGER NOT NULL,
+    agent         TEXT NOT NULL,
+    question      TEXT NOT NULL,
+    options       TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    answer        TEXT,
+    message_id    INTEGER,
+    tg_chat_id    TEXT,
+    tg_message_id INTEGER,
+    tg_prompt_id  INTEGER,
+    created_at    TEXT NOT NULL,
+    answered_at   TEXT
+);
+
 """
 
 
@@ -580,10 +596,27 @@ class Database:
             return int(cur.lastrowid)
 
     def next_task(self) -> dict | None:
-        """The task to work on: a running one continues first, else FIFO pending."""
+        """The task to work on.
+
+        Priority: the task worked on most recently continues (its session is
+        warm); then running tasks with a pending answer/agent-message (oldest
+        activation first); then new pending tasks (FIFO). Tasks waiting on the
+        operator are SKIPPED — a parked task costs nothing and never blocks the
+        queue; its answer wakes it back into the running set.
+        """
+        parked = (
+            "EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
+            "AND m.status = 'pending' AND m.recipient = 'operator') "
+            "AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
+            "AND m.status = 'pending' AND m.recipient IN ('coder', 'browser'))"
+        )
         with self._lock:
             row = self._conn.execute(
-                """SELECT * FROM tasks WHERE status = 'running' ORDER BY id ASC LIMIT 1"""
+                f"""SELECT * FROM tasks t WHERE t.status = 'running'
+                    AND NOT ({parked})
+                    ORDER BY COALESCE(t.last_activation_at, t.created_at) DESC,
+                             t.id ASC
+                    LIMIT 1"""
             ).fetchone()
             if row is None:
                 row = self._conn.execute(
@@ -676,6 +709,75 @@ class Database:
                     "SELECT * FROM tasks ORDER BY id DESC LIMIT ?", (limit,)
                 ).fetchall()
         return [dict(r) for r in rows]
+
+    # ── operator asks (question -> answer, over Telegram or CLI) ─────────
+    def create_ask(
+        self, ask_id: str, task_id: int, agent: str, question: str,
+        options: list[dict], message_id: int | None = None,
+    ) -> None:
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO operator_asks
+                   (id, task_id, agent, question, options, status, message_id, created_at)
+                   VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)""",
+                (ask_id, task_id, agent, question, json.dumps(options), message_id, utcnow_iso()),
+            )
+            self._conn.commit()
+
+    def get_ask(self, ask_id: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM operator_asks WHERE id = ?", (ask_id,)
+            ).fetchone()
+        return dict(row) if row else None
+
+    def set_ask_telegram(self, ask_id: str, chat_id: str, message_id: int) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE operator_asks SET tg_chat_id = ?, tg_message_id = ? WHERE id = ?",
+                (chat_id, message_id, ask_id),
+            )
+            self._conn.commit()
+
+    def set_ask_prompt(self, ask_id: str, prompt_id: int) -> None:
+        """Remember the ForceReply prompt so the free-text answer can be matched."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE operator_asks SET tg_prompt_id = ? WHERE id = ?", (prompt_id, ask_id)
+            )
+            self._conn.commit()
+
+    def answer_ask(self, ask_id: str, answer: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                """UPDATE operator_asks SET status = 'answered', answer = ?, answered_at = ?
+                   WHERE id = ?""",
+                (answer, utcnow_iso(), ask_id),
+            )
+            self._conn.commit()
+
+    def list_asks(self, status: str | None = None) -> list[dict]:
+        with self._lock:
+            if status:
+                rows = self._conn.execute(
+                    "SELECT * FROM operator_asks WHERE status = ? ORDER BY created_at ASC",
+                    (status,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM operator_asks ORDER BY created_at ASC"
+                ).fetchall()
+        return [dict(r) for r in rows]
+
+    def task_waiting_on_operator(self, task_id: int) -> bool:
+        with self._lock:
+            row = self._conn.execute(
+                """SELECT 1 FROM messages
+                   WHERE task_id = ? AND status = 'pending' AND recipient = 'operator'
+                   LIMIT 1""",
+                (task_id,),
+            ).fetchone()
+        return row is not None
 
     # ── per-task temporary mailbox ───────────────────────────────────────
     def post_message(

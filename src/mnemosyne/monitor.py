@@ -19,6 +19,8 @@ from mnemosyne.db import Database
 #: a task nobody works on for this long is suspicious (the agency tick is 2 min)
 STALE_MIN = 45
 PENDING_MIN = 90
+#: an unanswered operator question older than this is worth an alert
+OPERATOR_MIN = 120
 #: a stall marker counts after this age (the agent gets 2 min of silence)
 STALL_MARK_MIN = 2
 
@@ -49,12 +51,21 @@ def check_invariants(
     config: Config,
     stale_min: float = STALE_MIN,
     pending_min: float = PENDING_MIN,
+    operator_min: float = OPERATOR_MIN,
 ) -> tuple[str, list[str]]:
     """One line of counters + a list of human-readable alerts."""
     db = Database(config.db_file())
     alerts: list[str] = []
     try:
         stall = _stall_marker(db)
+
+        for ask in db.list_asks(status="pending"):
+            age = _age_minutes(ask["created_at"])
+            if age is not None and age > operator_min:
+                alerts.append(
+                    f"tâche #{ask['task_id']} attend une réponse de l'opérateur "
+                    f"depuis {age:.0f} min"
+                )
 
         pending_tasks = db.list_tasks(status="pending")
         for task in pending_tasks:

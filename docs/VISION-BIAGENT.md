@@ -105,9 +105,11 @@ Outils/permissions :
   stocke la clé (`remember("europeana_api_key", …)`, réservé aux clés non
   critiques) et envoie une **référence** ; le moteur l'exporte en variable
   d'environnement au démarrage (`docs/CREDENTIALS.md`).
-- **Canal opérateur désactivé** (stationné) : l'opérateur écrit dans la FILE
-  (`queue add`), pas dans la boîte. Les blocages se terminent par un résumé
-  factuel (`finish`) et l'opérateur regarde la file et le journal.
+- **Canal opérateur** (nouveau) : l'opérateur est le **troisième
+  correspondant** de la boîte — les agents posent une question à choix
+  (`ask_operator`, boutons Telegram, un bot par agent), la tâche se gare et
+  libère la place, la réponse la réveille au tick suivant. Jamais bloquant,
+  jamais dans la file. Voir `docs/OPERATEUR-TELEGRAM.md`.
 - **Aucune limite de ping-pong** : volontaire — le contexte persistant fait
   que chaque agent sait où il en est ; l'interventionnabilité de la file
   (annuler une tâche) est le garde-fou.
@@ -243,9 +245,9 @@ Outils/permissions :
   par la tête navigateur quand elle touche le web. Voir aussi
   `docs/CHOIX-ARCHI-NAVIGATEUR.md`.
 **Reste :**
-- **Canal opérateur** : désactivé pour l'instant (l'opérateur réfléchit à une
-  nouvelle stratégie). L'ancien design « notification Telegram des messages →
-  `operator` » est stationné ; les anciens messages #2/#8 sont archivés.
+- **Canal opérateur** : design validé et implémenté (`docs/OPERATEUR-TELEGRAM.md`) —
+  il reste à créer les deux bots BotFather, déposer les tokens au vault et
+  renseigner les chat ids pour l'activer.
 - Éventuellement : d'autres sources de skills, et l'enrichissement du vocabulaire
   de routage (`pick_agent`).
 

@@ -209,6 +209,31 @@ class NotifyConfig(BaseModel):
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
 
 
+class OperatorBotConfig(BaseModel):
+    """One agent's Telegram bot for the operator channel (questions)."""
+
+    bot_token_env: str
+    #: the operator's chat id — a bot cannot message anyone before /start
+    chat_id: str = ""
+
+
+class OperatorConfig(BaseModel):
+    """Operator channel: agent questions as Telegram inline keyboards.
+
+    Two bots (one per agent) so the operator always knows who is asking. The
+    token is read from the env var, then from the vault under the lowercased
+    name (e.g. `mnemosyne_coder_bot_token`).
+    """
+
+    enabled: bool = False
+    coder: OperatorBotConfig = Field(
+        default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_CODER_BOT_TOKEN")
+    )
+    browser: OperatorBotConfig = Field(
+        default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_BROWSER_BOT_TOKEN")
+    )
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
@@ -220,6 +245,7 @@ class Config(BaseModel):
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     dev: DevConfig = Field(default_factory=DevConfig)
     notify: NotifyConfig = Field(default_factory=NotifyConfig)
+    operator: OperatorConfig = Field(default_factory=OperatorConfig)
     sources_dir: str = "config/sources"
 
     #: absolute path to the repository root, set by the loader

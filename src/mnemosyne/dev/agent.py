@@ -73,7 +73,7 @@ async def run_dev_agent(
     notifier = Notifier(config.notify.telegram)
     provider = DevToolProvider(
         repo_path, config.dev, token, notifier=notifier, journal=journal,
-        mailbox=mailbox, task_id=task_id,
+        mailbox=mailbox, task_id=task_id, app_config=config, vault_get=vault_get,
     )
     # Stuck detection, not a deadline: a long refactor that keeps progressing runs
     # to the end; only a freeze or a repeated-call loop is asked to report.

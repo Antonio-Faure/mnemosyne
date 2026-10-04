@@ -224,6 +224,19 @@ async def handle_agency(ctx: JobContext, job: Job) -> dict | None:
     return None
 
 
+@handler("telegram")
+async def handle_telegram(ctx: JobContext, job: Job) -> dict | None:
+    """Operator channel: poll both bots, route the answers into the mailboxes."""
+    from mnemosyne.operator.telegram import poll_once
+
+    if not ctx.config.operator.enabled:
+        return {"interval_s": 300}
+    handled = await poll_once(ctx.config, ctx.engine.db, _vault_get(ctx))
+    if handled:
+        log.info("operator: %d réponse(s) routée(s)", handled)
+    return {"interval_s": 30}
+
+
 @handler("discover")
 async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
     """P3: find candidate providers and store the new ones."""
