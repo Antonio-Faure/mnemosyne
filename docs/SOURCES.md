@@ -8,15 +8,16 @@ Une source est dite **active** quand son descripteur ne porte pas
 en attendant que la politique du projet les autorise — vérifié par
 `tests/test_iiif_catalog.py::test_restricted_licenses_are_not_enabled`.
 
-- Sources déclarées : **19**
-- Sources actives : **13**
+- Sources déclarées : **20**
+- Sources actives : **14**
 - Sources désactivées : **6**
 
-## Sources actives (13)
+## Sources actives (14)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
+| arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
 | artic | Art Institute of Chicago | Art Institute of Chicago (AIC) | US | iiif | none | Public Domain (CC0-1.0) | Domaine public — *The Bedroom*, Vincent van Gogh (1888) |
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
@@ -45,10 +46,10 @@ en attendant que la politique du projet les autorise — vérifié par
 
 - **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `rijksmuseum`
   (plus `wikidata` pour les données).
-- **Varies / par notice** : `albertina`, `europeana`, `gallica`,
-  `internet_archive`, `leiden`, `openverse`, `wikimedia`, `yale` — la licence
-  est décidée au niveau de l'`Asset` à la frontière du connecteur, pas de la
-  source.
+- **Varies / par notice** : `albertina`, `arthistoricum`, `europeana`,
+  `gallica`, `internet_archive`, `leiden`, `openverse`, `wikimedia`, `yale` —
+  la licence est décidée au niveau de l'`Asset` à la frontière du connecteur,
+  pas de la source.
 
 Cette table est maintenue en accord avec les descripteurs : voir
 `tests/test_sources_inventory.py`.
