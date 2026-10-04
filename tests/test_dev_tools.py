@@ -1,7 +1,7 @@
 import asyncio
 
 from mnemosyne.config import DevConfig
-from mnemosyne.dev.tools import DevToolProvider, PathParam
+from mnemosyne.dev.tools import CommitParam, DevToolProvider, PathParam
 
 
 def _provider(tmp_path):
@@ -43,3 +43,14 @@ def test_read_file_short_file_has_no_footer(tmp_path):
 
     past = asyncio.run(tool.executor(PathParam(path="src/small.py", offset=999)))
     assert past.success and "past the end" in past.content
+
+
+def test_commit_refuses_until_lint_and_tests_pass(tmp_path):
+    """coder.md's hard rule, enforced in code: no commit without green checks."""
+    repo, provider = _provider(tmp_path)
+    provider.branch = "agent/x"
+    tool = {t.name: t for t in provider._tools()}["commit"]
+
+    res = asyncio.run(tool.executor(CommitParam(message="wip")))
+    assert not res.success
+    assert "run_lint and run_tests" in res.content

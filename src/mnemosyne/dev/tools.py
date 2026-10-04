@@ -106,6 +106,9 @@ class DevToolProvider(ToolProvider):
         self.journal = journal
         self.mailbox = mailbox
         self.branch: str | None = None
+        #: lint/tests must pass on the CURRENT tree before any commit (coder.md)
+        self._lint_ok = False
+        self._tests_ok = False
 
     async def __aenter__(self):
         return self._tools()
@@ -228,10 +231,14 @@ class DevToolProvider(ToolProvider):
                 return _fail(str(exc))
             target = self._check_inside(rel)
             atomic_write_text(target, p.content)
+            # a write invalidates the previous lint/tests run: re-run them
+            self._lint_ok = False
+            self._tests_ok = False
             return _ok(f"wrote {rel}")
 
         async def lint_exec(_: EmptyParams):
             res = self._run_cmd([sys.executable, "-m", "ruff", "check", "."])
+            self._lint_ok = res.returncode == 0
             body = (res.stdout + res.stderr)[:3000]
             return _ok(f"ruff exit {res.returncode}\n{body}") if res.returncode == 0 else _fail(
                 f"ruff exit {res.returncode}\n{body}"
@@ -239,6 +246,7 @@ class DevToolProvider(ToolProvider):
 
         async def test_exec(_: EmptyParams):
             res = self._run_cmd([sys.executable, "-m", "pytest", "-q"], timeout=600)
+            self._tests_ok = res.returncode == 0
             body = (res.stdout + res.stderr)[-3000:]
             return _ok(f"pytest exit {res.returncode}\n{body}") if res.returncode == 0 else _fail(
                 f"pytest exit {res.returncode}\n{body}"
@@ -259,6 +267,11 @@ class DevToolProvider(ToolProvider):
         async def commit_exec(p: CommitParam):
             if not self.branch:
                 return _fail("start a branch first (start_branch)")
+            if not (self._lint_ok and self._tests_ok):
+                return _fail(
+                    "run_lint and run_tests must pass on the current tree before committing "
+                    "(a write resets them)"
+                )
             try:
                 files = self.git.changed_files()
                 bad = [f for f in files if not _writable(f, self.config)]
