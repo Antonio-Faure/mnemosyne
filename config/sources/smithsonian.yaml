@@ -1,0 +1,29 @@
+id: smithsonian
+name: Smithsonian Open Access
+institution: Smithsonian Institution
+country: US
+protocol: rest
+base_url: https://api.si.edu/openaccess/api/v1.0
+auth: api_key
+key_env: SMITHSONIAN_API_KEY
+license: CC0
+rights: >-
+  Smithsonian Open Access; most records are released under CC0 (public domain).
+  Per-record rights vary: check descriptiveNonRepeating.metadata_usage.access
+  and each media[].usage.access (e.g. "CC0", "No Known Copyright Restrictions").
+rate_limit_per_s: 1.0
+priority: 55
+tags: [aggregator, north-america, museum, glam, cultural-heritage, open-access]
+seeds:
+  - "photograph"
+  - "portrait"
+  - "industrial machinery"
+  - "steam locomotive"
+  - "factory workers"
+notes: >-
+  Open Access API (EDAN). Keyed via the api_key query parameter
+  (SMITHSONIAN_API_KEY, free registration at https://api.data.gov/signup/).
+  Search: GET /search with q, start, rows, type. Rows expose id/title/unitCode;
+  media live under content.descriptiveNonRepeating.online_media.media[] with
+  content (full image) and thumbnail. A missing key yields a plain-text
+  "API_KEY_MISSING" body, so the connector returns no results without any HTTP.

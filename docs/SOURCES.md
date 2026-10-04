@@ -8,11 +8,11 @@ Une source est dite **active** quand son descripteur ne porte pas
 en attendant que la politique du projet les autorise — vérifié par
 `tests/test_iiif_catalog.py::test_restricted_licenses_are_not_enabled`.
 
-- Sources déclarées : **19**
-- Sources actives : **13**
+- Sources déclarées : **20**
+- Sources actives : **14**
 - Sources désactivées : **6**
 
-## Sources actives (13)
+## Sources actives (14)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
@@ -26,6 +26,7 @@ en attendant que la politique du projet les autorise — vérifié par
 | leiden | Leiden University Libraries Digital Collections | Leiden University Libraries (Universiteitsbibliotheek Leiden) | NL | iiif | none | varies | Leiden University Libraries — vérifier par notice (domaine public / sous licence) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
 | rijksmuseum | Rijksmuseum (IIIF via Europeana) | Rijksmuseum, Amsterdam | NL | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Rijksmuseum SK-A-3262 |
+| smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
@@ -43,8 +44,8 @@ en attendant que la politique du projet les autorise — vérifié par
 
 ## Raccourcis licence
 
-- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `rijksmuseum`
-  (plus `wikidata` pour les données).
+- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `rijksmuseum`,
+  `smithsonian` (plus `wikidata` pour les données).
 - **Varies / par notice** : `albertina`, `europeana`, `gallica`,
   `internet_archive`, `leiden`, `openverse`, `wikimedia`, `yale` — la licence
   est décidée au niveau de l'`Asset` à la frontière du connecteur, pas de la
