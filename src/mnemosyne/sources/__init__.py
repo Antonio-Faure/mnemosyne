@@ -6,6 +6,7 @@ from mnemosyne.connectors.base import Connector
 from mnemosyne.http import HttpClient
 from mnemosyne.models import Protocol, SourceDescriptor
 from mnemosyne.sources.cleveland import ClevelandConnector
+from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.iiif import IIIFConnector
@@ -24,6 +25,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "internet_archive": InternetArchiveConnector,
     "openverse": OpenverseConnector,
     "europeana": EuropeanaConnector,
+    "dpla": DplaConnector,
     "smithsonian": SmithsonianConnector,
 }
 
