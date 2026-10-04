@@ -8,11 +8,11 @@ Une source est dite **active** quand son descripteur ne porte pas
 en attendant que la politique du projet les autorise — vérifié par
 `tests/test_iiif_catalog.py::test_restricted_licenses_are_not_enabled`.
 
-- Sources déclarées : **20**
-- Sources actives : **14**
+- Sources déclarées : **21**
+- Sources actives : **15**
 - Sources désactivées : **6**
 
-## Sources actives (14)
+## Sources actives (15)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
@@ -21,6 +21,7 @@ en attendant que la politique du projet les autorise — vérifié par
 | artic | Art Institute of Chicago | Art Institute of Chicago (AIC) | US | iiif | none | Public Domain (CC0-1.0) | Domaine public — *The Bedroom*, Vincent van Gogh (1888) |
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
+| dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Europeana), vérifier `rights` et le fournisseur |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
@@ -46,7 +47,7 @@ en attendant que la politique du projet les autorise — vérifié par
 
 - **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `rijksmuseum`
   (plus `wikidata` pour les données).
-- **Varies / par notice** : `albertina`, `arthistoricum`, `europeana`,
+- **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
   `gallica`, `internet_archive`, `leiden`, `openverse`, `wikimedia`, `yale` —
   la licence est décidée au niveau de l'`Asset` à la frontière du connecteur,
   pas de la source.

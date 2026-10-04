@@ -1,0 +1,28 @@
+id: dpla
+name: Digital Public Library of America
+institution: Digital Public Library of America
+country: US
+protocol: rest
+base_url: https://api.dp.la/v2
+auth: api_key
+key_env: DPLA_API_KEY
+license: varies
+rights: >-
+  Per-record; DPLA aggregates contributors (rights field on each item), ranging
+  from public domain / CC to rights reserved. Always check the record's rights
+  and provider before reuse.
+rate_limit_per_s: 0.5
+priority: 61
+tags: [aggregator, united-states, glam, cultural-heritage]
+seeds:
+  - "steam locomotive"
+  - "oil derrick"
+  - "steel mill"
+  - "coal mine"
+  - "industrial photography"
+notes: >-
+  DPLA search API v2 (`/v2/items`) is keyed via the `api_key` query parameter
+  (DPLA_API_KEY, request one at https://dp.la/developers). Images come from
+  `docs[].object`, page links from `docs[].isShownAt`, and descriptive metadata
+  from `docs[].sourceResource` (title/creator/date/description). Keyless calls
+  return no results.
