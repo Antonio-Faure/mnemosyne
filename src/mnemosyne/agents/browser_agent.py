@@ -90,7 +90,8 @@ _SECRET_ENV_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)", re
 _FORBIDDEN_CODE = re.compile(
     r"\b__import__\b|\bos\.system\b|\bos\.popen\b|"
     r"\bsubprocess\b[\s\S]*\bgit\b|\bgit\b[\s\S]*\bsubprocess\b|"
-    r"\bgit\s+(add|commit|push|checkout|switch|branch|remote|reset|clean)\b",
+    r"\bgit\s+(add|commit|push|checkout|switch|branch|remote|reset|clean)\b|"
+    r"/repo\b|config/sources|src/mnemosyne",
     re.IGNORECASE,
 )
 

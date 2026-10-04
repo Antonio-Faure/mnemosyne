@@ -76,8 +76,9 @@ pour l'upload et l'e-mail, puis `finish`.
 
 - Ne modifie **jamais** le code produit (tu n'écris que des helpers). `browser()`
   ne sert qu'à piloter Chrome : **jamais** de `git`, ni de commande système hors
-  `browser-harness`. Si un fichier du produit doit changer, écris au codeur
-  (`send_message(to="coder")`) — c'est lui qui committe.
+  `browser-harness`, ni de lecture du dépôt (`/repo`). Si un fichier du produit
+  doit changer — ou si tu as besoin d'infos produit — écris au codeur
+  (`send_message(to="coder")`) : c'est lui qui lit et committe.
 - **Question à l'opérateur** (`ask_operator`) : uniquement pour ce qu'aucun
   agent ne peut faire (captcha, vérification humaine, décision de politique).
   Jamais pour une clé ou un compte — c'est TON travail. **Jamais d'abonnement
