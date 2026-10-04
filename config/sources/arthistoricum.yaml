@@ -1,0 +1,27 @@
+id: arthistoricum
+name: arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden)
+institution: arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden)
+country: DE
+protocol: iiif
+base_url: https://iiif.arthistoricum.net
+auth: none
+license: varies
+rights: "SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek)"
+rate_limit_per_s: 1.0
+priority: 38
+tags: [library, germany, iiif, keyless, photography, prints]
+seeds:
+  - "Fotografie"
+  - "Dresden"
+  - "Vedute"
+notes: >-
+  IIIF Presentation API v2 host (arthistoricum.net, the art-history specialist
+  portal of SLUB Dresden). Manifests are served per object under
+  /proxy/<collection>/<id>/manifest.json (e.g. the Deutsche Fotothek item
+  df_ld_0022737). No enumerable Collection manifest or search endpoint is
+  exposed, so it is onboarded as a single-manifest IIIF source via the generic
+  iiif.py connector. Keyless; the image is served by the IIIF Image API at
+  images.iiif.arthistoricum.net.
+extra:
+  manifest: https://iiif.arthistoricum.net/proxy/fotothek/df_ld_0022737/manifest.json
+  collection_id: df_ld_0022737
