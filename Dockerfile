@@ -30,7 +30,7 @@ RUN pip install -r requirements.txt
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY config ./config
-RUN pip install -e '.[browser]'
+RUN pip install -e '.[browser,dev]'
 
 # mnemosyne house style: allow long edits. The harness default caps a compiled
 # video at 32 s (maximumDurationBudget) and a 2-minute presentation is wanted.
