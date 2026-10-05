@@ -38,10 +38,12 @@ résultat du tool `browser` :
 
 - la capture est produite par le harness (`capture_screenshot('shot.png',
   max_dim=1800)` — le PNG atterrit dans le helpers dir, cwd du harness) ;
-- `force_vision=true` (config `agents.force_vision`, maintenant réellement lu) :
-  chaque pas navigateur arrive avec SA capture. Si le pas n'en a pas produit,
+- `force_vision` (config `agents.force_vision`, maintenant réellement lu) :
+  chaque pas navigateur arrivait avec SA capture. Si le pas n'en a pas produit,
   un 2e run harness **passif** le fait (`Page.captureScreenshot` ne touche pas
-  la page) ;
+  la page). **Désactivé par défaut depuis la limite Zen de 30 images/requête** :
+  l'agent capture à la demande (`capture_screenshot()`), et le client ne garde
+  que les `agents.max_request_images` captures les plus récentes par requête ;
 - le PNG est **consommé** (`unlink`) après lecture : jamais ré-attaché au pas
   suivant ;
 - le transport : `ToolResult(content=[texte, ImageContentBlock(data=png)])` —

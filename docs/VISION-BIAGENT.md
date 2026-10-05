@@ -256,8 +256,10 @@ Outils/permissions :
 - **LLM** : Zen exige `User-Agent` propre + `x-opencode-session` (cache).
   Stirrup exige un plafond de sortie : il reste **haut**
   (`agents.max_tokens`, 32k) pour ne jamais tronquer le raisonnement.
-- **Vision** : `deepseek-v4.1-flash` a la vision native — les captures sont
-  envoyées à l'agent navigateur (`config.agents.force_vision`).
+- **Vision** : `deepseek-v4.1-flash` a la vision native. L'agent capture **à la
+  demande** (`capture_screenshot()`) — pas d'attache automatique à chaque pas
+  (limite Zen : 30 images/requête ; les requêtes sont de plus plafonnées aux
+  `agents.max_request_images` captures les plus récentes).
 - **Vault** pour tous les secrets (`github_token`, clés API, logins).
 - **Token GitHub** fine-grained : `Contents` RW + `Pull requests` RW, un seul
   repo, pas d'Admin. Branches `agent/*`, PR, jamais de force-push/rm.

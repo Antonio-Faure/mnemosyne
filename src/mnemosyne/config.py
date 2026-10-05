@@ -123,12 +123,15 @@ class AgentsConfig(BaseModel):
         ]
     )
     warmup_max_turns: int = 40
-    #: With force_vision, every browser step arrives with a page capture: the
-    #: wrapper attaches it as ImageContentBlock (auto second harness run when
-    #: the step produced none). browser-use's old name heuristic ("deepseek" ->
-    #: no vision) is disabled at image build; deepseek-v4.1-flash has native
-    #: vision and the stirrup chain carries screenshots to the model.
-    force_vision: bool = True
+    #: Off by default: the agent captures on demand (`capture_screenshot`).
+    #: An automatic capture at every browser step is wasteful and trips Zen's
+    #: 30-images-per-request limit. Kept as an emergency knob: when true, a
+    #: passive second harness run captures any step that produced none.
+    force_vision: bool = False
+    #: Zen refuses a request carrying more than 30 images; the browser session
+    #: adds one screenshot per step, so every outgoing request keeps only the N
+    #: most recent images (older ones become a text placeholder).
+    max_request_images: int = 12
     #: automatic warmup scheduling (human-like)
     warmup_per_day_min: int = 1
     warmup_per_day_max: int = 2

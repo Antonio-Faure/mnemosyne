@@ -108,7 +108,11 @@ agents:
   context_window_tokens: 128000
   output_dir: data/agent-runs
   warmup_max_turns: 40
-  force_vision: true
+  # Le navigateur capture à la demande (capture_screenshot) ; pas de capture
+  # automatique à chaque pas (coût + limite Zen de 30 images/requête).
+  force_vision: false
+  # Zen refuse >30 images/requête : on ne garde que les N plus récentes
+  max_request_images: 12
   warmup_per_day_min: 1
   warmup_per_day_max: 2
   warmup_window_start: 8

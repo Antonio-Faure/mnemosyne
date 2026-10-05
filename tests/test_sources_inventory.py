@@ -78,3 +78,11 @@ def test_every_active_source_declares_a_licence() -> None:
     for sid, raw in _descriptors().items():
         if raw.get("enabled", True):
             assert raw.get("license"), f"active source {sid} has no license field"
+
+
+def test_html_sources_carry_scraping_consent() -> None:
+    """A scraper is only legitimate with written consent (e-mail) on file."""
+    for sid, raw in _descriptors().items():
+        if raw.get("protocol") == "html":
+            consent = (raw.get("extra") or {}).get("scraping_consent")
+            assert consent, f"{sid}: protocol html without extra.scraping_consent"
