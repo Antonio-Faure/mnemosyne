@@ -1,0 +1,53 @@
+id: pop
+name: POP — Plateforme ouverte du patrimoine
+institution: Ministère de la Culture (France)
+country: FR
+protocol: iiif
+base_url: https://api.pop.culture.gouv.fr
+auth: none
+license: "Licence Ouverte 2.0 (etalab)"
+rights: >-
+  Métadonnées des notices : Licence Ouverte 2.0 (etalab), réutilisation libre y
+  compris commerciale. Images : droits par notice (DIFF en Mémoire, DIFFU+COPY
+  en Joconde), majoritairement restrictifs — ne jamais republier une image
+  restreinte.
+rate_limit_per_s: 1.0
+priority: 40
+enabled: false
+tags: [national-aggregator, france, memoire, joconde, iiif, industrial-heritage]
+seeds:
+  - "usine"
+  - "machine"
+  - "chantier"
+  - "manufacture"
+  - "métallurgie"
+  - "chemin de fer"
+  - "mine"
+notes: >-
+  POP (Plateforme ouverte du patrimoine) agrège le patrimoine culturel français.
+  Cibles : base Mémoire (photographies du patrimoine industriel : usines,
+  machines, chantiers) et Joconde (objets). API ouverte et sans clé (OpenSearch
+  JSON) : GET /search/simple (requête en notation crochets), GET /search/facets,
+  POST /search/advanced, GET /notices/{db}/{ref} et /notices/{db}/{ref}/iiif/
+  manifest. Images servies par la IIIF Image API v3
+  (https://iiif.prd.cloud.culture.fr/iiif/3) ou par le bucket S3
+  (https://popcorn-prd-perf-assets.s3.gra.io.cloud.ovh.net). Les métadonnées
+  sont sous Licence Ouverte 2.0 (etalab) ; les images portent des droits par
+  notice et sont majoritairement restrictives, d'où `enabled: false` — le
+  connecteur ne surfacera une URL d'image que pour les notices explicitement
+  libres (is_restrictive() == False).
+extra:
+  databases: [memoire, joconde]
+  page_size: 100
+  iiif_image_base: https://iiif.prd.cloud.culture.fr/iiif/3
+  bucket_base: https://popcorn-prd-perf-assets.s3.gra.io.cloud.ovh.net
+  frontend: https://pop.culture.gouv.fr
+  metadata_license: "Licence Ouverte 2.0 (etalab)"
+  industrial_terms:
+    - "usine"
+    - "machine"
+    - "chantier"
+    - "manufacture"
+    - "métallurgie"
+    - "chemin de fer"
+    - "mine"
