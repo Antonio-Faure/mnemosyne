@@ -5,6 +5,7 @@ from __future__ import annotations
 from mnemosyne.connectors.base import Connector
 from mnemosyne.http import HttpClient
 from mnemosyne.models import Protocol, SourceDescriptor
+from mnemosyne.sources.anmt import AnmtConnector
 from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
@@ -18,6 +19,7 @@ from mnemosyne.sources.wikimedia import WikimediaConnector
 
 #: exact connector per source id
 CONNECTORS: dict[str, type[Connector]] = {
+    "anmt": AnmtConnector,
     "cleveland": ClevelandConnector,
     "gallica": GallicaConnector,
     "wikidata": WikidataConnector,
