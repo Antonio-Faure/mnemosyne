@@ -19,9 +19,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **25**
+- Sources déclarées : **26**
 - Sources actives : **17**
-- Sources désactivées : **8**
+- Sources désactivées : **9**
 
 ## Sources actives (17)
 
@@ -45,10 +45,11 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 
-## Sources désactivées (8)
+## Sources désactivées (9)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
+| archives_nord | Archives départementales du Nord | Archives départementales du Nord (Département du Nord) | FR | rest | Restrictive — délibération CD Nord du 27/03/2017 | Réutilisation commerciale des numérisations soumise à redevance + licence écrite (délibération CD Nord 27/03/2017) ; pas de IIIF/OAI-PMH |
 | cudl | Cambridge Digital Library (CUDL) | Cambridge University Library | GB | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | ecodices | e-codices — Virtual Manuscript Library of Switzerland | e-codices (University of Fribourg) | CH | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | irht | IRHT — Arca (bibliothèque numérique des manuscrits) | Institut de recherche et d'histoire des textes (IRHT-CNRS) | FR | iiif | varies | Licence variable — CC BY-NC 3.0 sur certains manuscrits ; à confirmer par la politique du projet |
