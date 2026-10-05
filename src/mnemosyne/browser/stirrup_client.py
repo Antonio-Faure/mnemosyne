@@ -26,6 +26,50 @@ TURN_TIP = (
     "(l'humain ou une autre IA) lira ton message et corrigera le problème."
 )
 
+#: Zen (OpenCode Go) refuses a request carrying more than 30 images. A browser
+#: session accumulates one screenshot per turn, so every outgoing request is
+#: capped to the N most recent images — older ones become a text placeholder.
+MAX_REQUEST_IMAGES = 12
+IMAGE_PLACEHOLDER = "[capture d'écran antérieure omise — limite d'images par requête]"
+
+
+def trim_request_images(
+    messages: list[dict[str, Any]], max_images: int = MAX_REQUEST_IMAGES
+) -> list[dict[str, Any]]:
+    """Keep only the `max_images` most recent images of an OpenAI-format request.
+
+    In stirrup's chat-completions payload an image part is
+    `{"type": "image_url", "image_url": {"url": "data:image/png;base64,…"}}`.
+    The oldest images are replaced by a text part so message roles and
+    tool-call pairing stay valid (the provider counts images, not parts).
+    """
+    def _is_image(part: Any) -> bool:
+        return isinstance(part, dict) and part.get("type") == "image_url"
+
+    total = 0
+    for message in messages:
+        content = message.get("content")
+        if isinstance(content, list):
+            total += sum(1 for part in content if _is_image(part))
+    if total <= max_images:
+        return messages
+    to_drop = total - max_images
+    out: list[dict[str, Any]] = []
+    for message in messages:
+        content = message.get("content")
+        if isinstance(content, list):
+            new_content: list[Any] = []
+            for part in content:
+                if to_drop and _is_image(part):
+                    new_content.append({"type": "text", "text": IMAGE_PLACEHOLDER})
+                    to_drop -= 1
+                else:
+                    new_content.append(part)
+            if new_content != content:
+                message = {**message, "content": new_content}
+        out.append(message)
+    return out
+
 
 class UsageSink:
     """Accumulates prompt-cache stats that Stirrup itself ignores."""
@@ -71,11 +115,13 @@ class _CompletionsProxy:
         *,
         tip_at: int = 0,
         tip_every: int = 0,
+        max_images: int = MAX_REQUEST_IMAGES,
     ) -> None:
         self._inner = inner
         self._sink = sink
         self._tip_at = tip_at
         self._tip_every = tip_every
+        self._max_images = max_images
         self._requests = 0
 
     def __getattr__(self, name: str) -> Any:
@@ -89,6 +135,14 @@ class _CompletionsProxy:
     async def create(self, *args: Any, **kwargs: Any) -> Any:
         # One request = one agent turn. Past `tip_at`, nudge the agent (and again
         # every `tip_every` turns) so it wraps up instead of grinding to max_turns.
+        messages = kwargs.get("messages")
+        if messages:
+            # Zen refuses >30 images/request; the browser accumulates one
+            # screenshot per turn, so cap every request to the freshest ones.
+            kwargs = {
+                **kwargs,
+                "messages": trim_request_images(list(messages), self._max_images),
+            }
         self._requests += 1
         if self._tip_due(self._requests):
             messages = list(kwargs.get("messages") or [])
@@ -107,11 +161,21 @@ class _CompletionsProxy:
 
 class _ChatProxy:
     def __init__(
-        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
+        self,
+        inner: Any,
+        sink: UsageSink,
+        *,
+        tip_at: int = 0,
+        tip_every: int = 0,
+        max_images: int = MAX_REQUEST_IMAGES,
     ) -> None:
         self._inner = inner
         self.completions = _CompletionsProxy(
-            inner.completions, sink, tip_at=tip_at, tip_every=tip_every
+            inner.completions,
+            sink,
+            tip_at=tip_at,
+            tip_every=tip_every,
+            max_images=max_images,
         )
 
     def __getattr__(self, name: str) -> Any:
@@ -120,10 +184,18 @@ class _ChatProxy:
 
 class _ClientProxy:
     def __init__(
-        self, inner: Any, sink: UsageSink, *, tip_at: int = 0, tip_every: int = 0
+        self,
+        inner: Any,
+        sink: UsageSink,
+        *,
+        tip_at: int = 0,
+        tip_every: int = 0,
+        max_images: int = MAX_REQUEST_IMAGES,
     ) -> None:
         self._inner = inner
-        self.chat = _ChatProxy(inner.chat, sink, tip_at=tip_at, tip_every=tip_every)
+        self.chat = _ChatProxy(
+            inner.chat, sink, tip_at=tip_at, tip_every=tip_every, max_images=max_images
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
@@ -143,6 +215,7 @@ class ZenChatClient(ChatCompletionsClient):
         max_retries: int = 2,
         tip_at: int = 0,
         tip_every: int = 0,
+        max_request_images: int = MAX_REQUEST_IMAGES,
     ) -> None:
         super().__init__(
             model,
@@ -168,6 +241,7 @@ class ZenChatClient(ChatCompletionsClient):
             self.usage,
             tip_at=tip_at,
             tip_every=tip_every,
+            max_images=max_request_images,
         )
 
 
@@ -196,4 +270,5 @@ def build_agent_client(
         session=session,
         tip_at=config.agents.turn_tip_at,
         tip_every=config.agents.turn_tip_every,
+        max_request_images=config.agents.max_request_images,
     )

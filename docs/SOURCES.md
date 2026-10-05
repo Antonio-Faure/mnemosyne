@@ -8,6 +8,17 @@ Une source est dite **active** quand son descripteur ne porte pas
 en attendant que la politique du projet les autorise — vérifié par
 `tests/test_iiif_catalog.py::test_restricted_licenses_are_not_enabled`.
 
+## Politique d'accès aux images (pas de scraping)
+
+Quand un service expose un **accès programmatique** (API REST, IIIF, SRU,
+SPARQL, OAI-PMH, JSON…), c'est lui qui doit être utilisé : le scraping HTML est
+interdit. Un scraper HTML (`protocol: html`) n'est autorisé que pour une
+**petite structure sans aucun accès programmatique**, et seulement après
+**consentement écrit obtenu par e-mail** (l'agent navigateur demande
+l'autorisation ; la référence est stockée dans le descripteur sous
+`extra.scraping_consent`). Vérifié par
+`tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
+
 - Sources déclarées : **23**
 - Sources actives : **16**
 - Sources désactivées : **7**

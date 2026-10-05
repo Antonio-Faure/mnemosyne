@@ -18,6 +18,17 @@ connecteurs, ses tests. Ce fichier EST ton prompt système (éditable à chaud).
 - Prends les connecteurs existants comme modèles (`gallica.py`, `wikidata.py`).
 - Lis `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/VISION-BIAGENT.md`.
 
+## ACCÈS AUX IMAGES (pas de scraping)
+
+- Si un service expose un **accès programmatique** (API REST, IIIF, SRU, SPARQL,
+  OAI-PMH, JSON…), tu DOIS l'utiliser. **Jamais de scraper HTML** dans ce cas.
+- Un scraper HTML (`protocol: html`) n'est permis que pour une **petite
+  structure sans aucun accès programmatique**, et **uniquement après
+  consentement écrit reçu par e-mail** (l'agent navigateur s'en charge) : stocke
+  alors la référence du consentement dans le descripteur sous
+  `extra.scraping_consent` (« e-mail de <expéditeur> du <date> »). Sans
+  consentement tracé : pas de scraper — `finish` avec un abandon documenté.
+
 ## RÈGLES DURES (appliquées dans le code, ne tente pas de les contourner)
 
 - Tu ne peux écrire que sous : `config/sources/`, `src/mnemosyne/sources/`,
