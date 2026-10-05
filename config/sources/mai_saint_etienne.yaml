@@ -1,0 +1,54 @@
+id: mai_saint_etienne
+name: "Musée d'Art et d'Industrie de Saint-Étienne"
+institution: "Musée d'Art et d'Industrie de Saint-Étienne (Pôle muséal)"
+country: FR
+protocol: rest
+base_url: https://collections.musee-art-industrie.saint-etienne.fr
+auth: none
+license: "© Musée d'Art et d'Industrie de Saint-Étienne"
+rights: >-
+  ©2023 Musée d'Art et d'Industrie de Saint-Etienne — utilisation commerciale
+  des images soumise à autorisation (contacter mai.iconotheque@saint-etienne.fr)
+rate_limit_per_s: 1.0
+priority: 80
+tags: [museum, france, industrial-heritage, micromusee, hydra, keyless, non-commercial]
+seeds:
+  - "Manufrance"
+  - "armurerie"
+  - "rubanerie"
+  - "cycle"
+enabled: false
+notes: >-
+  Vitrine WordPress (mai.saint-etienne.fr) → base de collections en ligne servie
+  par un portail Micromusée « opacweb » (API Platform / Hydra JSON v2, sans
+  OAI-PMH). Les images ne sont pas exposées en clair : elles passent par un
+  CloudFront dont le chemin est le base64 d'un JSON {bucket,key,edits}, que le
+  connecteur reconstruit (un média = une URL). Une mention globale réserve
+  l'usage commercial des images → source désactivée (enabled: false).
+extra:
+  api_base: https://collections.musee-art-industrie.saint-etienne.fr/api/v2
+  search_path: /notices/search
+  detail_path: /notices/{id}
+  client: st-etienne01
+  profile: mai04opacweb
+  default_params:
+    onlineFilter: online
+    onlyImage: "true"
+  pagination:
+    page_param: page
+    size_param: items_per_page
+    page_size: 100
+  image:
+    host: https://d2lkryo36aywim.cloudfront.net
+    bucket: opac-prod-media
+    width: 1200
+  license:
+    name: "© Musée d'Art et d'Industrie de Saint-Étienne"
+    statement: >-
+      ©2023 Musée d'Art et d'Industrie de Saint-Etienne - Utilisation commerciale
+      des images soumise à autorisation - Merci de contacter
+      mai.iconotheque@saint-etienne.fr
+    url: https://collections.musee-art-industrie.saint-etienne.fr/fr/
+    nc: true
+    commercial_use: authorisation required
+    reusable: false
