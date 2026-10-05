@@ -64,6 +64,23 @@ else:
     print("vision patch: pattern not found (upstream changed) — no-op, check the probe")
 PY
 
+# Stirrup prints the task text (objective + injected agent replies) through
+# rich with markup enabled: any literal "[...]" in agent-generated content
+# (e.g. a "[/<uuid>]" quoted from a site) raises "closing tag ... doesn't
+# match any open tag" and kills the run before the first step. Disable markup
+# for that print only — rich keeps it for the rest of the UI. Idempotent.
+RUN python - <<'PY'
+import pathlib
+p = pathlib.Path("/usr/local/lib/python3.12/site-packages/stirrup/utils/logging.py")
+t = p.read_text()
+needle = "console.print(task)"
+if needle in t:
+    p.write_text(t.replace(needle, "console.print(task, markup=False)"))
+    print("markup patch: task text printed without rich markup")
+else:
+    print("markup patch: pattern not found (upstream changed) — no-op")
+PY
+
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

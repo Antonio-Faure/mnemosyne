@@ -15,10 +15,23 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES_DIR = ROOT / "config" / "sources"
+CONNECTORS_DIR = ROOT / "src" / "mnemosyne" / "sources"
 DOC_PATH = ROOT / "docs" / "SOURCES.md"
 
 #: markdown table row -> first cell (the source id, lower-snake-case)
 _ROW = re.compile(r"^\|\s*([a-z0-9_]+)\s*\|")
+
+#: code markers that betray HTML scraping (link/title extraction from pages)
+_SCRAPING_MARKERS = (
+    "BeautifulSoup",
+    "selectolax",
+    "lxml",
+    "html.parser",
+    'href="',
+    "<h2",
+    "<li ",
+    "<div",
+)
 
 
 def _descriptors() -> dict[str, dict]:
@@ -86,3 +99,21 @@ def test_html_sources_carry_scraping_consent() -> None:
         if raw.get("protocol") == "html":
             consent = (raw.get("extra") or {}).get("scraping_consent")
             assert consent, f"{sid}: protocol html without extra.scraping_consent"
+
+
+def test_connectors_do_not_scrape_html_without_consent() -> None:
+    """No HTML scraping in a connector unless consent is recorded (SOURCES.md)."""
+    descriptors = _descriptors()
+    for path in sorted(CONNECTORS_DIR.glob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        body = path.read_text(encoding="utf-8")
+        hits = [marker for marker in _SCRAPING_MARKERS if marker in body]
+        if not hits:
+            continue
+        consent = (descriptors.get(path.stem, {}).get("extra") or {}).get(
+            "scraping_consent"
+        )
+        assert consent, (
+            f"{path.stem}: HTML scraping markers {hits} without extra.scraping_consent"
+        )
