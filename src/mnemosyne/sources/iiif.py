@@ -185,7 +185,7 @@ class IIIFConnector(Connector):
             return None
 
         date_text = (
-            _metadata(manifest, "date", "date of creation", "created", "période")
+            _metadata(manifest, "date", "date of creation", "created", "période", "datation")
             or _metadata(manifest, "date issued")
         )
         identifier = manifest.get("id") or manifest.get("@id") or url
@@ -197,7 +197,7 @@ class IIIFConnector(Connector):
             creator=_metadata(manifest, "creator", "artist", "author"),
             date_text=date_text,
             year=parse_year(date_text),
-            license=manifest.get("rights") or self.descriptor.license,
+            license=manifest.get("rights") or manifest.get("license") or self.descriptor.license,
             rights=self.descriptor.rights,
             page_url=str(identifier),
             image_url=image_url,
