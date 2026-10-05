@@ -1,0 +1,28 @@
+id: irht
+name: IRHT — Arca (bibliothèque numérique des manuscrits)
+institution: Institut de recherche et d'histoire des textes (IRHT-CNRS)
+country: FR
+protocol: iiif
+base_url: https://api.irht.cnrs.fr
+auth: none
+license: varies
+rights: "IRHT-CNRS / Arca — vérifier par notice (ex. CC BY-NC 3.0 sur certains manuscrits)"
+enabled: false   # licence variable (CC BY-NC 3.0 sur certains manuscrits) — activer si la politique du projet l'autorise
+rate_limit_per_s: 1.0
+priority: 40
+tags: [cnrs, france, manuscripts, iiif, keyless]
+seeds:
+  - "manuscrit"
+  - "enluminure"
+notes: >-
+  Arca, la bibliothèque numérique de l'IRHT-CNRS, expose des manifestes IIIF
+  Presentation v2 par manuscrit à api.irht.cnrs.fr/ark:/63955/<ark>/manifest.json
+  (les images sont servies par iiif.irht.cnrs.fr via l'Image API). Aucune
+  Collection IIIF n'est publiée — l'API REST /manuscripts sert de moteur de
+  recherche mais n'est pas exploitable par le connecteur IIIF générique — la
+  source est donc onboardée comme manifeste unique via le connecteur générique
+  iiif.py (v2 sequences/canvases/images/resource). Keyless. Droits variables
+  selon le manuscrit (l'exemple Chantilly 86 est CC BY-NC 3.0).
+extra:
+  manifest: https://api.irht.cnrs.fr/ark:/63955/f2rxhh86uyhx/manifest.json
+  collection_id: "ark:/63955/f2rxhh86uyhx"

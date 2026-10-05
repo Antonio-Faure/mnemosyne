@@ -8,9 +8,9 @@ Une source est dite **active** quand son descripteur ne porte pas
 en attendant que la politique du projet les autorise — vérifié par
 `tests/test_iiif_catalog.py::test_restricted_licenses_are_not_enabled`.
 
-- Sources déclarées : **22**
+- Sources déclarées : **23**
 - Sources actives : **16**
-- Sources désactivées : **6**
+- Sources désactivées : **7**
 
 ## Sources actives (16)
 
@@ -33,12 +33,13 @@ en attendant que la politique du projet les autorise — vérifié par
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 
-## Sources désactivées (6)
+## Sources désactivées (7)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
 | cudl | Cambridge Digital Library (CUDL) | Cambridge University Library | GB | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | ecodices | e-codices — Virtual Manuscript Library of Switzerland | e-codices (University of Fribourg) | CH | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
+| irht | IRHT — Arca (bibliothèque numérique des manuscrits) | Institut de recherche et d'histoire des textes (IRHT-CNRS) | FR | iiif | varies | Licence variable — CC BY-NC 3.0 sur certains manuscrits ; à confirmer par la politique du projet |
 | musei_vaticani | Musei Vaticani — Catalogo Online | Musei Vaticani (Musei e Gallerie Pontificie) | VA | iiif | varies | Droits à confirmer par la politique du projet avant activation |
 | vam | Victoria and Albert Museum | Victoria and Albert Museum, London | GB | iiif | varies | V&A Terms and Conditions (restrictif) |
 | vatican | Vatican Library — DigiVatLib | Biblioteca Apostolica Vaticana | VA | iiif | varies | Usage gratuit non commercial d'après le site — à confirmer |
