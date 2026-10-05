@@ -19,15 +19,16 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **23**
-- Sources actives : **16**
+- Sources déclarées : **24**
+- Sources actives : **17**
 - Sources désactivées : **7**
 
-## Sources actives (16)
+## Sources actives (17)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
+| anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
 | artic | Art Institute of Chicago | Art Institute of Chicago (AIC) | US | iiif | none | Public Domain (CC0-1.0) | Domaine public — *The Bedroom*, Vincent van Gogh (1888) |
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
@@ -60,6 +61,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 - **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `rijksmuseum`,
   `smithsonian` (plus `wikidata` pour les données).
+- **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`
+  — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
+  vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
   `gallica`, `internet_archive`, `leiden`, `openverse`, `wikimedia`, `yale` —
   la licence est décidée au niveau de l'`Asset` à la frontière du connecteur,
