@@ -140,8 +140,7 @@ def iter_notices(query="", per_page=100, max_pages=None, only_image=True):
         members = res["members"]
         if not members:
             return
-        for m in members:
-            yield m
+        yield from members
         if max_pages and page >= max_pages:
             return
         if res["total"] and page * per_page >= res["total"]:

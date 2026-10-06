@@ -33,7 +33,7 @@ Routes (pathPrefix + path)
 /search  GET  /export-simple          (same query as /simple; public CSV/export)
 
 /notices GET  /:database/:noticeRef               -> notice object (no wrapper)
-/notices GET  /:database/:noticeRef/public        -> {"notice":{...},"sections":[...],"fields":[...]}
+/notices GET  /:database/:noticeRef/public      -> {"notice":{...},"sections":[...],"fields":[...]}
 /notices GET  /:database/:noticeRef/iiif/manifest -> IIIF Presentation v3 Manifest
 
 Query serialisation (/search/simple, bracket notation, all confirmed)
