@@ -58,6 +58,7 @@ ACCESS PATH  (verified 2026-10)
    (both ids serve images). The manifest's service @id is authoritative.
 
 5) IIIF Content Search (v1, per-document) — <ark>/iiif/search?q=... -> AnnotationList.
+
 6) OAI-PMH  /archive/oai  EXISTS BUT IS DISABLED for every verb
    ("Configuration OAI introuvable") -> dead end.
 7) Download  /archive/download?file=...  and  /archive/fullSizeImage?file=...
@@ -261,9 +262,7 @@ def image_url(
          image_url(svc, size="!200,200")      -> .../full/!200,200/0/default.jpg
          image_url(svc, region="square", size="200,") -> .../square/200,/0/default.jpg
     """
-    return "{}/{}/{}/{}/{}.{}".format(
-        _svc_base(service_id), region, size, rot, quality, fmt
-    )
+    return f"{_svc_base(service_id)}/{region}/{size}/{rot}/{quality}.{fmt}"
 
 
 def thumb_url(service_id: str, size: str = "!200,200") -> str:
