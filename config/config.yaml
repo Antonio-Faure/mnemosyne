@@ -92,6 +92,8 @@ dev:
 # Stirrup agent loop (bi-agent + warmup).
 agents:
   max_turns: 400
+  # les séances de warmup tournent sur le modèle éco ; le reste garde le défaut
+  warmup_model: mimo-v2.6-flash
   # injecte un tip anti-acharnement à 75 tours, puis tous les 50
   turn_tip_at: 75
   turn_tip_every: 50

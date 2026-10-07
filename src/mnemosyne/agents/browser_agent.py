@@ -507,11 +507,14 @@ async def run_browser_agent(
     vault_get=None,
     task_id: int | None = None,
     max_turns: int | None = None,
+    model: str | None = None,
 ) -> AgentOutcome:
     from mnemosyne.agents.session_cache import cache_base_dir, persist_session
 
     cache_base_dir(config)  # sessions persistantes : le cache vit sur le volume data
-    client = build_agent_client(config, session="browser-agent", vault_get=vault_get)
+    client = build_agent_client(
+        config, session="browser-agent", vault_get=vault_get, model=model
+    )
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
     provider = BrowserAgentToolProvider(
         config, mailbox, token=token, journal=journal, task_id=task_id, vault_get=vault_get

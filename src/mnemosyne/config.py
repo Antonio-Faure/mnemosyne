@@ -91,6 +91,9 @@ class AgentsConfig(BaseModel):
     """Stirrup agent loop settings (bi-agent + warmup)."""
 
     max_turns: int = 400
+    #: warmup sessions (human-like browsing) run on the cheap model;
+    #: everything else keeps the provider default (deepseek-v4.1-flash)
+    warmup_model: str = "mimo-v2.6-flash"
     #: after this many turns, inject a "don't get stuck" tip into the agent's
     #: context, then repeat every `turn_tip_every` turns
     turn_tip_at: int = 75

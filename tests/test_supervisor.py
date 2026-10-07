@@ -33,7 +33,9 @@ def test_two_tasks_never_share_a_session(config, monkeypatch):
     """Tasks are individual: warmup and connexion run in SEPARATE sessions."""
     sessions: list[str] = []
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+    async def fake_browser(
+        cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None, model=None
+    ):
         sessions.append(task)
         return _Outcome(finish="fini")
 
@@ -53,6 +55,31 @@ def test_two_tasks_never_share_a_session(config, monkeypatch):
     assert "tâche #2 — agent browser" in sessions[1] and "MISSION CONNEXION" in sessions[1]
 
 
+def test_warmup_tasks_run_on_the_warmup_model(config, monkeypatch):
+    """Warmup sessions use the cheap model; every other task keeps the default."""
+    models: list[str | None] = []
+
+    async def fake_browser(
+        cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None, model=None
+    ):
+        models.append(model)
+        return _Outcome(finish="fini")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    db = Database(config.db_file())
+    db.enqueue_task("browser", "MISSION WARMUP (lecture seule)", payload={"kind": "warmup"})
+    db.enqueue_task(
+        "browser", "MISSION CONNEXION DE SOURCE europeana", payload={"kind": "connexion"}
+    )
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    asyncio.run(drain_queue(config))
+    assert models == [config.agents.warmup_model, None]
+
+
 def test_pingpong_is_unlimited(config, monkeypatch):
     """coder ↔ browser as long as they need: no handoff budget at all."""
     calls: list[str] = []
@@ -66,7 +93,9 @@ def test_pingpong_is_unlimited(config, monkeypatch):
             mailbox.post("coder", "browser", f"question {hops}", task_id)
         return _Outcome(finish="coder done")
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+    async def fake_browser(
+        cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None, model=None
+    ):
         calls.append("browser")
         mailbox.post("browser", "coder", "réponse", task_id)
         return _Outcome(finish="browser done")
@@ -89,7 +118,9 @@ def test_pingpong_is_unlimited(config, monkeypatch):
 def test_a_single_session_task_closes_done(config, monkeypatch):
     """No handoff: the task dies with exactly one session and a clean report."""
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+    async def fake_browser(
+        cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None, model=None
+    ):
         return _Outcome(finish="BILAN — livré https://we.tl/t-x")
 
     monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
@@ -173,7 +204,9 @@ def test_the_turn_cap_is_a_task_field(config, monkeypatch):
     """The old in-band `[[tour: N]]` protocol is gone: cap lives in the row."""
     seen: list[int | None] = []
 
-    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+    async def fake_browser(
+        cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None, model=None
+    ):
         seen.append(max_turns)
         return _Outcome(finish="ok")
 

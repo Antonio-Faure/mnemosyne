@@ -65,6 +65,17 @@ def pick_agent(task: str) -> str:
     return "browser" if any(h in low for h in _BROWSER_HINTS) else "coder"
 
 
+def model_for_task(config: Config, task: dict) -> str | None:
+    """Per-task model override: warmup sessions run on the cheap model."""
+    try:
+        payload = json.loads(task.get("payload") or "{}")
+    except (TypeError, ValueError):
+        return None
+    if payload.get("kind") == "warmup":
+        return config.agents.warmup_model or None
+    return None
+
+
 @dataclass
 class AgencyResult:
     start: str
@@ -109,6 +120,7 @@ async def _run_browser(
     vault_get,
     task_id: int,
     max_turns: int | None = None,
+    model: str | None = None,
 ):
     from mnemosyne.agents.browser_agent import run_browser_agent
 
@@ -120,6 +132,7 @@ async def _run_browser(
         vault_get=vault_get,
         task_id=task_id,
         max_turns=max_turns,
+        model=model,
     )
 
 
@@ -288,6 +301,11 @@ async def _activate_session(
     outcome = None
     error: str | None = None
     error_exc: BaseException | None = None
+    runner_kwargs: dict = {}
+    if agent == "browser":
+        model = model_for_task(config, task)
+        if model:
+            runner_kwargs["model"] = model
     try:
         outcome = await _RUNNERS[agent](
             config,
@@ -297,6 +315,7 @@ async def _activate_session(
             vault_get,
             task_id=task_id,
             max_turns=task["turn_cap"],
+            **runner_kwargs,
         )
     except Exception as exc:  # noqa: BLE001 - one agent must not kill the agency
         error = str(exc)
