@@ -1,0 +1,23 @@
+id: paris_musees
+name: Paris Musées — Collections (API)
+institution: Paris Musées (Ville de Paris)
+country: FR
+protocol: iiif
+base_url: https://apicollections.parismusees.paris.fr
+auth: none
+license: varies
+rights: "Paris Musées — vérifier la mention de droits par notice (majorité domaine public)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, france, iiif, keyless]
+notes: >-
+  Les collections des musées de la Ville de Paris (Paris Musées) exposent un
+  service IIIF Presentation v2 : un manifeste par notice à
+  apicollections.parismusees.paris.fr/iiif/<id>/manifest. Aucune Collection IIIF
+  n'est publiée et l'API de recherche (GraphQL /graphql) exige un jeton (auth:
+  none ne suffit pas) — la source est donc onboardée comme manifeste unique via
+  le connecteur générique iiif.py (v2 sequences/canvases/images/resource).
+  Keyless. Droits variables selon la notice (majorité domaine public).
+extra:
+  manifest: https://apicollections.parismusees.paris.fr/iiif/320025034/manifest
+  collection_id: "320025034"
