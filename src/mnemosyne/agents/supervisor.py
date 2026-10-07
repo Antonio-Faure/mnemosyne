@@ -173,15 +173,25 @@ def outcome_status_note(finish: str, error: str | None) -> tuple[str, str]:
 
 
 def _branch_has_commits(config: Config, branch: str) -> bool:
-    """True if the branch exists locally with commits ahead of the base branch."""
+    """True if the branch has commits not in the base (origin when available).
+
+    Compare against `origin/<base>` first: agents branch from origin/main while
+    the local `<base>` ref can lag behind — a stale local main made a branch cut
+    from origin/main look 'ahead' and settled a discovery as connected while it
+    held no work (Hammer task #55).
+    """
     repo = Path(config.dev.repo_path or config.root)
-    res = subprocess.run(
-        ["git", "rev-list", "--count", f"{config.dev.base_branch}..{branch}"],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-    )
-    return res.stdout.strip().isdigit() and int(res.stdout.strip()) > 0
+    base = config.dev.base_branch
+    for ref in (f"origin/{base}", base):
+        res = subprocess.run(
+            ["git", "rev-list", "--count", f"{ref}..{branch}"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode == 0 and res.stdout.strip().isdigit():
+            return int(res.stdout.strip()) > 0
+    return False
 
 
 def _settle_discovery(config: Config, db: Database, task: dict, branch: str | None) -> None:

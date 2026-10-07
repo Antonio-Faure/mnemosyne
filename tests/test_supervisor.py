@@ -369,3 +369,35 @@ def test_plain_error_still_fails_immediately(config, monkeypatch):
     db.close()
     assert task["status"] == "failed"
     assert calls["n"] == 1
+
+
+def test_branch_has_commits_prefers_origin_then_local_base(tmp_path):
+    """A repo without an origin remote still settles correctly (local base)."""
+    import subprocess
+    from types import SimpleNamespace
+
+    from mnemosyne.agents.supervisor import _branch_has_commits
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@t")
+    git("config", "user.name", "t")
+    (repo / "a.txt").write_text("a")
+    git("add", "a.txt")
+    git("commit", "-qm", "init")
+    git("checkout", "-qb", "agent/feature")
+    (repo / "b.txt").write_text("b")
+    git("add", "b.txt")
+    git("commit", "-qm", "work")
+    git("checkout", "-q", "main")
+    git("branch", "agent/empty")
+
+    cfg = SimpleNamespace(dev=SimpleNamespace(repo_path=repo, base_branch="main"))
+    assert _branch_has_commits(cfg, "agent/feature") is True
+    assert _branch_has_commits(cfg, "agent/empty") is False
+    assert _branch_has_commits(cfg, "agent/missing") is False

@@ -237,7 +237,14 @@ class DevToolProvider(ToolProvider):
             return _ok(f"wrote {rel}")
 
         async def lint_exec(_: EmptyParams):
-            res = self._run_cmd([sys.executable, "-m", "ruff", "check", "."])
+            # Scope to the coder's writable area: linting the whole repo let a
+            # lint error in harness/helpers (browser-owned, coder-forbidden)
+            # block every coder commit — the coder then tried to fix a file it
+            # may not touch and the guard refused (task #55). The browser lints
+            # its helpers before publishing them.
+            res = self._run_cmd(
+                [sys.executable, "-m", "ruff", "check", "src/mnemosyne/sources", "tests"]
+            )
             self._lint_ok = res.returncode == 0
             body = (res.stdout + res.stderr)[:3000]
             return _ok(f"ruff exit {res.returncode}\n{body}") if res.returncode == 0 else _fail(

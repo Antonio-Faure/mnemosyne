@@ -414,7 +414,24 @@ class BrowserAgentToolProvider(ToolProvider):
         async def publish_exec(p: PublishParams):
             if not self.token:
                 return _fail("no GitHub token (vault github_token) — cannot publish helpers")
-            branch = f"agent/harness-helpers-{datetime.now():%Y%m%d-%H%M%S}"
+            # helpers are browser-owned: lint them here so a dirty helper never
+            # lands on main (a lint error in harness/helpers used to block the
+            # coder's repo-wide commit gate — see dev/tools.py lint_exec).
+            lint = subprocess.run(
+                [sys.executable, "-m", "ruff", "check", "harness/helpers"],
+                cwd=str(self.worktree),
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+            if lint.returncode != 0:
+                body = (lint.stdout + lint.stderr)[:2000]
+                return _fail(f"helpers lint failed — fix before publishing:\n{body}")
+            # unique suffix: a same-second retry used to collide with the
+            # branch already checked out in the helpers worktree (task #55).
+            branch = (
+                f"agent/harness-helpers-{datetime.now():%Y%m%d-%H%M%S}-{os.urandom(2).hex()}"
+            )
             try:
                 self.git.start_branch(branch)
                 files = self.git.changed_files()

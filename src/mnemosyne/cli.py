@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import subprocess
 import sys
 from datetime import datetime
-from pathlib import Path
 
 from mnemosyne.config import get_config
 from mnemosyne.engine import Engine
@@ -342,18 +340,10 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
         print(f"échec pour {record.host}: {exc}")
         return 1
 
-    repo = Path(cfg.dev.repo_path or cfg.root)
+    from mnemosyne.agents.supervisor import _branch_has_commits
+
     branch = next((t.get("branch") for t in result.turns if t.get("branch")), None)
-    status = "failed"
-    if branch:
-        res = subprocess.run(
-            ["git", "rev-list", "--count", f"{cfg.dev.base_branch}..{branch}"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-        )
-        if res.stdout.strip().isdigit() and int(res.stdout.strip()) > 0:
-            status = "connected"
+    status = "connected" if branch and _branch_has_commits(cfg, branch) else "failed"
     db = Database(cfg.db_file())
     db.set_discovery_status(record.id, status)
     db.close()
