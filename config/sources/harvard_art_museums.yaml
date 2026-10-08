@@ -1,0 +1,30 @@
+id: harvard_art_museums
+name: Harvard Art Museums (IIIF)
+institution: Harvard Art Museums, Cambridge, MA
+country: US
+protocol: iiif
+base_url: https://iiif.harvardartmuseums.org
+auth: none
+license: varies
+rights: "Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, united-states, paintings, iiif, keyless]
+seeds:
+  - "portrait"
+  - "oil on canvas"
+  - "El Greco"
+  - "photography"
+notes: >-
+  IIIF Presentation v2 manifests served per object at
+  iiif.harvardartmuseums.org/manifests/object/<id> (sample: object 228298). The
+  host publishes no aggregate IIIF Collection manifest — probes for the root,
+  /collection, /collections, /manifests and /manifests/collection all return 404
+  — and the search API (api.harvardartmuseums.org) is a separate host requiring
+  an apikey, so the source is onboarded as a single-manifest entry point handled
+  by the generic iiif.py connector (v2 sequences/canvases/images/resource).
+  Keyless. Images are served by the IIIF Image API on nrs.harvard.edu
+  (urn-3:HUAM:...). Rights vary per record.
+extra:
+  manifest: https://iiif.harvardartmuseums.org/manifests/object/228298
+  collection_id: "228298"
