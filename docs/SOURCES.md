@@ -19,11 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **32**
-- Sources actives : **23**
+- Sources déclarées : **33**
+- Sources actives : **24**
 - Sources désactivées : **9**
-## Sources actives (23)| id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
-|---|---|---|---|---|---|---|---|
+## Sources actives (24)|---|---|---|---|---|---|---|---|
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -43,6 +42,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | rijksmuseum | Rijksmuseum (IIIF via Europeana) | Rijksmuseum, Amsterdam | NL | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Rijksmuseum SK-A-3262 |
 | smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
 | smk | SMK — Statens Museum for Kunst (National Gallery of Denmark) | SMK — Statens Museum for Kunst | DK | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — SMK — the national gallery of Denmark |
+| vanderbilt | Vanderbilt University Museum of Art (IIIF) | Vanderbilt University Museum of Art | US | iiif | none | varies | Vanderbilt University Museum of Art — vérifier par notice (droits réservés possibles) ; manifeste unique par notice (pas de Collection IIIF) |
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
@@ -71,8 +71,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
   `gallica`, `internet_archive`, `leiden`, `nationalmuseum_se`, `nga`,
-  `openverse`, `paris_musees`, `wikimedia`, `yale`, `yale_lux` — la licence est
-  décidée au niveau de l'`Asset` à la frontière du connecteur, pas de la source.
+  `openverse`, `paris_musees`, `vanderbilt`, `wikimedia`, `yale`, `yale_lux` —
+  la licence est décidée au niveau de l'`Asset` à la frontière du connecteur,
+  pas de la source.
 - **Non commercial / restrictif** : `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musei_vaticani`, `vam`, `vatican`, `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence

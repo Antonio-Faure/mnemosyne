@@ -1,0 +1,33 @@
+id: vanderbilt
+name: Vanderbilt University Museum of Art (IIIF)
+institution: Vanderbilt University Museum of Art
+country: US
+protocol: iiif
+base_url: https://iiif-manifest.library.vanderbilt.edu
+auth: none
+license: varies
+rights: "Vanderbilt University Museum of Art — images may be protected by copyright; check per record"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, united-states, iiif, keyless, prints]
+seeds:
+  - "Dürer woodcut"
+  - "Paladino"
+  - "Japanese print"
+  - "landscape"
+notes: >-
+  Per-object IIIF Presentation v2 manifests served by the Vanderbilt University
+  Libraries manifest host, e.g.
+  https://iiif-manifest.library.vanderbilt.edu/gallery/1994/1994.538g.json
+  (pattern: /gallery/<year>/<accession>.json). The host is a static manifest
+  store: the root and every aggregate path probed (collection.json,
+  manifests.json, index.json, top.json, all.json) return HTTP 403, so no
+  aggregate IIIF Collection is exposed — a single-manifest entry point is used.
+  Images are served by the Cantaloupe 5 IIIF Image API at
+  https://iiif.library.vanderbilt.edu/iiif/2/ (identifiers such as
+  gallery/1994/1994.538g.tif). The generic
+  src/mnemosyne/sources/iiif.py connector normalizes the first canvas image;
+  metadata carries Artist / Accession Number / Creation Year / Title.
+extra:
+  manifest: https://iiif-manifest.library.vanderbilt.edu/gallery/1994/1994.538g.json
+  collection_id: "1994.538g"
