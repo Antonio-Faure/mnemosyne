@@ -19,11 +19,11 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **27**
-- Sources actives : **18**
+- Sources déclarées : **28**
+- Sources actives : **19**
 - Sources désactivées : **9**
 
-## Sources actives (18)
+## Sources actives (19)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
@@ -33,6 +33,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | artic | Art Institute of Chicago | Art Institute of Chicago (AIC) | US | iiif | none | Public Domain (CC0-1.0) | Domaine public — *The Bedroom*, Vincent van Gogh (1888) |
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
+| colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries | US | iiif | none | varies | University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright) ; manifeste unique par notice (pas de Collection IIIF) |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Europeana), vérifier `rights` et le fournisseur |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
@@ -67,10 +68,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`
   — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
   vues restent « non affichables » par notice et sont ignorées.
-- **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
-  `gallica`, `internet_archive`, `leiden`, `openverse`, `paris_musees`,
-  `wikimedia`, `yale` — la licence est décidée au niveau de l'`Asset` à la
-  frontière du connecteur, pas de la source.
+- **Varies / par notice** : `albertina`, `arthistoricum`, `colenda`, `dpla`,
+  `europeana`, `gallica`, `internet_archive`, `leiden`, `openverse`,
+  `paris_musees`, `wikimedia`, `yale` — la licence est décidée au niveau de
+  l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musei_vaticani`, `vam`, `vatican`, `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence

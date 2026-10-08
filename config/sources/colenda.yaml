@@ -1,0 +1,31 @@
+id: colenda
+name: Colenda Digital Repository (Penn Libraries)
+institution: University of Pennsylvania Libraries
+country: US
+protocol: iiif
+base_url: https://colenda.library.upenn.edu
+auth: none
+license: varies
+rights: "University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [university-library, united-states, manuscripts, iiif, keyless]
+seeds:
+  - "holy land manuscript"
+  - "manuscript"
+  - "map"
+  - "photograph"
+notes: >-
+  IIIF Presentation v2 manifests are served per item by the Penn Libraries
+  digital repository. The friendly entry point is
+  https://colenda.library.upenn.edu/items/ark:/81431/<id>/manifest (its @id
+  resolves to digitalrepository.library.upenn.edu/iiif/2/items/<uuid>/manifest).
+  The host exposes no aggregate IIIF Collection manifest (probes for
+  /iiif/collection and /collections/manifest return 404), so a single-manifest
+  entry point is used with the generic src/mnemosyne/sources/iiif.py connector.
+  Keyless. Metadata carries Title/Date/Rights and the first canvas image is
+  served via the IIIF Image API (iiif-images.library.upenn.edu). Rights vary per
+  notice.
+extra:
+  manifest: "https://colenda.library.upenn.edu/items/ark:/81431/p37659w10/manifest"
+  collection_id: "ark:/81431/p37659w10"
