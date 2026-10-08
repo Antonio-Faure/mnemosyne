@@ -1,0 +1,30 @@
+id: nationalmuseum_se
+name: Nationalmuseum Sweden — IIIF (iiifhosting.com)
+institution: Nationalmuseum (Sweden)
+country: SE
+protocol: iiif
+base_url: https://nationalmuseumse.iiifhosting.com
+auth: none
+license: varies
+rights: "Nationalmuseum (Sweden) — check per record (public domain / CC)"
+rate_limit_per_s: 1.0
+priority: 35
+tags: [national-museum, sweden, art, iiif, keyless, iiifhosting]
+seeds:
+  - "painting"
+  - "portrait"
+  - "drawing"
+  - "landscape"
+notes: >-
+  IIIF Presentation API v2 host: Nationalmuseum Sweden's collection hosted on
+  Klokan Technologies' iiifhosting.com (nationalmuseumse.iiifhosting.com).
+  Manifests are served per object at /iiif/<sha256-id>/manifest.json and the
+  image is served by the IIIF Image API at the same path. The host exposes no
+  enumerable Collection manifest or search endpoint (the account root is a
+  Firebase auth page; /iiif/collection.json and /iiif/manifest.json return
+  HTTP 400, /iiif/collection/manifest.json returns HTTP 404), so it is
+  onboarded as a single-manifest IIIF source through the generic iiif.py
+  connector. Keyless.
+extra:
+  manifest: http://nationalmuseumse.iiifhosting.com/iiif/a00c2abe911eddc9bd97c7c5a584ad208305b307d37a7cc4cde4dffe92709858//manifest.json
+  collection_id: a00c2abe911eddc9bd97c7c5a584ad208305b307d37a7cc4cde4dffe92709858
