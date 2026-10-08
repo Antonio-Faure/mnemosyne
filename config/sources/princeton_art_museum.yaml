@@ -1,0 +1,33 @@
+id: princeton_art_museum
+name: Princeton University Art Museum (IIIF)
+institution: Princeton University Art Museum, Princeton, NJ
+country: US
+protocol: iiif
+base_url: https://data.artmuseum.princeton.edu
+auth: none
+license: varies
+rights: "Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, united-states, paintings, iiif, keyless]
+seeds:
+  - "El Greco"
+  - "portrait"
+  - "oil on canvas"
+  - "landscape"
+notes: >-
+  IIIF Presentation v3 manifests served per object at /iiif/objects/<id>
+  (sample: object 24237, Studio of El Greco — Saint Francis of Assisi). The
+  manifest declares an aggregate Collection at /iiif/objects/collection
+  (partOf), but that URL and the common collection/search paths (/iiif,
+  /iiif/collection, /iiif/objects/collection, /iiif/objects/search) all return
+  404, so the host publishes no usable aggregate IIIF Collection manifest. The
+  host also exposes a keyless REST object API at /objects/<id>, but its
+  list/search endpoint returns 400 and /collection is protected (401), so there
+  is no keyless search entry point either. Onboarded as a single-manifest entry
+  point handled by the generic src/mnemosyne/sources/iiif.py connector (v3
+  items/body; first canvas image via the IIIF Image API on
+  media.artmuseum.princeton.edu). Keyless. Rights vary per record.
+extra:
+  manifest: https://data.artmuseum.princeton.edu/iiif/objects/24237
+  collection_id: "24237"
