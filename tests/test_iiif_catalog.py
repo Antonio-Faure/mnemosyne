@@ -31,6 +31,7 @@ IIIF_SOURCES = {
     "vatican": "https://digi.vatlib.it/iiif/MSS_Barb.gr.252/manifest.json",
     "wellcome": "https://iiif.wellcomecollection.org/presentation/b18035723",
     "yale": "https://collections.library.yale.edu/manifests/2002046",
+    "yale_lux": "https://manifests.collections.yale.edu/yuag/obj/108688",
     "bsb": (
         "https://api.digitale-sammlungen.de/iiif/presentation/v2/"
         "bsb00083127/manifest"
