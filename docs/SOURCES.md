@@ -22,6 +22,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 - Sources déclarées : **30**
 - Sources actives : **21**
 - Sources désactivées : **9**
+
+## Sources actives (21)
+
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
