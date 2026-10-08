@@ -19,12 +19,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **29**
-- Sources actives : **20**
+- Sources déclarées : **30**
+- Sources actives : **21**
 - Sources désactivées : **9**
-
-## Sources actives (20)
-
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
@@ -47,6 +44,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
+| yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | US | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
 ## Sources désactivées (9)
 
@@ -71,8 +69,8 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
   `gallica`, `internet_archive`, `leiden`, `nationalmuseum_se`, `nga`,
-  `openverse`, `paris_musees`, `wikimedia`, `yale` — la licence est décidée au
-  niveau de l'`Asset` à la frontière du connecteur, pas de la source.
+  `openverse`, `paris_musees`, `wikimedia`, `yale`, `yale_lux` — la licence est
+  décidée au niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musei_vaticani`, `vam`, `vatican`, `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
