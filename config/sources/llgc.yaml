@@ -1,0 +1,33 @@
+id: llgc
+name: National Library of Wales — Digital Collections (IIIF)
+institution: Llyfrgell Genedlaethol Cymru – The National Library of Wales
+country: GB
+protocol: iiif
+base_url: https://damsssl.llgc.org.uk
+auth: none
+license: "http://creativecommons.org/publicdomain/mark/1.0/"
+rights: "Llyfrgell Genedlaethol Cymru – The National Library of Wales — Public Domain Mark 1.0 (vérifier par notice)"
+enabled: true   # Public Domain Mark 1.0 (domaine public)
+rate_limit_per_s: 1.0
+priority: 45
+tags: [national-library, united-kingdom, wales, prints, photographs, iiif, keyless]
+seeds:
+  - "Welsh landscape"
+  - "portrait engraving"
+  - "photography Wales"
+  - "Welsh costume"
+notes: >-
+  Per-object IIIF Presentation v2 manifests
+  (https://damsssl.llgc.org.uk/iiif/2.0/<id>/manifest.json) whose images are
+  served by the IIIF Image API at
+  https://damsssl.llgc.org.uk/iiif/2.0/image/<id> (info.json confirmed). The
+  host exposes no aggregate IIIF entry point: probes for collection.json,
+  collections and collection/<id> all return 404, and no IIIF search endpoint is
+  published, so a single-manifest entry point is used (as for albertina). The
+  DAMS rewrites to the canonical IIIF host iiif.llyfrgell.cymru. Onboarded via
+  the generic src/mnemosyne/sources/iiif.py connector (v2
+  sequences/canvases/images/resource); no bespoke connector needed. Metadata
+  carries Title/Author/Date; rights are Public Domain Mark 1.0.
+extra:
+  manifest: https://damsssl.llgc.org.uk/iiif/2.0/4672201/manifest.json
+  collection_id: "4672201"
