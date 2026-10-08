@@ -1,0 +1,29 @@
+id: smk
+name: SMK — Statens Museum for Kunst (National Gallery of Denmark)
+institution: SMK — Statens Museum for Kunst
+country: DK
+protocol: iiif
+base_url: https://api.smk.dk
+auth: none
+license: "https://creativecommons.org/publicdomain/mark/1.0/"
+rights: "Public Domain Mark — SMK — the national gallery of Denmark"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, denmark, painting, iiif, keyless]
+notes: >-
+  IIIF Presentation v3 host. SMK exposes one Presentation manifest per object at
+  api/v1/iiif/manifest?id=<OBJECT_NUMBER> (the search API api/v1/art/search/
+  returns each item's `iiif_manifest` URL); images are served by the keyless
+  IIIF Image API v2 on iip.smk.dk. There is NO IIIF Collection manifest
+  (api/v1/iiif/collection[/…] → 404), so — per the generic-connector policy —
+  this is onboarded as a single-manifest IIIF source via extra.manifest. The
+  task's sample manifest (id=KMS1457) carries an empty `items` list (that object
+  has only a thumbnail, no IIIF JP2 image service), so the entry point targets
+  KKS5261, an object whose manifest exposes a full IIIF Image API v2 service
+  (verified: iip.smk.dk/iiif/jp2/…/info.json). The generic
+  src/mnemosyne/sources/iiif.py connector normalizes the first canvas image.
+  Single-object source: search `seeds` are meaningless here — the connector
+  reads the one manifest declared in `extra.manifest`.
+extra:
+  manifest: "https://api.smk.dk/api/v1/iiif/manifest?id=KKS5261"
+  collection_id: "KKS5261"

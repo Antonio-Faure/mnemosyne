@@ -1,0 +1,31 @@
+id: nga
+name: National Gallery of Art (Washington, DC)
+institution: National Gallery of Art
+country: US
+protocol: iiif
+base_url: https://www.nga.gov
+auth: none
+license: varies
+rights: >-
+  National Gallery of Art — Open Access : les images des œuvres du domaine public
+  sont libres pour tout usage, y compris commercial, et le jeu de métadonnées
+  (130 000+ œuvres) est publié sous CC0 ; vérifier les droits par notice pour les
+  œuvres encore sous droit d'auteur.
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, united-states, iiif, keyless, national-gallery-of-art]
+notes: >-
+  IIIF Presentation v2, un manifeste par objet
+  (https://www.nga.gov/api/v1/iiif/presentation/manifest.json?cultObj:id=<id>,
+  ou ?cultMap:id=<uuid>). Le host n'expose aucune Collection IIIF agrégée
+  (probes collection.json sur www/media/api.nga.gov → 404/403), donc un manifeste
+  unique est utilisé, lu par le connecteur générique `iiif.py` (aucun code
+  spécifique à l'institution). Chaque toile porte un service IIIF Image API v2
+  (https://media.nga.gov/iiif/<uuid>, redirigé vers api.nga.gov) ; la métadonnée
+  « Artist » alimente `creator`. L'API www.nga.gov est protégée par un WAF : les
+  clients non-navigateur peuvent recevoir un 403 (le connecteur s'identifie par un
+  User-Agent explicite). Source mono-objet : les `seeds` de recherche n'ont pas de
+  sens ici — le connecteur lit l'unique manifeste déclaré dans `extra.manifest`.
+extra:
+  manifest: "https://www.nga.gov/api/v1/iiif/presentation/manifest.json?cultObj:id=395"
+  collection_id: "395"

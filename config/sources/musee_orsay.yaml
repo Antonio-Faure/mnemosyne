@@ -1,0 +1,34 @@
+id: musee_orsay
+name: Musée d'Orsay — Collections (IIIF)
+institution: Établissement public des musées d'Orsay et de l'Orangerie (EPMO)
+country: FR
+protocol: iiif
+base_url: https://iiif.musee-orsay.fr
+auth: none
+license: "© EPMO (musée d'Orsay / musée de l'Orangerie) — droits réservés"
+rights: "EPMO — mentions légales : reproduction/représentation du contenu interdite sans autorisation expresse"
+enabled: false   # droits EPMO restrictifs (reproduction interdite sans autorisation) — activer si la politique du projet l'autorise
+rate_limit_per_s: 1.0
+priority: 30
+tags: [museum, france, iiif, keyless]
+seeds:
+  - "Toulouse-Lautrec"
+  - "Manet"
+  - "Van Gogh"
+  - "photographie 19e siècle"
+notes: >-
+  Service IIIF Presentation v3 exposé à https://iiif.musee-orsay.fr (application
+  « Manifester » / Ephoto DAM). Un manifeste par œuvre, servi à
+  /Manifester/IIIF/3/objects!<id>/manifest.json (ex. objects!701 = INV 20140,
+  « Femme au boa noir », Toulouse-Lautrec). L'hôte n'expose ni Collection IIIF
+  agrégée ni endpoint de recherche (« objects!701 », « /Manifester/IIIF/3/ » et
+  racines de collection → 404) : la source est donc onboardée comme manifeste
+  unique via le connecteur générique iiif.py, qui normalise v3 (items/body).
+  Keyless. Les manifestes ne portent pas de licence lisible par machine : leur
+  requiredStatement « Droits d'utilisation et licence » renvoie aux mentions
+  légales du musée, qui réservent les droits (reproduction/représentation
+  interdite sans autorisation expresse). Source désactivée en attente de la
+  politique du projet.
+extra:
+  manifest: https://iiif.musee-orsay.fr/Manifester/IIIF/3/objects!701/manifest.json
+  collection_id: "objects!701"

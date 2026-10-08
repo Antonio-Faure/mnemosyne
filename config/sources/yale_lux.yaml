@@ -1,0 +1,28 @@
+id: yale_lux
+name: Yale Collections Discovery (LUX) — IIIF
+institution: Yale University (LUX) — Yale University Art Gallery, Yale University Library
+country: US
+protocol: iiif
+base_url: https://manifests.collections.yale.edu
+auth: none
+license: varies
+rights: "Yale University (LUX) — many records public domain (CC0), check per record"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [university, united-states, art-gallery, museum, iiif, keyless]
+seeds:
+  - "coin"
+  - "painting"
+  - "sculpture"
+  - "manuscript"
+notes: >-
+  LUX (Yale Collections Discovery) serves IIIF Presentation v3 manifests per
+  object at manifests.collections.yale.edu/<repo>/obj/<id> (e.g. the YUAG
+  denarius .../yuag/obj/108688, rights CC0 / public domain). No aggregate IIIF
+  Collection manifest and no IIIF search endpoint are exposed (probes under
+  /collection, /collections, /iiif/collection and /search all returned HTTP 404)
+  and the LUX web frontend/API is a single-page app, so the entry point is a
+  single manifest. Onboarded via the generic iiif.py connector, keyless.
+extra:
+  manifest: https://manifests.collections.yale.edu/yuag/obj/108688
+  collection_id: "yuag/obj/108688"
