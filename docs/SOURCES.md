@@ -19,12 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **30**
-- Sources actives : **21**
+- Sources déclarées : **31**
+- Sources actives : **22**
 - Sources désactivées : **9**
-
-## Sources actives (21)
-
+## Sources actives (22)
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
@@ -38,6 +36,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
 | leiden | Leiden University Libraries Digital Collections | Leiden University Libraries (Universiteitsbibliotheek Leiden) | NL | iiif | none | varies | Leiden University Libraries — vérifier par notice (domaine public / sous licence) |
+| llgc | National Library of Wales — Digital Collections (IIIF) | Llyfrgell Genedlaethol Cymru – The National Library of Wales | GB | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — National Library of Wales (vérifier par notice) ; manifeste unique par notice (pas de Collection IIIF) |
 | nationalmuseum_se | Nationalmuseum Sweden — IIIF (iiifhosting.com) | Nationalmuseum (Sweden) | SE | iiif | none | varies | Nationalmuseum (Sweden) — vérifier par notice (domaine public / CC) ; manifeste unique par objet (pas de Collection IIIF) |
 | nga | National Gallery of Art (Washington, DC) | National Gallery of Art | US | iiif | none | varies | National Gallery of Art — Open Access (images du domaine public libres, y compris usage commercial ; métadonnées CC0) ; vérifier les droits par notice ; manifeste unique par objet (pas de Collection IIIF) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
@@ -65,7 +64,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 ## Raccourcis licence
 
-- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `rijksmuseum`,
+- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `llgc`, `rijksmuseum`,
   `smithsonian` (plus `wikidata` pour les données).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`
   — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
