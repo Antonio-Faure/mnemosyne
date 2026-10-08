@@ -38,6 +38,9 @@ def _label(value: Any) -> str:
     if isinstance(value, list):
         return _label(value[0]) if value else ""
     if isinstance(value, dict):
+        # v2 label/value object: {"@language": "en", "@value": "…"}
+        if "@value" in value:
+            return _label(value["@value"])
         for key in ("fr", "en", "none"):
             if key in value:
                 text = _label(value[key])
