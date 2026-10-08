@@ -19,11 +19,11 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **27**
-- Sources actives : **18**
+- Sources déclarées : **28**
+- Sources actives : **19**
 - Sources désactivées : **9**
 
-## Sources actives (18)
+## Sources actives (19)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
@@ -36,6 +36,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Europeana), vérifier `rights` et le fournisseur |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
+| harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
 | leiden | Leiden University Libraries Digital Collections | Leiden University Libraries (Universiteitsbibliotheek Leiden) | NL | iiif | none | varies | Leiden University Libraries — vérifier par notice (domaine public / sous licence) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
@@ -68,9 +69,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
   vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
-  `gallica`, `internet_archive`, `leiden`, `openverse`, `paris_musees`,
-  `wikimedia`, `yale` — la licence est décidée au niveau de l'`Asset` à la
-  frontière du connecteur, pas de la source.
+  `gallica`, `harvard_art_museums`, `internet_archive`, `leiden`, `openverse`,
+  `paris_musees`, `wikimedia`, `yale` — la licence est décidée au niveau de
+  l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musei_vaticani`, `vam`, `vatican`, `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
