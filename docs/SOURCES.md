@@ -19,9 +19,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **27**
+- Sources déclarées : **28**
 - Sources actives : **18**
-- Sources désactivées : **9**
+- Sources désactivées : **10**
 
 ## Sources actives (18)
 
@@ -46,10 +46,11 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 
-## Sources désactivées (9)
+## Sources désactivées (10)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
+| belvedere | Belvedere — Sammlung Online | Österreichische Galerie Belvedere, Wien | AT | iiif | varies | Œuvres sous droit d'auteur (© Bildrecht, Wien) — à confirmer par la politique du projet |
 | cudl | Cambridge Digital Library (CUDL) | Cambridge University Library | GB | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | ecodices | e-codices — Virtual Manuscript Library of Switzerland | e-codices (University of Fribourg) | CH | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | irht | IRHT — Arca (bibliothèque numérique des manuscrits) | Institut de recherche et d'histoire des textes (IRHT-CNRS) | FR | iiif | varies | Licence variable — CC BY-NC 3.0 sur certains manuscrits ; à confirmer par la politique du projet |
@@ -71,7 +72,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   `gallica`, `internet_archive`, `leiden`, `openverse`, `paris_musees`,
   `wikimedia`, `yale` — la licence est décidée au niveau de l'`Asset` à la
   frontière du connecteur, pas de la source.
-- **Non commercial / restrictif** : `cudl`, `ecodices`, `irht`,
+- **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musei_vaticani`, `vam`, `vatican`, `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
   Ouverte 2.0 (etalab) ; images soumises à autorisation par notice (DIFF/DIFFU),

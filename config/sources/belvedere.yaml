@@ -1,0 +1,28 @@
+id: belvedere
+name: Belvedere — Sammlung Online
+institution: Österreichische Galerie Belvedere, Wien
+country: AT
+protocol: iiif
+base_url: https://sammlung.belvedere.at
+auth: none
+license: varies
+rights: "Belvedere, Wien — certaines œuvres sous droit d'auteur (© Bildrecht, Wien), vérifier par notice"
+enabled: false   # © Bildrecht, Wien (droits réservés) — activer si la politique du projet l'autorise
+rate_limit_per_s: 1.0
+priority: 40
+tags: [museum, austria, iiif, keyless]
+seeds:
+  - "Gustav Klimt"
+  - "Egon Schiele"
+  - "Öl auf Leinwand"
+notes: >-
+  Per-object IIIF Presentation v2 manifests served by the eMuseum backend at
+  /apis/iiif/presentation/v2/1-objects-<id>/manifest — the /mirador/objects/<id>
+  viewer page (sample 91683) references it. Probes for an aggregate Collection
+  manifest (1-collection, 1-collections, collections-<id>, presentation/v2 root)
+  return 400/404, so a single-manifest entry point is used via the generic
+  src/mnemosyne/sources/iiif.py connector. Keyless. Rights: the sampled manifest
+  carries "© Bildrecht, Wien" (droits réservés), hence disabled by default.
+extra:
+  manifest: https://sammlung.belvedere.at/apis/iiif/presentation/v2/1-objects-91683/manifest
+  collection_id: "91683"
