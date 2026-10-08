@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **37**
-- Sources actives : **26**
+- Sources déclarées : **38**
+- Sources actives : **27**
 - Sources désactivées : **11**
-## Sources actives (26)
+## Sources actives (27)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -33,6 +33,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Europeana), vérifier `rights` et le fournisseur |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
+| hammer | Hammer Museum — Online Collections (IIIF) | Hammer Museum, University of California, Los Angeles (UCLA) | US | iiif | none | varies | Hammer Museum (UCLA) — droits par notice (CC0 / domaine public ou « In Copyright », rightsstatements.org) ; manifeste unique par objet (pas de Collection IIIF) |
 | harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
 | leiden | Leiden University Libraries Digital Collections | Leiden University Libraries (Universiteitsbibliotheek Leiden) | NL | iiif | none | varies | Leiden University Libraries — vérifier par notice (domaine public / sous licence) |
@@ -74,10 +75,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
   vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `colenda`, `dpla`,
-  `europeana`, `gallica`, `harvard_art_museums`, `internet_archive`, `leiden`,
-  `nationalmuseum_se`, `nga`, `openverse`, `paris_musees`, `vanderbilt`,
-  `wikimedia`, `yale`, `yale_lux` — la licence est décidée au niveau de
-  l'`Asset` à la frontière du connecteur, pas de la source.
+  `europeana`, `gallica`, `hammer`, `harvard_art_museums`, `internet_archive`,
+  `leiden`, `nationalmuseum_se`, `nga`, `openverse`, `paris_musees`,
+  `vanderbilt`, `wikimedia`, `yale`, `yale_lux` — la licence est décidée au
+  niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
   `wellcome`.
