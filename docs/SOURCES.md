@@ -19,11 +19,11 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **27**
-- Sources actives : **18**
+- Sources déclarées : **28**
+- Sources actives : **19**
 - Sources désactivées : **9**
 
-## Sources actives (18)
+## Sources actives (19)
 
 | id | Source | Institution | Pays | Protocole | Auth | Licence | Droits / notes |
 |---|---|---|---|---|---|---|---|
@@ -42,6 +42,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
 | rijksmuseum | Rijksmuseum (IIIF via Europeana) | Rijksmuseum, Amsterdam | NL | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Rijksmuseum SK-A-3262 |
 | smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
+| vanderbilt | Vanderbilt University Museum of Art (IIIF) | Vanderbilt University Museum of Art | US | iiif | none | varies | Vanderbilt University Museum of Art — vérifier par notice (droits réservés possibles) ; manifeste unique par notice (pas de Collection IIIF) |
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
@@ -69,8 +70,8 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `dpla`, `europeana`,
   `gallica`, `internet_archive`, `leiden`, `openverse`, `paris_musees`,
-  `wikimedia`, `yale` — la licence est décidée au niveau de l'`Asset` à la
-  frontière du connecteur, pas de la source.
+  `vanderbilt`, `wikimedia`, `yale` — la licence est décidée au niveau de
+  l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musei_vaticani`, `vam`, `vatican`, `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
