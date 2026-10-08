@@ -58,6 +58,7 @@ ACCESS PATH  (verified 2026-10)
    (both ids serve images). The manifest's service @id is authoritative.
 
 5) IIIF Content Search (v1, per-document) — <ark>/iiif/search?q=... -> AnnotationList.
+
 6) OAI-PMH  /archive/oai  EXISTS BUT IS DISABLED for every verb
    ("Configuration OAI introuvable") -> dead end.
 7) Download  /archive/download?file=...  and  /archive/fullSizeImage?file=...
