@@ -6,6 +6,30 @@ import subprocess
 from pathlib import Path
 
 
+def _drop_stale_registration(repo: Path, path: Path) -> None:
+    """Drop the admin entry of THIS worktree only — never a global prune.
+
+    The repo is shared with the host, whose worktrees live at different
+    absolute paths: from here they all look missing, so `git worktree prune`
+    silently unregisters them mid-operation (and the host's prune does the
+    same to ours). Scope the cleanup to the exact path we manage.
+    """
+    admin_root = repo / ".git" / "worktrees"
+    if not admin_root.is_dir():
+        return
+    import shutil
+
+    wanted = str(path / ".git")
+    for admin in admin_root.iterdir():
+        try:
+            marker = (admin / "gitdir").read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if marker == wanted:
+            shutil.rmtree(admin, ignore_errors=True)
+            return
+
+
 def add_worktree(repo: str | Path, path: str | Path, base_branch: str) -> Path:
     repo = Path(repo)
     path = Path(path)
@@ -16,7 +40,7 @@ def add_worktree(repo: str | Path, path: str | Path, base_branch: str) -> Path:
         ["git", "-C", str(repo), "worktree", "remove", "--force", str(path)],
         capture_output=True, text=True,
     )
-    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True, text=True)
+    _drop_stale_registration(repo, path)
     import shutil
 
     shutil.rmtree(path, ignore_errors=True)

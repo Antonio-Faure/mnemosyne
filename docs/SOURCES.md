@@ -42,6 +42,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | nga | National Gallery of Art (Washington, DC) | National Gallery of Art | US | iiif | none | varies | National Gallery of Art — Open Access (images du domaine public libres, y compris usage commercial ; métadonnées CC0) ; vérifier les droits par notice ; manifeste unique par objet (pas de Collection IIIF) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
+| princeton_art_museum | Princeton University Art Museum (IIIF) | Princeton University Art Museum, Princeton, NJ | US | iiif | none | varies | Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | rijksmuseum | Rijksmuseum (IIIF via Europeana) | Rijksmuseum, Amsterdam | NL | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Rijksmuseum SK-A-3262 |
 | smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
 | smk | SMK — Statens Museum for Kunst (National Gallery of Denmark) | SMK — Statens Museum for Kunst | DK | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — SMK — the national gallery of Denmark |
@@ -76,9 +77,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   vues restent « non affichables » par notice et sont ignorées.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `colenda`, `dpla`,
   `europeana`, `gallica`, `harvard_art_museums`, `internet_archive`, `leiden`,
-  `nationalmuseum_se`, `nga`, `openverse`, `paris_musees`, `vanderbilt`,
-  `wikimedia`, `yale`, `yale_lux` — la licence est décidée au niveau de
-  l'`Asset` à la frontière du connecteur, pas de la source.
+  `nationalmuseum_se`, `nga`, `openverse`, `paris_musees`, `princeton_art_museum`,
+  `vanderbilt`, `wikimedia`, `yale`, `yale_lux` — la licence est décidée au
+  niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
   `wellcome`.
