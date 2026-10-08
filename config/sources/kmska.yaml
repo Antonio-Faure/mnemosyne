@@ -1,0 +1,29 @@
+id: kmska
+name: KMSKA — Koninklijk Museum voor Schone Kunsten Antwerpen (Royal Museum of Fine Arts Antwerp)
+institution: Koninklijk Museum voor Schone Kunsten Antwerpen
+country: BE
+protocol: iiif
+base_url: https://iiif.kmska.be
+auth: none
+license: "https://creativecommons.org/publicdomain/mark/1.0/"
+rights: "Public Domain Mark 1.0 — Royal Museum of Fine Arts Antwerp - Flemish Community"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [museum, belgium, antwerp, painting, iiif, keyless]
+seeds:
+  - "Ensor"
+  - "Rubens"
+  - "landscape"
+notes: >-
+  IIIF entry point is a Collection manifest. The host runs Imagehub (Vlaamse
+  Kunstcollectie), a IIIF Presentation API aggregator backed by Cantaloupe for
+  the IIIF Image API. The top-level collection at iiif/2/collection/manifest.json
+  (label "Top Level Collection for Imagehub", viewingHint top) enumerates every
+  Presentation v2 sc:Manifest available on the instance — per-object manifests at
+  iiif/2/<id>/manifest.json (e.g. iiif/2/10741/manifest.json). Onboarded as a
+  collection-based IIIF source via the generic iiif.py connector, which walks the
+  v2 `sc:Collection.manifests` list. Keyless. Rights: Public Domain Mark 1.0
+  (CC0) — Royal Museum of Fine Arts Antwerp - Flemish Community.
+extra:
+  collection: https://iiif.kmska.be/iiif/2/collection/manifest.json
+  collection_id: "top"
