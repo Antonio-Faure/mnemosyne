@@ -1,0 +1,38 @@
+id: hammer
+name: Hammer Museum — Online Collections (IIIF)
+institution: Hammer Museum, University of California, Los Angeles (UCLA)
+country: US
+protocol: iiif
+base_url: https://collections.hammer.ucla.edu
+auth: none
+license: varies
+rights: >-
+  Hammer Museum (UCLA) — droits par notice : le manifeste échantillonné porte
+  CC0 1.0 / domaine public, mais d'autres notices sont « In Copyright »
+  (http://rightsstatements.org/vocab/InC/1.0/) ; la licence est fixée au niveau
+  de l'Asset par le connecteur générique IIIF.
+rate_limit_per_s: 1.0
+priority: 40
+tags: [museum, university-museum, united-states, iiif, keyless, paintings, photographs]
+seeds:
+  - "Corot"
+  - "Cassatt"
+  - "painting"
+  - "photograph"
+notes: >-
+  IIIF Presentation API v3 : un manifeste par objet, servi par la plateforme
+  « Hammer Online Collections » (Cogapp) à
+  /api/iiif/presentation/v3/<numéro d'inventaire>.json (échantillon AH.90.17,
+  Corot). Le host n'expose AUCUNE Collection IIIF agrégée : l'index CDX des URL
+  archivées ne liste que des manifestes par objet, et
+  /api/iiif/presentation/v3/collection.json renvoie 404. La source est donc
+  onboardée comme manifeste unique, lu par le connecteur générique
+  `src/mnemosyne/sources/iiif.py` (aucun code spécifique à l'institution). Le
+  manifeste v3 expose la toile via un service IIIF Image API v3 sur
+  hammer-online-collection-images.cogapp.cloud/iiif/3/<id>.ptif ; la métadonnée
+  « Artist » alimente `creator` et « Date » alimente `year`. Keyless. Le host est
+  protégé par un WAF : les clients non-navigateur peuvent recevoir un 429
+  (Too Many Requests).
+extra:
+  manifest: "https://collections.hammer.ucla.edu/api/iiif/presentation/v3/AH.90.17.json"
+  collection_id: "AH.90.17"
