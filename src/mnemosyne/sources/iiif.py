@@ -189,6 +189,7 @@ class IIIFConnector(Connector):
 
         date_text = (
             _metadata(manifest, "date", "date of creation", "created", "période", "datation")
+            or _metadata(manifest, "publication date")
             or _metadata(manifest, "date issued")
         )
         identifier = manifest.get("id") or manifest.get("@id") or url

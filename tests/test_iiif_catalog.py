@@ -41,6 +41,7 @@ IIIF_SOURCES = {
         "csg-0657/manifest.json"
     ),
     "vam": "https://iiif.vam.ac.uk/collections/O117445/manifest.json",
+    "ndl": "https://dl.ndl.go.jp/api/iiif/1169293/manifest.json",
 }
 
 
