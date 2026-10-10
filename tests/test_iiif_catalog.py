@@ -5,8 +5,9 @@ descriptor points the generic `src/mnemosyne/sources/iiif.py` connector at its
 manifest via `extra.manifest` and records the provider's own stable collection /
 object identifier in `extra.collection_id`.
 
-CUDL is onboarded separately as a *collection-based* IIIF source
-(`extra.collection`) and is covered by `tests/test_cudl.py`.
+Collection-based IIIF hosts (`extra.collection`) are onboarded separately and
+covered by their own tests: CUDL by `tests/test_cudl.py` and e-codices by
+`tests/test_ecodices.py`.
 """
 
 from __future__ import annotations
@@ -35,10 +36,6 @@ IIIF_SOURCES = {
     "bsb": (
         "https://api.digitale-sammlungen.de/iiif/presentation/v2/"
         "bsb00083127/manifest"
-    ),
-    "ecodices": (
-        "https://www.e-codices.unifr.ch/metadata/iiif/"
-        "csg-0657/manifest.json"
     ),
     "vam": "https://iiif.vam.ac.uk/collections/O117445/manifest.json",
 }
