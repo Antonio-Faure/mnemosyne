@@ -1,0 +1,34 @@
+id: wellesley
+name: Wellesley College Digital Repository (IIIF)
+institution: Wellesley College Library
+country: US
+protocol: iiif
+base_url: https://repository.wellesley.edu
+auth: none
+license: varies
+rights: "Wellesley College — vérifier par notice (droits variables, rightsstatements.org possible)"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [university-library, united-states, manuscripts, iiif, keyless]
+seeds:
+  - "manuscript"
+  - "photograph"
+  - "map"
+  - "letter"
+notes: >-
+  IIIF Presentation manifests are served per node by the Wellesley College
+  Digital Repository (an Islandora/Drupal stack) at
+  https://repository.wellesley.edu/node/<nid>/manifest. No aggregate IIIF
+  Collection manifest is reachable (probes for /iiif/collection and the root
+  return the same non-manifest response), so a single-manifest entry point is
+  used with the generic src/mnemosyne/sources/iiif.py connector. Keyless;
+  metadata carries Title/Date and the first canvas image is served via the IIIF
+  Image API. Rights vary per notice.
+  ACCESS CAVEAT: the whole host currently sits behind an origin-side Cloudflare
+  Turnstile challenge — every content path (including the manifest) answers
+  HTTP 200 with the challenge HTML to non-JavaScript clients, so the generic
+  connector cannot fetch at runtime. The entry point is recorded so the source
+  can be harvested as soon as the block is lifted (resolve via browser/HITL).
+extra:
+  manifest: "https://repository.wellesley.edu/node/33362/manifest"
+  collection_id: "33362"

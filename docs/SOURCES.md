@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **40**
-- Sources actives : **29**
+- Sources déclarées : **41**
+- Sources actives : **30**
 - Sources désactivées : **11**
-## Sources actives (29)
+## Sources actives (30)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -48,6 +48,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
 | smk | SMK — Statens Museum for Kunst (National Gallery of Denmark) | SMK — Statens Museum for Kunst | DK | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — SMK — the national gallery of Denmark |
 | vanderbilt | Vanderbilt University Museum of Art (IIIF) | Vanderbilt University Museum of Art | US | iiif | none | varies | Vanderbilt University Museum of Art — vérifier par notice (droits réservés possibles) ; manifeste unique par notice (pas de Collection IIIF) |
+| wellesley | Wellesley College Digital Repository (IIIF) | Wellesley College Library | US | iiif | none | varies | Wellesley College — vérifier par notice (droits variables, rightsstatements.org possible) ; manifeste unique par notice (pas de Collection IIIF) ; hôte derrière un challenge Cloudflare Turnstile (accès programmatique à résoudre via navigateur/HITL) |
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
@@ -80,7 +81,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   `europeana`, `gallica`, `hammer`, `harvard_art_museums`, `internet_archive`,
   `leiden`, `nationalmuseum_se`, `nga`, `openverse`, `paris_musees`,
   `princeton_art_museum`,
-  `vanderbilt`, `wikimedia`, `yale`, `yale_lux` — la licence est décidée au
+  `vanderbilt`, `wellesley`, `wikimedia`, `yale`, `yale_lux` — la licence est décidée au
   niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
