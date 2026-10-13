@@ -11,12 +11,17 @@ rate_limit_per_s: 1.0
 priority: 30
 tags: [museum, united-states, painting, iiif, keyless]
 notes: >-
-  IIIF Presentation manifest for a single artwork (The Bedroom, Van Gogh) served
-  by the public AIC API (artworks/<id>/manifest.json). Keyless. Onboarded as a
-  single-manifest IIIF source; the generic src/mnemosyne/sources/iiif.py
-  connector normalizes the first canvas image via the IIIF Image API.
-  Single-object source: search `seeds` are meaningless here — the connector reads
-  the one manifest declared in `extra.manifest`.
+  Keyless. Per-object IIIF Presentation v2 manifests served by the public AIC API
+  at api/v1/artworks/<id>/manifest.json (images via the IIIF Image API at
+  www.artic.edu/iiif/2/<uuid>). The host also exposes a keyless REST search
+  endpoint (api/v1/artworks/search?q=…) that returns artwork ids, but no
+  aggregate IIIF Collection manifest exists (probes: artworks/collection/
+  manifest.json and artworks/manifest.json return 400, api/v1/collection/
+  manifest.json returns 404). The generic src/mnemosyne/sources/iiif.py
+  connector consumes a manifest, not a REST search, so this is onboarded as a
+  single-manifest IIIF source: it normalizes the first canvas image of the
+  manifest declared in `extra.manifest`. Sample object: The Bedroom, Vincent van
+  Gogh (1888). Single-object source: search `seeds` are meaningless here.
 extra:
   manifest: https://api.artic.edu/api/v1/artworks/28560/manifest.json
   collection_id: "28560"
