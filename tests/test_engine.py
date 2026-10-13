@@ -1,4 +1,5 @@
 import pytest
+import yaml
 
 from mnemosyne.connectors.base import Connector
 from mnemosyne.engine import Engine
@@ -29,3 +30,39 @@ async def test_engine_search_uses_connectors(config, monkeypatch):
 
     assert len(assets) == 2
     assert all(a.source_id == "gallica" for a in assets)
+
+
+@pytest.mark.asyncio
+async def test_harvest_refuses_disabled_source(config, sources_dir, monkeypatch):
+    """A disabled source must never be harvested, even when named explicitly."""
+    (sources_dir / "off.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "off",
+                "name": "Disabled source",
+                "protocol": "iiif",
+                "base_url": "https://example.invalid",
+                "auth": "none",
+                "enabled": False,
+                "extra": {"manifest": "https://example.invalid/m.json"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    engine = Engine(config)
+    engine.catalog.sync()
+
+    calls: list[str] = []
+
+    def _build(descriptor, http):
+        calls.append(descriptor.id)
+        return FakeConnector(descriptor, http)
+
+    monkeypatch.setattr("mnemosyne.engine.build_connector", _build)
+    try:
+        saved = await engine.harvest("off", "usine")
+    finally:
+        await engine.aclose()
+
+    assert saved == 0
+    assert calls == []

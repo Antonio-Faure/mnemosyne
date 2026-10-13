@@ -556,6 +556,13 @@ def _cmd_harvest(args: argparse.Namespace) -> int:
         engine = Engine(cfg)
         try:
             engine.catalog.sync()
+            descriptor = engine.catalog.get(args.source)
+            if descriptor is None:
+                print(f"unknown source: {args.source}")
+                return 1
+            if not descriptor.enabled:
+                print(f"source {args.source} is disabled (enabled: false); refusing to harvest")
+                return 1
             saved = await engine.harvest(args.source, args.query, limit=args.limit)
         finally:
             await engine.aclose()

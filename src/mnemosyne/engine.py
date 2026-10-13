@@ -97,6 +97,9 @@ class Engine:
         descriptor = self.catalog.get(source_id)
         if descriptor is None:
             return 0
+        if not descriptor.enabled:
+            log.info("source %s is disabled; refusing to harvest", source_id)
+            return 0
         assets = await self._search_one(descriptor, query, limit, dedup=True)
         saved = self.db.save_assets(assets)
         if saved:
