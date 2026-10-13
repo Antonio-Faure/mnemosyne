@@ -24,6 +24,7 @@ explicit free signal.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -93,6 +94,11 @@ _RESTRICTIVE_MARKERS = (
 #: ``DIFFU`` values meaning "not diffusable" (Joconde).
 _NOT_DIFFUSABLE = ("non", "no", "false", "0")
 
+#: Negations that make a licence restrictive even though its name also carries a
+#: free-looking marker: ``CC BY-NC``/``BY-ND`` contain ``BY`` but forbid
+#: commercial use / derivatives, so they must win over ``_FREE_MARKERS``.
+_NON_FREE_RE = re.compile(r"\b(?:nc|nd)\b|\bnon[- ]?commercial\b", re.IGNORECASE)
+
 
 def _enc(path: str) -> str:
     """URL-quote an ``IMG`` path (``safe=""``: the whole path is the id)."""
@@ -148,13 +154,17 @@ def is_restrictive(src: dict[str, Any]) -> bool:
     """Whether the notice image must **not** be republished.
 
     Conservative by design: returns ``True`` unless an explicit free signal is
-    present. A ``DIFFU == "non"`` (Joconde) is an immediate restrictive flag;
-    a free marker ("Domaine public", "Licence Ouverte"…) always wins.
+    present. A ``DIFFU == "non"`` (Joconde) is an immediate restrictive flag.
+    Non-commercial / no-derivatives markers (``CC BY-NC``, ``BY-ND``, "non
+    commercial") are checked *before* the free markers, since ``BY`` alone would
+    otherwise classify them as reusable.
     """
     diffu = src.get("DIFFU")
     if isinstance(diffu, str) and diffu.strip().lower() in _NOT_DIFFUSABLE:
         return True
     text = _rights_text(src).lower()
+    if _NON_FREE_RE.search(text):
+        return True
     if any(marker in text for marker in _FREE_MARKERS):
         return False
     if any(marker in text for marker in _RESTRICTIVE_MARKERS):

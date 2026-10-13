@@ -73,9 +73,21 @@ def test_descriptor_uses_generic_iiif_connector(source_id: str) -> None:
 
 def test_restricted_licenses_are_not_enabled():
     """Non-commercial / restrictive sources stay off until the policy allows them."""
-    for source_id in ("cudl", "ecodices", "wellcome", "vatican", "vam"):
+    for source_id in (
+        "belvedere",
+        "cudl",
+        "ecodices",
+        "irht",
+        "mai_saint_etienne",
+        "musee_orsay",
+        "musei_vaticani",
+        "vam",
+        "vatican",
+        "wellcome",
+    ):
         raw = yaml.safe_load((SOURCES_DIR / f"{source_id}.yaml").read_text(encoding="utf-8"))
         assert raw.get("enabled") is False, f"{source_id} must be disabled"
-        # an entry point is still recorded, so enabling it is a one-line change
-        extra = raw.get("extra", {})
-        assert extra.get("manifest") or extra.get("collection")
+        if raw.get("protocol") == "iiif":
+            # an entry point is still recorded, so enabling it is a one-line change
+            extra = raw.get("extra", {})
+            assert extra.get("manifest") or extra.get("collection")

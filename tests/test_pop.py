@@ -159,6 +159,11 @@ def test_pop_uses_registered_connector():
         ({"DIFF": "communication libre, reproduction soumise à autorisation"}, True),
         ({"DIFFU": "non"}, True),
         ({"DIFFU": "oui", "COPY": "© RMN-Grand Palais"}, True),
+        ({"DIFF": "Licence CC BY-NC 4.0"}, True),
+        ({"DIFF": "CC BY-ND 4.0"}, True),
+        ({"DIFF": "Creative Commons BY-NC-SA"}, True),
+        ({"DIFF": "Reproduction à des fins non commerciales autorisée"}, True),
+        ({"DIFF": "CC BY 4.0"}, False),
         ({}, True),  # conservative default: no free signal
     ],
 )
