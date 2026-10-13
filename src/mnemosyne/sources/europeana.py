@@ -10,7 +10,6 @@ into the canonical :class:`Asset` at this boundary.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from mnemosyne.connectors.base import Connector
@@ -44,7 +43,7 @@ def _as_list(value: Any) -> list[str]:
 
 class EuropeanaConnector(Connector):
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
-        key = self._api_key()
+        key = self.api_key("EUROPEANA_API_KEY")
         if not key:
             log.warning(
                 "europeana: no API key (%s unset); skipping search",
@@ -70,14 +69,6 @@ class EuropeanaConnector(Connector):
             if len(assets) >= limit:
                 break
         return assets
-
-    def _api_key(self) -> str | None:
-        env_name = self.descriptor.key_env or "EUROPEANA_API_KEY"
-        key = os.environ.get(env_name)
-        if key and key.strip():
-            return key.strip()
-        extra = self.descriptor.extra.get("api_key")
-        return str(extra).strip() if extra else None
 
     def _item_to_asset(self, item: dict[str, Any]) -> Asset | None:
         europeana_id = _first(item.get("id")) or ""

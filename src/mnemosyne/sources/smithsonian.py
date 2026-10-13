@@ -13,7 +13,6 @@ the canonical :class:`Asset` at this boundary.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from mnemosyne.connectors.base import Connector
@@ -46,7 +45,7 @@ def _first(values: list[str]) -> str | None:
 
 class SmithsonianConnector(Connector):
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
-        key = self._api_key()
+        key = self.api_key("SMITHSONIAN_API_KEY")
         if not key:
             log.warning(
                 "smithsonian: no API key (%s unset); skipping search",
@@ -75,14 +74,6 @@ class SmithsonianConnector(Connector):
             if len(assets) >= limit:
                 break
         return assets
-
-    def _api_key(self) -> str | None:
-        env_name = self.descriptor.key_env or "SMITHSONIAN_API_KEY"
-        key = os.environ.get(env_name)
-        if key and key.strip():
-            return key.strip()
-        extra = self.descriptor.extra.get("api_key")
-        return str(extra).strip() if extra else None
 
     def _row_to_asset(self, row: dict[str, Any]) -> Asset | None:
         content = row.get("content") or {}

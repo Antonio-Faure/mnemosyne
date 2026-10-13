@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -23,6 +24,15 @@ class Connector(ABC):
     @property
     def id(self) -> str:
         return self.descriptor.id
+
+    def api_key(self, default_env: str) -> str | None:
+        """The provider key: environment first, then the descriptor's `extra`."""
+        env_name = self.descriptor.key_env or default_env
+        key = os.environ.get(env_name)
+        if key and key.strip():
+            return key.strip()
+        extra = self.descriptor.extra.get("api_key")
+        return str(extra).strip() if extra else None
 
     @abstractmethod
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:

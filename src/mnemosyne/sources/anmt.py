@@ -32,6 +32,8 @@ from typing import Any
 from mnemosyne.connectors.base import Connector
 from mnemosyne.logger import get_logger
 from mnemosyne.models import Asset
+from mnemosyne.sources.iiif_common import label as _label
+from mnemosyne.sources.iiif_common import metadata as _metadata
 from mnemosyne.util import parse_year
 
 log = get_logger("sources.anmt")
@@ -46,41 +48,6 @@ _WS_RE = re.compile(r"\s+")
 
 def _strip_html(html: str) -> str:
     return _WS_RE.sub(" ", _TAG_RE.sub(" ", html or "")).strip()
-
-
-def _label(value: Any) -> str:
-    """IIIF labels: str | lang->str | lang->[str] | {"@value": ...} | list."""
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, list):
-        return _label(value[0]) if value else ""
-    if isinstance(value, dict):
-        if "@value" in value:
-            return _label(value["@value"])
-        for key in ("fr", "en", "none"):
-            if key in value:
-                text = _label(value[key])
-                if text:
-                    return text
-        for v in value.values():
-            text = _label(v)
-            if text:
-                return text
-    return ""
-
-
-def _metadata(manifest: dict, *names: str) -> str | None:
-    wanted = {n.lower() for n in names}
-    for entry in manifest.get("metadata", []) or []:
-        if not isinstance(entry, dict):
-            continue
-        if _label(entry.get("label")).lower() in wanted:
-            text = _label(entry.get("value"))
-            if text:
-                return text
-    return None
 
 
 def _canvases(manifest: dict) -> list[dict]:

@@ -20,6 +20,8 @@ from typing import Any
 from mnemosyne.connectors.base import Connector
 from mnemosyne.logger import get_logger
 from mnemosyne.models import Asset
+from mnemosyne.sources.iiif_common import label as _label
+from mnemosyne.sources.iiif_common import metadata as _metadata
 from mnemosyne.util import parse_year
 
 log = get_logger("sources.iiif")
@@ -29,39 +31,6 @@ _MAX_MANIFESTS = 40
 _MAX_NESTED_COLLECTIONS = 5
 #: Safety net: never follow more than this many `next` pages per collection.
 _MAX_COLLECTION_PAGES = 10
-
-
-def _label(value: Any) -> str:
-    """IIIF labels are str | lang->str | lang->[str] | list (v2/v3)."""
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, list):
-        return _label(value[0]) if value else ""
-    if isinstance(value, dict):
-        # v2 label/value object: {"@language": "en", "@value": "…"}
-        if "@value" in value:
-            return _label(value["@value"])
-        for key in ("fr", "en", "none"):
-            if key in value:
-                text = _label(value[key])
-                if text:
-                    return text
-        for v in value.values():
-            text = _label(v)
-            if text:
-                return text
-    return ""
-
-
-def _metadata(manifest: dict, *names: str) -> str | None:
-    wanted = {n.lower() for n in names}
-    for entry in manifest.get("metadata", []) or []:
-        label = _label(entry.get("label")).lower()
-        if label in wanted:
-            return _label(entry.get("value")) or None
-    return None
 
 
 def _image_service(manifest: dict) -> tuple[str | None, str | None, str]:
