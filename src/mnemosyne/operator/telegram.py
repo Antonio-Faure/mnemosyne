@@ -268,28 +268,33 @@ async def poll_once(config: Config, db: Database, vault_get) -> int:
             continue
 
         for update in updates:
-            db.set_kv(offset_key, int(update["update_id"]) + 1)
-            sender_chat = str(
-                ((update.get("message") or {}).get("chat") or {}).get("id", "")
-                or (
-                    ((update.get("callback_query") or {}).get("message") or {}).get("chat")
-                    or {}
-                ).get("id", "")
-            )
-            if sender_chat != chat_id:
-                log.warning("telegram: update ignoré (chat non autorisé %s)", sender_chat)
-                continue
-            order = handle_update(db, agent, update)
-            if order is None:
-                continue
-            handled += 1
-            await _render(token, chat_id, order)
-            if order.get("prompt_id") and order.get("ask"):
-                db.set_ask_prompt(order["ask"]["id"], order["prompt_id"])
-            log.info(
-                "operator (%s): %s (tâche #%s)",
-                agent,
-                order["kind"],
-                order["ask"]["task_id"] if order.get("ask") else "?",
-            )
+            try:
+                sender_chat = str(
+                    ((update.get("message") or {}).get("chat") or {}).get("id", "")
+                    or (
+                        ((update.get("callback_query") or {}).get("message") or {}).get("chat")
+                        or {}
+                    ).get("id", "")
+                )
+                if sender_chat != chat_id:
+                    log.warning("telegram: update ignoré (chat non autorisé %s)", sender_chat)
+                else:
+                    order = handle_update(db, agent, update)
+                    if order is not None:
+                        handled += 1
+                        await _render(token, chat_id, order)
+                        if order.get("prompt_id") and order.get("ask"):
+                            db.set_ask_prompt(order["ask"]["id"], order["prompt_id"])
+                        log.info(
+                            "operator (%s): %s (tâche #%s)",
+                            agent,
+                            order["kind"],
+                            order["ask"]["task_id"] if order.get("ask") else "?",
+                        )
+            except Exception as exc:  # noqa: BLE001 - one poison update must not block the channel
+                log.error("telegram update %s failed: %s", update.get("update_id"), exc)
+            finally:
+                # advance only AFTER the update was handled: a crash mid-batch
+                # must not consume updates that were never routed
+                db.set_kv(offset_key, int(update["update_id"]) + 1)
     return handled
