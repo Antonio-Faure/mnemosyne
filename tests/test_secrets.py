@@ -34,6 +34,24 @@ def test_exports_lowercased_vault_key(tmp_path, monkeypatch):
         os.environ.pop("EUROPEANA_API_KEY", None)
 
 
+def test_two_vault_instances_merge_their_writes(tmp_path):
+    """A `vault set` and the agent's `remember` must not overwrite each other."""
+    from cryptography.fernet import Fernet
+
+    key = Fernet.generate_key()
+    path = tmp_path / "vault.enc"
+    first = Vault(path, key=key)
+    first.flush()
+    second = Vault(path, key=key)  # loaded before the first instance writes
+
+    first.set("github_token", "a")
+    second.set("europeana_api_key", "b")
+
+    fresh = Vault(path, key=key)
+    assert fresh.get("github_token") == "a"
+    assert fresh.get("europeana_api_key") == "b"
+
+
 def test_operator_env_wins_over_vault(tmp_path, monkeypatch):
     monkeypatch.delenv("MNEMOSYNE_VAULT_KEY", raising=False)
     monkeypatch.setenv("EUROPEANA_API_KEY", "from-env")

@@ -7,6 +7,7 @@ blob written atomically. The master key comes from `MNEMOSYNE_VAULT_KEY` or a lo
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -63,21 +64,40 @@ class Vault:
     def _flush(self) -> None:
         atomic_write_text(self.path, self._fernet.encrypt(json.dumps(self._data).encode()).decode())
 
+    def _mutate(self, change) -> None:
+        """Read-modify-write under a cross-process lock (lost-update safe).
+
+        Two writers (the browser agent's `remember` and a `vault set` in
+        another process) must merge, not overwrite: re-read the blob, apply the
+        change, write atomically — all while holding an exclusive flock on a
+        sidecar lock file.
+        """
+        lock_path = self.path.with_name(self.path.name + ".lock")
+        ensure_dir(lock_path.parent)
+        with open(lock_path, "w", encoding="utf-8") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            try:
+                self._data = self._load()
+                change()
+                self._flush()
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+
     def flush(self) -> None:
         """Write the (possibly empty) vault to disk."""
         self._flush()
 
     def set(self, key: str, value: Any) -> None:
-        self._data[key] = value
-        self._flush()
+        self._mutate(lambda: self._data.__setitem__(key, value))
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._data.get(key, default)
 
     def delete(self, key: str) -> None:
-        if key in self._data:
-            del self._data[key]
-            self._flush()
+        def _drop() -> None:
+            self._data.pop(key, None)
+
+        self._mutate(_drop)
 
     def keys(self) -> list[str]:
         return sorted(self._data)
