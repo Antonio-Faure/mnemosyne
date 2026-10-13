@@ -28,11 +28,11 @@ def cfg(tmp_path, monkeypatch):
     return config
 
 
-def _fake_agent(task: dict, agent: str):
+def _fake_agent(task: dict, agent: str, text: str | None = None):
     from stirrup.core.cache import CacheState, compute_task_hash
     from stirrup.core.models import SystemMessage, UserMessage
 
-    text = session_task_text(agent, task)
+    text = text or session_task_text(agent, task)
     task_hash = compute_task_hash(text)
     state = CacheState(
         msgs=[SystemMessage(content="sys"), UserMessage(content=text)],
@@ -75,6 +75,43 @@ def test_inject_without_session_rides_along_on_the_first_activation(cfg):
     task = {"id": 4, "objective": "l'objectif"}
     run_text = inject_reply(cfg, "browser", task, "la réponse")
     assert run_text == f"{session_task_text('browser', task)}\n\nla réponse"
+
+
+def test_directives_are_part_of_the_cache_key(cfg, tmp_path, monkeypatch):
+    """The key is the EXACT text run(): directives included, replies excluded.
+
+    Regression: the key used to be hashed from the task text alone while stirrup
+    persisted under the text actually run — with directives set, every reply
+    opened a fresh session and the cache could never be dropped.
+    """
+    from stirrup.core.cache import CacheManager, compute_task_hash
+
+    from mnemosyne.agents.session_cache import session_base_text
+
+    monkeypatch.setattr(
+        type(cfg), "control_path", property(lambda self: tmp_path / "control")
+    )
+    control = cfg.control_path
+    control.mkdir(parents=True, exist_ok=True)
+    (control / "directives.md").write_text("# Directives\nPriorise Lacq.\n", encoding="utf-8")
+
+    task = {"id": 6, "objective": "l'objectif"}
+    base = session_base_text(cfg, "browser", task)
+    assert "Priorise Lacq." in base
+
+    fake, _ = _fake_agent(task, "browser", text=base)
+    persist_session(cfg, fake, "browser")
+
+    run_text = inject_reply(cfg, "browser", task, "la réponse")
+    assert run_text == base, "les directives font partie du texte figé"
+
+    manager = CacheManager(cache_base_dir=cache_base_dir(cfg), clear_on_success=False)
+    loaded = manager.load_state(compute_task_hash(base))
+    assert loaded is not None
+    assert loaded.msgs[-1].content == "la réponse"
+
+    drop_session_cache(cfg, task)
+    assert manager.load_state(compute_task_hash(base)) is None
 
 
 def test_the_sessions_die_with_the_task(cfg):

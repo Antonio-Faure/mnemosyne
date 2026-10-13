@@ -45,7 +45,34 @@ def session_task_text(agent: str, task: dict) -> str:
     return f"[tâche #{task['id']} — agent {agent}]\n\n{task['objective']}"
 
 
-def inject_reply(config: Config, agent: str, task: dict, reply_text: str | None = None) -> str:
+def session_base_text(config: Config, agent: str, task: dict) -> str:
+    """The EXACT text passed to `run()`: frozen task text + standing directives.
+
+    stirrup hashes the actual messages, so this is the real cache key: it must
+    be identical at every activation. Replies are injected into the cached
+    history, never into this text. (The operator's directives are part of the
+    key: editing them deliberately opens a fresh session.)
+    """
+    text = session_task_text(agent, task)
+    try:
+        from mnemosyne.journal import Control
+
+        directives = (Control(config.control_path).directives() or "").strip()
+    except Exception:  # noqa: BLE001 - directives must never break a turn
+        directives = ""
+    if not directives:
+        return text
+    return f"{text}\n\n---\nCONSIGNES PERMANENTES DE L'OPÉRATEUR :\n{directives}"
+
+
+def inject_reply(
+    config: Config,
+    agent: str,
+    task: dict,
+    reply_text: str | None = None,
+    *,
+    base_text: str | None = None,
+) -> str:
     """Prepare the cached session for this activation; return the text to run.
 
     * a reply is appended to the cached history (the text itself stays FROZEN:
@@ -59,7 +86,7 @@ def inject_reply(config: Config, agent: str, task: dict, reply_text: str | None 
     from stirrup.core.cache import CacheManager, compute_task_hash
     from stirrup.core.models import UserMessage
 
-    text = session_task_text(agent, task)
+    text = base_text if base_text is not None else session_base_text(config, agent, task)
     task_hash = compute_task_hash(text)
     manager = CacheManager(cache_base_dir=cache_base_dir(config), clear_on_success=False)
     state = manager.load_state(task_hash)
@@ -116,5 +143,5 @@ def drop_session_cache(config: Config, task: dict) -> None:
 
     base = cache_base_dir(config)
     for agent in ("coder", "browser"):
-        task_hash = compute_task_hash(session_task_text(agent, task))
+        task_hash = compute_task_hash(session_base_text(config, agent, task))
         shutil.rmtree(base / task_hash, ignore_errors=True)

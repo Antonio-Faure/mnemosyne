@@ -93,10 +93,13 @@ async def _run_coder(
     max_turns: int | None = None,
 ):
     from mnemosyne.dev.agent import run_dev_agent
-    from mnemosyne.dev.worktree import add_worktree, remove_worktree
+    from mnemosyne.dev.worktree import ensure_worktree, remove_worktree, worktree_is_reusable
 
     repo = Path(config.dev.repo_path or config.root)
-    worktree = add_worktree(repo, Path(config.data_path) / "agent-worktree", config.dev.base_branch)
+    worktree_path = Path(config.data_path) / "agent-worktree"
+    resumed = worktree_is_reusable(worktree_path, task_id)
+    worktree = ensure_worktree(repo, worktree_path, config.dev.base_branch, task_id)
+    failed = False
     try:
         return await run_dev_agent(
             config,
@@ -107,9 +110,16 @@ async def _run_coder(
             mailbox=mailbox,
             task_id=task_id,
             max_turns=max_turns,
+            allow_dirty=resumed,
         )
+    except BaseException:
+        # keep the worktree (with its uncommitted work) for the next activation:
+        # the session cache will resume as if nothing happened
+        failed = True
+        raise
     finally:
-        remove_worktree(repo, worktree)
+        if not failed:
+            remove_worktree(repo, worktree)
 
 
 async def _run_browser(
@@ -148,30 +158,6 @@ BROWSER_LEASE_S = 18000
 AGENCY_LEASE_S = 8 * 3600
 
 
-def _task_with_directives(config: Config, task: str) -> str:
-    """Append the operator's standing directives (control/directives.md)."""
-    try:
-        from mnemosyne.journal import Control
-
-        directives = (Control(config.control_path).directives() or "").strip()
-    except Exception:  # noqa: BLE001 - directives must never break a turn
-        directives = ""
-    if not directives:
-        return task
-    return f"{task}\n\n---\nCONSIGNES PERMANENTES DE L'OPÉRATEUR :\n{directives}"
-
-
-#: The note is the mailbox record of an activation: an agent's factual report
-#: carries the delivery link, the verified duration, what is left.
-def outcome_status_note(finish: str, error: str | None) -> tuple[str, str]:
-    """Status and stored note of an activation, with the report kept readable."""
-    if error is not None:
-        return "failed", error[:NOTE_MAX_CHARS]
-    if finish:
-        return "handled", finish[:NOTE_MAX_CHARS]
-    return "review", "agent stopped without calling finish"
-
-
 def _branch_has_commits(config: Config, branch: str) -> bool:
     """True if the branch has commits not in the base (origin when available).
 
@@ -188,6 +174,7 @@ def _branch_has_commits(config: Config, branch: str) -> bool:
             cwd=repo,
             capture_output=True,
             text=True,
+            timeout=60,
         )
         if res.returncode == 0 and res.stdout.strip().isdigit():
             return int(res.stdout.strip()) > 0
@@ -300,12 +287,12 @@ async def _activate_session(
             )
             for m in messages
         )
-        task_text = _task_with_directives(config, inject_reply(config, agent, task, reply_text))
+        task_text = inject_reply(config, agent, task, reply_text)
         # consumed: they now live in the session history (no duplicate on resume)
         for message in messages:
             mailbox.mark(message["id"], "handled")
     else:
-        task_text = _task_with_directives(config, inject_reply(config, agent, task))
+        task_text = inject_reply(config, agent, task)
     db.touch_task_activation(task_id)
 
     outcome = None
@@ -425,7 +412,6 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
             recipients = [r for r in mailbox.recipients(task["id"]) if r in AGENTS]
             agent = recipients[0] if recipients else agent
             messages = mailbox.pending_for(task["id"], agent)
-            db.set_task_status(task["id"], "running")
         else:
             recipients = [r for r in mailbox.recipients(task["id"]) if r in AGENTS]
             if not recipients:
@@ -441,6 +427,10 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
         held_browser = _acquire_browser_lease(db, agent)
         if held_browser is None:
             return None
+        if task["status"] == "pending":
+            # only now is the task really being worked on: a refused lease must
+            # not leave a lying 'running' status behind
+            db.set_task_status(task["id"], "running")
         note = (
             f"agency (fond) → agent {agent} : tâche #{task['id']} : "
             f"{len(messages)} message(s)"
