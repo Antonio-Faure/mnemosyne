@@ -79,9 +79,13 @@ class HttpClient:
                 await self._backoff(attempt)
                 continue
 
+            # 403 is not retried (an explicit denial is not transient), but the
+            # governor must still learn about the block: it is reported *before*
+            # the retry branch, otherwise the `(403, 429)` test below is dead.
+            if resp.status_code in (403, 429) and self.governor is not None:
+                await self.governor.report_block(domain)
+
             if resp.status_code in RETRY_STATUS:
-                if self.governor is not None and resp.status_code in (403, 429):
-                    await self.governor.report_block(domain)
                 retry_after = _retry_after(resp)
                 log.debug("HTTP %s on %s (attempt %d)", resp.status_code, domain, attempt + 1)
                 await self._backoff(attempt, retry_after)
