@@ -34,8 +34,9 @@ def _age_minutes(stamp: str | None) -> float | None:
         return None
 
 
-def _stall_marker(db: Database) -> dict | None:
-    """Last stall reported by an agent, if recent enough to matter."""
+def _stall_markers(db: Database) -> list[dict]:
+    """Recent stalls reported by the agents (newest first, one per agent)."""
+    markers: list[dict] = []
     for agent in ("browser", "coder"):
         payload = db.get_kv(f"stall:{agent}")
         if not isinstance(payload, dict):
@@ -43,8 +44,8 @@ def _stall_marker(db: Database) -> dict | None:
         age = _age_minutes(payload.get("at"))
         if age is None or age < STALL_MARK_MIN:
             continue
-        return {"agent": agent, "minutes": round(age), "reason": payload.get("reason")}
-    return None
+        markers.append({"agent": agent, "minutes": round(age), "reason": payload.get("reason")})
+    return sorted(markers, key=lambda marker: marker["minutes"])
 
 
 def check_invariants(
@@ -57,7 +58,7 @@ def check_invariants(
     db = Database(config.db_file())
     alerts: list[str] = []
     try:
-        stall = _stall_marker(db)
+        stalls = _stall_markers(db)
 
         for ask in db.list_asks(status="pending"):
             age = _age_minutes(ask["created_at"])
@@ -97,16 +98,16 @@ def check_invariants(
             "running": len(running),
             "review": db.count_tasks("review"),
             "lease": db.lease_exists("browser"),
-            "stall": stall["agent"] if stall else "-",
+            "stall": ",".join(marker["agent"] for marker in stalls) if stalls else "-",
         }
     finally:
         db.close()
 
-    if stall:
+    for marker in reversed(stalls):
         alerts.insert(
             0,
-            f"agent {stall['agent']} patine depuis {stall['minutes']} min "
-            f"({stall['reason']}) — rapport attendu",
+            f"agent {marker['agent']} patine depuis {marker['minutes']} min "
+            f"({marker['reason']}) — rapport attendu",
         )
     line = (
         f"{datetime.now(UTC):%H:%M:%S} pending={stats['pending']} running={stats['running']} "

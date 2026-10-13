@@ -66,6 +66,26 @@ def test_progress_clears_the_marker(cfg):
     db.close()
 
 
+def test_both_agents_stalling_are_both_reported(cfg):
+    """A browser marker must not hide a coder marker (and vice versa)."""
+    db = Database(cfg.db_file())
+    db.enqueue_task("browser", "mission")
+    db.set_task_status(1, "running")
+    db.set_kv(
+        "stall:browser",
+        {"at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(), "reason": "clic en boucle"},
+    )
+    db.set_kv(
+        "stall:coder",
+        {"at": (datetime.now(UTC) - timedelta(minutes=3)).isoformat(), "reason": "lint en boucle"},
+    )
+    line, alerts = check_invariants(cfg)
+    stalls = [a for a in alerts if "patine" in a]
+    assert len(stalls) == 2, alerts
+    assert "patine=coder,browser" in line
+    db.close()
+
+
 def test_a_task_nobody_drains_is_an_alert(cfg):
     """A task left PENDING in the queue for hours = the loop is not running."""
     db = Database(cfg.db_file())
