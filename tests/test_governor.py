@@ -34,3 +34,23 @@ def test_block_sets_cooldown(config):
     gov = Governor(ReputationConfig(block_cooldown_s=300), db)
     assert gov.status()["pressure"] == 1.0
     db.close()
+
+
+def test_account_created_at_offset_is_honoured(config):
+    """An ISO string with an offset must be converted, not re-labelled UTC."""
+    from datetime import timedelta, timezone
+
+    db = Database(config.db_file())
+    created = datetime.now(UTC).astimezone(timezone(timedelta(hours=2))).isoformat()
+    gov = Governor(ReputationConfig(account_created_at=created), db)
+    assert gov.age_days() == 0
+    db.close()
+
+
+def test_per_source_rate_limit_sets_the_pacing_floor(config):
+    db = Database(config.db_file())
+    gov = Governor(ReputationConfig(domain_min_interval_s=1.0), db)
+    gov.set_domain_interval("slow.example.org", 5.0)
+    assert gov._wait_for("slow.example.org") == 5.0
+    assert gov._wait_for("other.example.org") == 1.0
+    db.close()

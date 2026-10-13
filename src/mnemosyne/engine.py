@@ -11,7 +11,7 @@ from typing import Any
 from mnemosyne.catalog import Catalog
 from mnemosyne.config import Config
 from mnemosyne.db import Database
-from mnemosyne.http import HttpClient
+from mnemosyne.http import HttpClient, domain_of
 from mnemosyne.logger import get_logger
 from mnemosyne.models import Asset, SourceDescriptor, SourceState
 from mnemosyne.normalize import DedupIndex, normalize
@@ -40,7 +40,6 @@ class Engine:
         query: str,
         source_ids: list[str] | None = None,
         limit: int = 20,
-        dedup: bool = True,
     ) -> list[Asset]:
         descriptors = [
             d
@@ -51,7 +50,7 @@ class Engine:
             return []
 
         results = await asyncio.gather(
-            *(self._search_one(d, query, limit, dedup) for d in descriptors),
+            *(self._search_one(d, query, limit) for d in descriptors),
             return_exceptions=True,
         )
         merged: list[Asset] = []
@@ -63,7 +62,7 @@ class Engine:
         return normalize(merged)
 
     async def _search_one(
-        self, descriptor: SourceDescriptor, query: str, limit: int, dedup: bool
+        self, descriptor: SourceDescriptor, query: str, limit: int
     ) -> list[Asset]:
         connector = build_connector(descriptor, self.http)
         if connector is None:
@@ -76,7 +75,11 @@ class Engine:
         if not self.governor.allowed("harvest"):
             log.info("harvest cap reached for today; skipping %s", descriptor.id)
             return []
-        index = DedupIndex(dedup)
+        rate = descriptor.rate_limit_per_s
+        if rate and rate > 0 and self.governor is not None:
+            # make the descriptor's declared politeness real (seconds per call)
+            self.governor.set_domain_interval(domain_of(descriptor.base_url), 1.0 / float(rate))
+        index = DedupIndex()
         try:
             assets = await connector.search(query, limit=limit)
         except GovernorBlocked as exc:
@@ -100,7 +103,7 @@ class Engine:
         if not descriptor.enabled:
             log.info("source %s is disabled; refusing to harvest", source_id)
             return 0
-        assets = await self._search_one(descriptor, query, limit, dedup=True)
+        assets = await self._search_one(descriptor, query, limit)
         saved = self.db.save_assets(assets)
         if saved:
             self.catalog.set_state(source_id, SourceState.CONNECTED)

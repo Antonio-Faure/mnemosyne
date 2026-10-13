@@ -42,6 +42,7 @@ class Governor:
         self._domain_locks: dict[str, asyncio.Lock] = {}
         self._last_call: dict[str, float] = {}
         self._cooldown_until: dict[str, float] = {}
+        self._domain_intervals: dict[str, float] = {}
         self._pressure = _MIN_PRESSURE
         self._in_flight = 0  # number of parallel requests currently holding an acquire
 
@@ -50,9 +51,14 @@ class Governor:
         if not self.config.account_created_at:
             return None
         try:
-            created = datetime.fromisoformat(self.config.account_created_at).replace(tzinfo=UTC)
+            created = datetime.fromisoformat(self.config.account_created_at)
         except ValueError:
             return None
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        else:
+            # an offset in the string must be honoured, not overwritten
+            created = created.astimezone(UTC)
         return (datetime.now(UTC) - created).days
 
     def phase(self) -> WarmupPhase:
@@ -89,6 +95,19 @@ class Governor:
             lock = self._domain_locks[domain] = asyncio.Lock()
         return lock
 
+    def set_domain_interval(self, domain: str, seconds: float) -> None:
+        """Declare the minimum interval for a domain (`rate_limit_per_s`).
+
+        The descriptor's politeness budget is enforced as a floor on top of the
+        global `domain_min_interval_s`; the adaptive pressure still multiplies it.
+        """
+        if domain and seconds > 0:
+            self._domain_intervals[domain] = float(seconds)
+
+    def _wait_for(self, domain: str) -> float:
+        base = max(self.config.domain_min_interval_s, self._domain_intervals.get(domain, 0.0))
+        return base * self._pressure
+
     async def acquire(self, domain: str) -> None:
         """Block until it is polite to call `domain`, or raise if cooling down."""
         if not domain:
@@ -100,7 +119,7 @@ class Governor:
                 f"{domain} cooling down for {cooldown - now:.0f}s after a block"
             )
         async with self._lock(domain):
-            wait = self.config.domain_min_interval_s * self._pressure
+            wait = self._wait_for(domain)
             last = self._last_call.get(domain, 0.0)
             elapsed = time.monotonic() - last
             if last and elapsed < wait:
