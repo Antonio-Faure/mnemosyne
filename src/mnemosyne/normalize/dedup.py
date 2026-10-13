@@ -9,6 +9,17 @@ from mnemosyne.models import Asset
 
 _WS_RE = re.compile(r"\s+")
 
+#: Titles too generic to identify a work across providers.
+_GENERIC_TITLES = {
+    "sans titre",
+    "sans titre.",
+    "untitled",
+    "untitled.",
+    "no title",
+    "title",
+    "image",
+}
+
 
 def normalize_title(title: str) -> str:
     return _WS_RE.sub(" ", (title or "").strip().lower())
@@ -24,6 +35,35 @@ def normalize(assets: Iterable[Asset]) -> list[Asset]:
         if asset.id in seen:
             continue
         seen.add(asset.id)
+        out.append(asset)
+    return out
+
+
+def _cross_source_key(asset: Asset) -> tuple[str, str] | None:
+    """Identity of a WORK across providers: title + creator, when specific enough.
+
+    A title alone would merge unrelated records ("Sans titre", "Portrait"…), so
+    a short or generic title yields no key and the asset is always kept.
+    """
+    title = normalize_title(asset.title)
+    if len(title) < 8 or title in _GENERIC_TITLES:
+        return None
+    return (title, normalize_title(asset.creator or ""))
+
+
+def dedup_across_sources(assets: Iterable[Asset]) -> list[Asset]:
+    """Collapse the same work served by several aggregators (Europeana/DPLA/…).
+
+    The first occurrence wins (catalog order), so the result is deterministic.
+    """
+    seen: set[tuple[str, str]] = set()
+    out: list[Asset] = []
+    for asset in assets:
+        key = _cross_source_key(asset)
+        if key is not None:
+            if key in seen:
+                continue
+            seen.add(key)
         out.append(asset)
     return out
 

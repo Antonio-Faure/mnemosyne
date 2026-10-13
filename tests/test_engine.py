@@ -66,3 +66,73 @@ async def test_harvest_refuses_disabled_source(config, sources_dir, monkeypatch)
 
     assert saved == 0
     assert calls == []
+
+
+def _add_second_source(sources_dir) -> None:
+    (sources_dir / "second.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "second",
+                "name": "Second provider",
+                "protocol": "rest",
+                "base_url": "https://second.invalid",
+                "auth": "none",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_collapses_the_same_work_across_sources(
+    config, sources_dir, monkeypatch
+):
+    """Europeana/DPLA/Commons serving the same work: one record, first wins."""
+    _add_second_source(sources_dir)
+
+    class OneWork(Connector):
+        async def search(self, query, limit=20, **filters):
+            return [
+                Asset.build(
+                    self.id,
+                    "same",
+                    title="Usine de Lacq en 1950",
+                    creator="Anonyme",
+                    image_url=f"http://x/{self.id}.jpg",
+                )
+            ]
+
+    monkeypatch.setattr("mnemosyne.engine.build_connector", lambda d, http: OneWork(d, http))
+    engine = Engine(config)
+    engine.catalog.sync()
+    try:
+        assets = await engine.search("usine")
+    finally:
+        await engine.aclose()
+
+    assert len(assets) == 1, "le même objet ne doit pas être compté deux fois"
+    assert assets[0].source_id == "gallica"  # premier fournisseur (ordre catalogue)
+
+
+@pytest.mark.asyncio
+async def test_search_keeps_generic_titles_from_different_sources(
+    config, sources_dir, monkeypatch
+):
+    """'Sans titre' cannot identify a work: both records are kept."""
+    _add_second_source(sources_dir)
+
+    class Generic(Connector):
+        async def search(self, query, limit=20, **filters):
+            return [
+                Asset.build(self.id, "same", title="Sans titre", image_url=f"http://x/{self.id}.jpg")
+            ]
+
+    monkeypatch.setattr("mnemosyne.engine.build_connector", lambda d, http: Generic(d, http))
+    engine = Engine(config)
+    engine.catalog.sync()
+    try:
+        assets = await engine.search("usine")
+    finally:
+        await engine.aclose()
+
+    assert len(assets) == 2

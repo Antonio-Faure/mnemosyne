@@ -14,7 +14,7 @@ from mnemosyne.db import Database
 from mnemosyne.http import HttpClient, domain_of
 from mnemosyne.logger import get_logger
 from mnemosyne.models import Asset, SourceDescriptor, SourceState
-from mnemosyne.normalize import DedupIndex, normalize
+from mnemosyne.normalize import DedupIndex, dedup_across_sources, normalize
 from mnemosyne.reputation import Governor, GovernorBlocked
 from mnemosyne.secrets import export_vault_secrets
 from mnemosyne.sources import build_connector
@@ -59,7 +59,9 @@ class Engine:
                 merged.extend(res)
             elif isinstance(res, Exception):
                 log.debug("source search failed: %s", res)
-        return normalize(merged)
+        # a work aggregated by several providers (Europeana/DPLA/Commons…) is
+        # one record: collapse identical title+creator across sources
+        return dedup_across_sources(normalize(merged))
 
     async def _search_one(
         self, descriptor: SourceDescriptor, query: str, limit: int
