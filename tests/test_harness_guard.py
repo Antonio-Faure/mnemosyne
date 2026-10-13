@@ -66,3 +66,14 @@ def test_cdp_can_observe_but_not_click():
     assert ns["cdp"]("Runtime.evaluate", expression="1") == "cdp"
     with pytest.raises(RuntimeError, match=r"cdp\(\) interdit"):
         ns["cdp"]("Input.dispatchMouseEvent", type="mousePressed")
+
+
+def test_clicks_persist_across_harness_processes(tmp_path, monkeypatch):
+    """Each snippet runs in a fresh process: the state file carries the guard."""
+    monkeypatch.setenv("MNEMOSYNE_CLICK_STATE", str(tmp_path / "clicks.json"))
+    first, _ = _env()
+    first["click_at_xy"](100, 200)
+
+    second, _ = _env()  # fresh namespace = fresh harness process
+    with pytest.raises(RuntimeError, match="double clic"):
+        second["click_at_xy"](101, 199)

@@ -102,24 +102,48 @@ _FORBIDDEN_CODE = re.compile(
 #: of duplicating the action.
 _HARNESS_GUARD = '''
 # --- mnemosyne guard: one click path, observations only via js()/cdp() ---
-import re as _mn_re, time as _mn_time
+import json as _mn_json, os as _mn_os, re as _mn_re, time as _mn_time
 
 if all(name in globals() for name in ("click_at_xy", "js", "cdp")):
+    # The harness runs each snippet in a fresh process: keep the recent clicks
+    # in memory AND in a state file, so a re-click at the same spot is refused
+    # across snippets too (MNEMOSYNE_CLICK_STATE, set by the browser agent).
+    _mn_click_state = _mn_os.environ.get("MNEMOSYNE_CLICK_STATE", "")
     _mn_recent_clicks = []
+
+    def _mn_load_clicks():
+        clicks = list(_mn_recent_clicks)
+        if _mn_click_state:
+            try:
+                with open(_mn_click_state, encoding="utf-8") as _mn_fh:
+                    clicks.extend(
+                        (float(px), float(py), float(ts))
+                        for px, py, ts in _mn_json.load(_mn_fh)
+                    )
+            except Exception:
+                pass
+        return clicks
+
     _mn_real_click = click_at_xy
 
     def click_at_xy(x, y, button="left", clicks=1):
         now = _mn_time.monotonic()
-        while _mn_recent_clicks and now - _mn_recent_clicks[0][2] > 3.0:
-            _mn_recent_clicks.pop(0)
-        for px, py, _t in _mn_recent_clicks:
+        recent = [c for c in _mn_load_clicks() if now - c[2] <= 3.0]
+        for px, py, _t in recent:
             if abs(px - float(x)) <= 3 and abs(py - float(y)) <= 3:
                 raise RuntimeError(
                     "mnemosyne: double clic refuse vers (%s, %s) — verifie l'etat "
                     "de la page (capture_screenshot/read_page) au lieu de "
                     "recliquer, ne resoumets jamais" % (x, y)
                 )
-        _mn_recent_clicks.append((float(x), float(y), now))
+        entry = (float(x), float(y), now)
+        _mn_recent_clicks.append(entry)
+        if _mn_click_state:
+            try:
+                with open(_mn_click_state, "w", encoding="utf-8") as _mn_fh:
+                    _mn_json.dump((recent + [entry])[-20:], _mn_fh)
+            except Exception:
+                pass
         return _mn_real_click(x, y, button=button, clicks=clicks)
 
     _mn_real_js = js
@@ -215,6 +239,10 @@ class BrowserAgentToolProvider(ToolProvider):
         self._ensure_worktree()
         self._refresh_worktree()
         self._prune_recordings()
+        # shared click state: the harness is a fresh process per snippet, so the
+        # anti-double-click guard needs a file to remember across snippets
+        self.click_state = Path(config.data_path) / "agent-workspace" / "clicks.json"
+        ensure_dir(self.click_state.parent)
         self.helpers_dir = self.worktree / "harness" / "helpers"
         ensure_dir(self.helpers_dir)
         self.token = token
@@ -339,6 +367,7 @@ class BrowserAgentToolProvider(ToolProvider):
         exe = shutil.which("browser-harness")
         cmd = [exe] if exe else [sys.executable, "-m", "browser_harness.run"]
         env = {k: v for k, v in os.environ.items() if not _SECRET_ENV_RE.search(k)}
+        env["MNEMOSYNE_CLICK_STATE"] = str(self.click_state)
         try:
             res = subprocess.run(
                 cmd, input=code, capture_output=True, text=True, timeout=300,
