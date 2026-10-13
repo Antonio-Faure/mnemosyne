@@ -1,0 +1,36 @@
+id: ndl
+name: National Diet Library Digital Collections (IIIF)
+institution: National Diet Library (国立国会図書館), Tokyo
+country: JP
+protocol: iiif
+base_url: https://dl.ndl.go.jp
+auth: none
+license: "https://creativecommons.org/publicdomain/mark/1.0/"
+rights: "国立国会図書館 National Diet Library, JAPAN — Public Domain Mark (PDM) ; vérifier par notice"
+enabled: true   # Public Domain Mark (PDM) — objet échantillon 1169293
+rate_limit_per_s: 1.0
+priority: 45
+tags: [national-library, japan, books, prints, iiif, keyless]
+seeds:
+  - "近代日本 写真"
+  - "東京 名所"
+  - "日本 地図"
+  - "錦絵"
+notes: >-
+  Per-object IIIF Presentation v2 manifests
+  (https://dl.ndl.go.jp/api/iiif/<pid>/manifest.json) whose images are served by
+  the IIIF Image API (https://dl.ndl.go.jp/api/iiif/<pid>/<image-id>, info.json
+  confirmed, level1). The host exposes no aggregate IIIF entry point: probes for
+  collection/manifest.json, manifest.json, collection.json,
+  collection/collection.json, collections/manifest.json and <pid>/collection.json
+  all return 404, and no IIIF search endpoint is published, so a single-manifest
+  entry point is used (as for bsb, llgc, colenda). Onboarded via the generic
+  src/mnemosyne/sources/iiif.py connector (v2
+  sequences/canvases/images/resource); no bespoke connector needed. Metadata
+  carries Title/Creator/Publication Date and Access Restrictions (PDM). Keyless.
+  The manifest `license` points at the NDL IIIF-API terms of use
+  (help_iiif#api-の利用について); per-notice rights live under
+  `Access Restrictions`.
+extra:
+  manifest: https://dl.ndl.go.jp/api/iiif/1169293/manifest.json
+  collection_id: "1169293"
