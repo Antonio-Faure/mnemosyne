@@ -307,20 +307,32 @@ class Database:
 
     # ── assets ───────────────────────────────────────────────────────────
     def save_assets(self, assets: list[Asset]) -> int:
+        """Insert the assets, returning the number of *new* rows.
+
+        ``ON CONFLICT(id) DO NOTHING`` skips known assets, so the return value
+        must count the real insertions (callers use it to flag a source as
+        CONNECTED): ``len(assets)`` would report fresh assets on every re-run.
+        """
         if not assets:
             return 0
+        inserted = 0
         with self._lock:
-            self._conn.executemany(
-                """INSERT INTO assets (id, source_id, source_asset_id, data, created_at)
-                   VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(id) DO NOTHING""",
-                [
-                    (a.id, a.source_id, a.source_asset_id, a.model_dump_json(), utcnow_iso())
-                    for a in assets
-                ],
-            )
+            for asset in assets:
+                cursor = self._conn.execute(
+                    """INSERT INTO assets (id, source_id, source_asset_id, data, created_at)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(id) DO NOTHING""",
+                    (
+                        asset.id,
+                        asset.source_id,
+                        asset.source_asset_id,
+                        asset.model_dump_json(),
+                        utcnow_iso(),
+                    ),
+                )
+                inserted += cursor.rowcount
             self._conn.commit()
-        return len(assets)
+        return inserted
 
     def get_asset(self, asset_id: str) -> Asset | None:
         with self._lock:
