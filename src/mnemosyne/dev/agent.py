@@ -32,20 +32,30 @@ _FALLBACK = (
 )
 
 
-def _ensure_clean(repo: Path) -> None:
+def _ensure_clean(repo: Path, *, allow_dirty: bool = False) -> None:
     """Abort if the working tree has uncommitted tracked changes.
 
     The dev agent commits on a fresh branch; pre-existing modified tracked files
     (outside its allowlist) make the commit guard refuse, which the model may
-    misreport as success. Better to fail fast and loud.
+    misreport as success. Better to fail fast and loud. The one legitimate
+    exception is a worktree reused after a killed activation: those changes are
+    the agent's own uncommitted work, so we continue on top of them.
     """
     res = subprocess.run(
         ["git", "status", "--porcelain", "--untracked-files=no"],
         cwd=repo,
         capture_output=True,
         text=True,
+        timeout=60,
     )
     if res.stdout.strip():
+        if allow_dirty:
+            log.warning(
+                "dev agent: modifications non commitées d'une activation tuée — "
+                "on continue dessus :\n%s",
+                res.stdout.strip()[:400],
+            )
+            return
         raise RuntimeError(
             "dev agent refused: the repo has uncommitted tracked changes — "
             "commit or stash them first (git status).\n" + res.stdout.strip()
@@ -62,10 +72,11 @@ async def run_dev_agent(
     mailbox=None,
     task_id: int | None = None,
     max_turns: int | None = None,
+    allow_dirty: bool = False,
 ) -> AgentOutcome:
     repo_path = Path(repo or config.root).resolve()
     cache_base_dir(config)  # sessions persistantes sur le volume data
-    _ensure_clean(repo_path)
+    _ensure_clean(repo_path, allow_dirty=allow_dirty)
     token = (vault_get("github_token") if vault_get else None) or os.environ.get("GITHUB_TOKEN")
     client = build_agent_client(
         config, session="dev", vault_get=vault_get, model=config.dev.model
@@ -111,6 +122,7 @@ async def run_dev_agent(
         persist_session(config, agent, "codeur")  # le finish laisse un cache aussi
     finally:
         watch_db.close()
+        await client.close()
     usage = client.usage.summary()
     turns = int(usage.get("calls") or 0) or len(history)
     log.info("dev agent usage (cache-aware): %s (tours=%d)", usage, turns)

@@ -555,14 +555,17 @@ async def run_browser_agent(
     # persistent session: resume=True reopens the same history at every
     # activation of this task; clear_cache_on_success=False keeps it for the
     # next ping-pong hop (the supervisor deletes it when the task closes)
-    async with agent.session(
-        output_dir=str(out_dir),
-        cache_on_interrupt=True,
-        resume=True,
-        clear_cache_on_success=False,
-    ) as session:
-        finish, history, _metadata = await session.run(task)
-    persist_session(config, agent, "browser")  # le finish doit aussi laisser un cache
+    try:
+        async with agent.session(
+            output_dir=str(out_dir),
+            cache_on_interrupt=True,
+            resume=True,
+            clear_cache_on_success=False,
+        ) as session:
+            finish, history, _metadata = await session.run(task)
+        persist_session(config, agent, "browser")  # le finish doit aussi laisser un cache
+    finally:
+        await client.close()
     usage = client.usage.summary()
     # one generation per turn: the usage counter is the reliable turn count
     turns = int(usage.get("calls") or 0) or len(history)

@@ -226,6 +226,9 @@ class ZenChatClient(ChatCompletionsClient):
             timeout=timeout,
             max_retries=max_retries,
         )
+        # stirrup's constructor already built an AsyncOpenAI client; keep a
+        # reference so `close()` can shut both pools (it is otherwise unreachable)
+        self._base_client = self._client
         self.usage = UsageSink()
         self._client = _ClientProxy(
             AsyncOpenAI(
@@ -243,6 +246,15 @@ class ZenChatClient(ChatCompletionsClient):
             tip_every=tip_every,
             max_images=max_request_images,
         )
+
+    async def close(self) -> None:
+        """Close both httpx pools (one leaked per activation otherwise)."""
+        for target in (self._base_client, self._client):
+            inner = getattr(target, "_inner", target)
+            try:
+                await inner.close()
+            except Exception:  # noqa: BLE001 - closing must never mask the run outcome
+                pass
 
 
 def build_agent_client(
