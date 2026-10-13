@@ -88,29 +88,18 @@ def _manifest(
     return manifest
 
 
-class _Response:
-    def __init__(self, text: str) -> None:
-        self.text = text
-
-
 class FakeHttp:
-    """Routes manifest URLs to JSON and the search URL to an HTML page."""
+    """Routes manifest URLs to canned JSON; nothing else may be requested."""
 
-    def __init__(self, manifests: dict | None = None, search_html: str | None = None):
+    def __init__(self, manifests: dict | None = None):
         self.manifests = manifests or {}
-        self.search_html = search_html
         self.get_json_calls: list[str] = []
-        self.get_calls: list[str] = []
 
     async def get_json(self, url: str, **kwargs):
         self.get_json_calls.append(url)
         if url not in self.manifests:
             raise RuntimeError(f"no manifest route for {url}")
         return self.manifests[url]
-
-    async def get(self, url: str, **kwargs):
-        self.get_calls.append(url)
-        return _Response(self.search_html or "")
 
 
 def _descriptor(**overrides) -> SourceDescriptor:
@@ -130,10 +119,6 @@ def _descriptor(**overrides) -> SourceDescriptor:
             "manifest_pattern": f"{BASE}/ark:/{NAAN}/{{ark}}/manifest",
             "notice_pattern": f"{BASE}/ark:/{NAAN}/{{ark}}",
             "viewer_pattern": f"{BASE}/ark:/{NAAN}/{{ark}}/daogrp/0",
-            "search_url": (
-                f"{BASE}/archive/recherche/simple/n:19"
-                "?RECH_S={query}&RECH_TYP=and&RECH_images=1"
-            ),
             "attribution": "Archives nationales du monde du travail",
         },
     }
@@ -157,6 +142,9 @@ def test_real_descriptor_builds_anmt_connector() -> None:
     assert raw["license"]
     assert raw["extra"]["ark_naan"] == NAAN
     assert raw["extra"]["manifest_pattern"].endswith("/manifest")
+    # no HTML search: off-policy without written consent (seeds + IIIF only)
+    assert "search_url" not in raw["extra"]
+    assert "crawl_delay" not in raw["extra"]
     assert raw["seeds"]
     assert isinstance(build_connector(SourceDescriptor(**raw), FakeHttp()), AnmtConnector)
 
@@ -256,51 +244,25 @@ async def test_restricted_canvases_are_dropped() -> None:
     assert {a.source_asset_id for a in assets} == {f"{ark}#0", f"{ark}#2"}
 
 
-# -- discovery / politeness ----------------------------------------------
+# -- seeds / politeness ----------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_search_discovers_arks_from_html() -> None:
-    ark_a, ark_b = "110324.1083809", "999.1"
-    html = (
-        f'<a href="/ark:/{NAAN}/{ark_a}">fonds A</a>'
-        f'<a href="/ark:/{NAAN}/{ark_b}/daogrp/0">fonds B</a>'
-    )
-    http = FakeHttp(
-        {
-            _manifest_url(ark_a): _manifest(ark_a, 1, label="Fonds A"),
-            _manifest_url(ark_b): _manifest(ark_b, 1, label="Fonds B"),
-        },
-        search_html=html,
-    )
-    connector = AnmtConnector(_descriptor(), http)
-
-    assets = await connector.search("usine", limit=10)
-    assert len(assets) == 2
-    assert {a.extra["ark"] for a in assets} == {ark_a, ark_b}
-    assert http.get_calls and "RECH_S=usine" in http.get_calls[0]
-
-
-@pytest.mark.asyncio
-async def test_search_falls_back_to_seeds_on_anubis_challenge() -> None:
+async def test_search_uses_only_seeds_and_never_html() -> None:
+    """No HTML search (off-policy): only the curated ARKs, through IIIF."""
     ark = "110324.1083809"
-    challenge = (
-        "<html><title>Making sure you're not a bot</title>"
-        "<p>Anubis proof-of-work</p></html>"
-    )
-    http = FakeHttp({_manifest_url(ark): _manifest(ark, 1)}, search_html=challenge)
+    http = FakeHttp({_manifest_url(ark): _manifest(ark, 1, label="Fonds A")})
     connector = AnmtConnector(_descriptor(seeds=[ark]), http)
 
-    assets = await connector.search("usine")
+    assets = await connector.search("usine", limit=10)
     assert len(assets) == 1
     assert assets[0].extra["ark"] == ark
+    assert http.get_json_calls == [_manifest_url(ark)]
 
 
 @pytest.mark.asyncio
-async def test_search_empty_discovery_returns_nothing() -> None:
-    http = FakeHttp({}, search_html="<html><body>aucun résultat</body></html>")
-    connector = AnmtConnector(_descriptor(seeds=["110324.1083809"]), http)
-
+async def test_search_without_seeds_returns_nothing() -> None:
+    connector = AnmtConnector(_descriptor(seeds=[]), FakeHttp({}))
     assert await connector.search("mot-inexistant") == []
 
 

@@ -25,19 +25,18 @@ notes: >-
   métallurgie, ferroviaire, photographies d'usines). Plateforme Ligeo-Archives /
   Boscop (visionneuse Monocle, ARK NAAN 60879). Pas d'API de recherche
   documentée et la recherche HTML est protégée par un anti-bot « Anubis »
-  intermittent : le connecteur s'appuie sur une liste curatée de `seeds` (ARK) et
-  n'utilise la recherche HTML qu'en découverte opportuniste (repli sur les seeds
-  si l'anti-bot se déclenche). Accès programmatique = IIIF Presentation v2, un
-  manifeste par ARK ; chaque toile porte le service IIIF Image API v3. Décision du
-  21 août 2017 : réutilisation libre, y compris commerciale, mondialement, sans
-  limite de durée, attribution obligatoire. Voir `src/mnemosyne/sources/anmt.py`.
+  intermittent : conformément à la politique « pas de scraping sans
+  consentement écrit », le connecteur s'appuie uniquement sur une liste curatée
+  de `seeds` (ARK), récupérés via le chemin programmatique IIIF Presentation v2
+  (un manifeste par ARK ; chaque toile porte le service IIIF Image API v3).
+  Décision du 21 août 2017 : réutilisation libre, y compris commerciale,
+  mondialement, sans limite de durée, attribution obligatoire. Voir
+  `src/mnemosyne/sources/anmt.py`.
 extra:
   ark_naan: "60879"
   manifest_pattern: "https://recherche-anmt.culture.gouv.fr/ark:/60879/{ark}/manifest"
   notice_pattern: "https://recherche-anmt.culture.gouv.fr/ark:/60879/{ark}"
   viewer_pattern: "https://recherche-anmt.culture.gouv.fr/ark:/60879/{ark}/daogrp/0"
-  search_url: "https://recherche-anmt.culture.gouv.fr/archive/recherche/simple/n:19?RECH_S={query}&RECH_TYP=and&RECH_images=1"
-  crawl_delay: 5
   attribution: Archives nationales du monde du travail
   image_size: max
   thumbnail_size: "!200,200"

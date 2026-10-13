@@ -27,6 +27,8 @@ _SCRAPING_MARKERS = (
     "selectolax",
     "lxml",
     "html.parser",
+    "text/html",
+    "<html",
     'href="',
     "<h2",
     "<li ",

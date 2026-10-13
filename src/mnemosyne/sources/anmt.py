@@ -3,9 +3,9 @@
 The ANMT online search (https://recherche-anmt.culture.gouv.fr) runs on the
 Ligeo-Archives / Boscop platform (Monocle viewer, ARK NAAN 60879). There is no
 documented search API, and the HTML search is fronted by an intermittent
-"Anubis" proof-of-work anti-bot, so this connector relies primarily on a curated
-``seeds`` list of ARKs and only opportunistically discovers more through the
-HTML search, degrading back to the seeds when the anti-bot challenges us.
+"Anubis" proof-of-work anti-bot; the project policy forbids HTML scraping
+without written consent, so this connector relies exclusively on a curated
+``seeds`` list of ARKs fetched through the programmatic IIIF path.
 
 Programmatic path (verified by the browser agent):
 
@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import quote
 
 from mnemosyne.connectors.base import Connector
 from mnemosyne.logger import get_logger
@@ -157,22 +156,6 @@ def _license_from_reuse(content: str) -> str | None:
     return "Réutilisation libre (commerciale et non commerciale)"
 
 
-def _extract_arks(html: str, naan: str) -> list[str]:
-    pattern = re.compile(r"/ark:/" + re.escape(naan) + r"/([0-9A-Za-z._\-]+)")
-    arks: list[str] = []
-    for match in pattern.finditer(html or ""):
-        ark = match.group(1)
-        if ark not in arks:
-            arks.append(ark)
-    return arks
-
-
-def _is_anubis(html: str) -> bool:
-    """Detect the "Anubis" proof-of-work anti-bot challenge page."""
-    head = (html or "")[:8000].lower()
-    return "anubis" in head or "proof of work" in head or "proof-of-work" in head
-
-
 def _image_url(service: str, size: str) -> str:
     return f"{service}/full/{size}/0/default.jpg"
 
@@ -221,22 +204,6 @@ class AnmtConnector(Connector):
             log.debug("anmt manifest %s failed: %s", url, exc)
             return None
         return data if isinstance(data, dict) else None
-
-    async def _discover_arks(self, query: str) -> list[str] | None:
-        """ARKs from the HTML search, or ``None`` when blocked by the anti-bot."""
-        template = (self.descriptor.extra or {}).get("search_url")
-        if not template:
-            return None
-        url = str(template).format(query=quote(query))
-        try:
-            resp = await self.http.get(url, accept="text/html, */*;q=0.5")
-        except Exception as exc:  # noqa: BLE001
-            log.debug("anmt search %s failed: %s", url, exc)
-            return None
-        if _is_anubis(resp.text):
-            log.info("anmt search challenged by Anubis; falling back to seeds")
-            return None
-        return _extract_arks(resp.text, self._naan())
 
     # -- normalization -----------------------------------------------------
 
@@ -303,12 +270,9 @@ class AnmtConnector(Connector):
     # -- Connector API -----------------------------------------------------
 
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
-        if query and query.strip():
-            arks = await self._discover_arks(query)
-            if arks is None:  # anti-bot or search unavailable -> curated seeds
-                arks = list(self.descriptor.seeds)
-        else:
-            arks = list(self.descriptor.seeds)
+        # No HTML search (off-policy without written consent): the curated
+        # seeds are fetched through the programmatic IIIF manifests.
+        arks = list(self.descriptor.seeds)
 
         assets: list[Asset] = []
         seen: set[str] = set()
