@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 from mnemosyne.journal import Control, Journal
 
@@ -9,7 +9,7 @@ def test_journal_append_and_read(tmp_path):
     journal.append("hello world", source="test")
     text = journal.read()
     assert "hello world" in text
-    assert datetime.now().date().isoformat() in text
+    assert datetime.now(UTC).date().isoformat() in text
 
 
 def test_control_inbox_consume_once(tmp_path):

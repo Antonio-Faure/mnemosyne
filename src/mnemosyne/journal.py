@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from mnemosyne.logger import get_logger
@@ -23,12 +23,14 @@ _SAFE_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 
 
 def _today() -> date:
-    return datetime.now().date()
+    # UTC everywhere: the DB, the soak log and the monitor are UTC, so the
+    # journal day must flip at the same instant (00:00 UTC, not local midnight).
+    return datetime.now(UTC).date()
 
 
 def _stamp(when: datetime | None = None) -> str:
-    # Full date + time: every journal entry is timestamped.
-    return (when or datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
+    # Full date + time: every journal entry is timestamped (UTC).
+    return (when or datetime.now(UTC)).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _safe(text: str) -> str:
@@ -148,7 +150,7 @@ class Control:
 
     # ── inbox ────────────────────────────────────────────────────────────
     def post(self, text: str) -> None:
-        stamp = datetime.now().isoformat(timespec="seconds")
+        stamp = datetime.now(UTC).isoformat(timespec="seconds")
         with open(self.inbox_path, "a", encoding="utf-8") as fh:
             fh.write(f"\n## {stamp}\n{text.strip()}\n")
 
@@ -182,11 +184,12 @@ class Control:
 
     def pending(self) -> list[str]:
         blocks = self._blocks()
-        return blocks[self._read_index():]
+        # clamp: a truncated/rewritten inbox must never mute the channel forever
+        return blocks[min(self._read_index(), len(blocks)):]
 
     def consume(self) -> list[str]:
         blocks = self._blocks()
-        pending = blocks[self._read_index():]
+        pending = blocks[min(self._read_index(), len(blocks)):]
         if pending:
             self._write_index(len(blocks))
         return pending
