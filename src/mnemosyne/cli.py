@@ -605,15 +605,27 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    import signal
+
     from mnemosyne.heartbeat import Heartbeat
 
     cfg = get_config()
     heartbeat = Heartbeat(cfg)
+    set_level(args.log_level or cfg.app.log_level)
 
     async def run() -> int:
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                # compose sends SIGTERM before recreating the container: stop and
+                # free our leases so the next generation starts immediately
+                loop.add_signal_handler(sig, heartbeat.request_stop)
+            except (NotImplementedError, RuntimeError):
+                pass
         try:
             await heartbeat.run_forever()
         finally:
+            heartbeat.release_own_leases()
             await heartbeat.aclose()
         return 0
 

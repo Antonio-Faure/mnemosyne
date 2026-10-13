@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime, timedelta
 
 from mnemosyne.config import Config
@@ -133,20 +134,56 @@ class Heartbeat:
         except Exception as exc:  # noqa: BLE001 - a broken config must not kill the loop
             log.error("bootstrap failed: %s", exc, exc_info=True)
             await self.notifier.send(f"heartbeat bootstrap failed: {exc}", "error")
-        pending = self.engine.db.count_jobs(JobState.PENDING)
-        await self.notifier.send(f"mnemosyne heartbeat online — {pending} jobs pending")
-        while not self._stop.is_set():
+        renew = asyncio.create_task(self._renew_loop())
+        try:
+            pending = self.engine.db.count_jobs(JobState.PENDING)
+            await self.notifier.send(f"mnemosyne heartbeat online — {pending} jobs pending")
+            while not self._stop.is_set():
+                try:
+                    await self._tick()
+                except Exception as exc:  # noqa: BLE001 - the heartbeat must never die
+                    log.error("tick error: %s", exc, exc_info=True)
+                    await self.notifier.send(f"heartbeat tick error: {exc}", "error")
+                try:
+                    await asyncio.wait_for(
+                        self._stop.wait(), timeout=self.config.heartbeat.tick_seconds
+                    )
+                except TimeoutError:
+                    pass
+        finally:
+            renew.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await renew
+
+    async def _renew_loop(self, interval_s: float = 60.0) -> None:
+        """Keep our leases and job locks fresh while we work.
+
+        A live process renews; a dead one stops renewing, and the lease expiry
+        (~5 min) or the stale-job recovery takes over.
+        """
+        while True:
+            await asyncio.sleep(interval_s)
             try:
-                await self._tick()
-            except Exception as exc:  # noqa: BLE001 - the heartbeat must never die
-                log.error("tick error: %s", exc, exc_info=True)
-                await self.notifier.send(f"heartbeat tick error: {exc}", "error")
+                self.engine.db.renew_own()
+            except Exception as exc:  # noqa: BLE001 - renewal must not kill the loop
+                log.warning("renewal failed: %s", exc)
+
+    def request_stop(self) -> None:
+        """SIGTERM/SIGINT: free OUR leases at once, then stop the loop.
+
+        Compose sends SIGTERM and SIGKILLs ~10 s later: releasing here lets the
+        next container generation start immediately instead of waiting for the
+        renewed TTL to lapse.
+        """
+        self.release_own_leases()
+        self.stop()
+
+    def release_own_leases(self) -> None:
+        for name in ("agency", "browser"):
             try:
-                await asyncio.wait_for(
-                    self._stop.wait(), timeout=self.config.heartbeat.tick_seconds
-                )
-            except TimeoutError:
-                pass
+                self.engine.db.release_own_lease(name)
+            except Exception as exc:  # noqa: BLE001 - shutdown must never raise
+                log.debug("cannot release the %s lease: %s", name, exc)
 
     def stop(self) -> None:
         self._stop.set()

@@ -401,3 +401,29 @@ def test_branch_has_commits_prefers_origin_then_local_base(tmp_path):
     assert _branch_has_commits(cfg, "agent/feature") is True
     assert _branch_has_commits(cfg, "agent/empty") is False
     assert _branch_has_commits(cfg, "agent/missing") is False
+
+
+def test_coder_disabled_leaves_the_task_pending(config, monkeypatch):
+    """`dev.enabled: false` is a real switch: the coder stays parked."""
+    calls: list[str] = []
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        calls.append(task)
+        return _Outcome(finish="fini")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+    config.dev.enabled = False
+
+    db = Database(config.db_file())
+    db.enqueue_task("coder", "écris le connecteur europeana")
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    result = asyncio.run(drain_queue(config))
+
+    assert result.turns == []
+    assert calls == []
+    db = Database(config.db_file())
+    assert db.get_task(1)["status"] == "pending"
+    db.close()

@@ -132,24 +132,66 @@ def test_lease_of_the_current_process_is_respected(tmp_path):
 
 
 def test_holder_from_a_previous_container_is_reclaimed(tmp_path):
-    """docker recreates the container with a new hostname: the old holder is gone."""
+    """Foreign namespace: liveness cannot be probed, only the renewed expiry.
+
+    A live-looking lease from another hostname is NOT stolen (the host must not
+    steal from the container, nor the container from the host); once its
+    renewal stopped and the TTL lapsed, it is reclaimable.
+    """
     import json as _json
 
     db = _db(tmp_path)
+    held = {
+        "owner": "",
+        "pid": 1,
+        "host": "an-old-container-id",
+        "started": 12345,
+        "instance": "deadbeef",
+        "expires": time.time() + 300,
+    }
     db._conn.execute(
-        "INSERT INTO kv (key, value) VALUES ('lease:browser', ?)",
+        "INSERT INTO kv (key, value) VALUES ('lease:browser', ?)", (_json.dumps(held),)
+    )
+    db._conn.commit()
+    assert db.try_lease("browser", ttl_s=60, owner="next") is False
+
+    held["expires"] = time.time() - 1
+    db._conn.execute(
+        "UPDATE kv SET value = ? WHERE key = 'lease:browser'", (_json.dumps(held),)
+    )
+    db._conn.commit()
+    assert db.try_lease("browser", ttl_s=60, owner="next") is True
+    db.close()
+
+
+def test_renewal_extends_only_our_lease(tmp_path):
+    db = _db(tmp_path)
+    assert db.try_lease("browser", ttl_s=0.05, owner="me") is True
+    assert db.renew_own_lease("browser", ttl_s=600) is True
+    time.sleep(0.1)
+    # the renewed lease is still alive for everyone else
+    assert db.try_lease("browser", ttl_s=60, owner="other") is False
+    db.close()
+
+
+def test_release_and_renew_never_touch_a_foreign_lease(tmp_path):
+    db = _db(tmp_path)
+    db._conn.execute(
+        "INSERT INTO kv (key, value) VALUES ('lease:agency', ?)",
         (
-            _json.dumps(
+            json.dumps(
                 {
-                    "owner": "",
+                    "owner": "host",
                     "pid": 1,
-                    "host": "an-old-container-id",
-                    "started": 12345,
-                    "expires": time.time() + 18_000,
+                    "host": "the-host",
+                    "instance": "other",
+                    "expires": time.time() + 300,
                 }
             ),
         ),
     )
     db._conn.commit()
-    assert db.try_lease("browser", ttl_s=60, owner="next") is True
+    assert db.renew_own_lease("agency", 600) is False
+    assert db.release_own_lease("agency") is False
+    assert db.lease_exists("agency") is True
     db.close()

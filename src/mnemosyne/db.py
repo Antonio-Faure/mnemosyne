@@ -8,11 +8,22 @@ import socket
 import sqlite3
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
 from mnemosyne.models import Asset, Job, JobState, SourceState
 from mnemosyne.util import ensure_dir, utcnow_iso
+
+#: Identifies THIS process incarnation in leases and job claims. Docker gives
+#: every container generation a new hostname AND the host/container share the
+#: kernel, so neither hostname nor pid can tell a live holder from a dead one
+#: across pid namespaces — only the holder's own renewals can.
+_INSTANCE = uuid.uuid4().hex
+
+#: Lease TTL: renewed by the holder every minute while it works (see
+#: `renew_own`), so a crashed generation frees the driver after a few minutes.
+LEASE_TTL_S = 300.0
 
 #: the note stored on a message/task row (a WeTransfer link must fit)
 NOTE_MAX_CHARS = 1000
@@ -141,15 +152,18 @@ def _proc_start_time(pid: int | None = None) -> int | None:
 def _holder_is_gone(payload: dict) -> bool:
     """True when a lease/claim holder cannot be alive for us.
 
-    Single container per database: a payload from another hostname belongs to a
-    previous container generation (docker gives a fresh hostname on recreate),
-    and that process is gone. Same hostname -> check pid + incarnation.
+    Only a holder we can actually probe (same hostname = same pid namespace) is
+    ever declared gone: a foreign hostname is the host while we run in the
+    container (or an older container generation) and its liveness cannot be
+    probed from here. Those holders are reclaimed by EXPIRY instead — and the
+    holder keeps its expiry fresh by renewing (`renew_own`), so a dead
+    generation frees the lease in minutes while a live one never loses it.
     """
     host = payload.get("host")
     if host is None:  # legacy payload: cannot attribute, respect it until expiry
         return False
     if host != socket.gethostname():
-        return True
+        return False
     return _process_gone(payload.get("pid"), payload.get("started"))
 
 
@@ -171,13 +185,14 @@ def _process_gone(pid: object, started: object) -> bool:
 
 
 def _claim_owner(who: str) -> str:
-    """Identify the claimer (kind, pid, host) so a dead one is detectable."""
+    """Identify the claimer (kind, pid, host, instance) so a dead one is detectable."""
     return json.dumps(
         {
             "who": who,
             "pid": os.getpid(),
             "host": socket.gethostname(),
             "started": _proc_start_time(),
+            "instance": _INSTANCE,
         }
     )
 
@@ -865,6 +880,7 @@ class Database:
                 "pid": os.getpid(),
                 "host": socket.gethostname(),
                 "started": _proc_start_time(),
+                "instance": _INSTANCE,
                 "expires": now + ttl_s,
             }
         )
@@ -913,6 +929,54 @@ class Database:
         with self._lock:
             self._conn.execute("DELETE FROM kv WHERE key = ?", (f"lease:{name}",))
             self._conn.commit()
+
+    def release_own_lease(self, name: str) -> bool:
+        """Delete the lease only when WE hold it (never a foreign pilot's)."""
+        key = f"lease:{name}"
+        with self._lock:
+            row = self._conn.execute("SELECT value FROM kv WHERE key = ?", (key,)).fetchone()
+            if row is None:
+                return False
+            held = _read_lease(row["value"])
+            if not held or held.get("instance") != _INSTANCE:
+                return False
+            self._conn.execute("DELETE FROM kv WHERE key = ?", (key,))
+            self._conn.commit()
+        return True
+
+    def renew_own_lease(self, name: str, ttl_s: float = LEASE_TTL_S) -> bool:
+        """Push OUR lease's expiry forward; never touches a foreign holder."""
+        key = f"lease:{name}"
+        with self._lock:
+            row = self._conn.execute("SELECT value FROM kv WHERE key = ?", (key,)).fetchone()
+            if row is None:
+                return False
+            held = _read_lease(row["value"])
+            if not held or held.get("instance") != _INSTANCE:
+                return False
+            held["expires"] = time.time() + ttl_s
+            self._conn.execute(
+                "UPDATE kv SET value = ? WHERE key = ?", (json.dumps(held), key)
+            )
+            self._conn.commit()
+        return True
+
+    def renew_own_jobs(self) -> int:
+        """Refresh `locked_at` of the RUNNING jobs claimed by this incarnation."""
+        pattern = f'%"instance": "{_INSTANCE}"%'
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE jobs SET locked_at = ? WHERE state = ? AND locked_by LIKE ?",
+                (utcnow_iso(), JobState.RUNNING.value, pattern),
+            )
+            self._conn.commit()
+            return cur.rowcount
+
+    def renew_own(self) -> None:
+        """One renewal pass for this incarnation (leases + job claims)."""
+        self.renew_own_jobs()
+        for name in ("agency", "browser"):
+            self.renew_own_lease(name)
 
     def list_messages(self, status: str | None = None, limit: int = 50) -> list[dict]:
         with self._lock:

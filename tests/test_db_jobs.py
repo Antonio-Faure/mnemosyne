@@ -89,3 +89,41 @@ def test_recover_stale_jobs_releases_a_dead_claimer(config):
         "SELECT state FROM jobs WHERE id = ?", (job_id,)
     ).fetchone()["state"] == "pending"
     db.close()
+
+
+def test_renew_own_jobs_only_touches_our_claims(config):
+    import json
+
+    db = _db(config)
+    ours = db.enqueue(Job(kind="harvest", payload={}, run_at="2000-01-01T00:00:00+00:00"))
+    theirs = db.enqueue(Job(kind="harvest", payload={}, run_at="2000-01-01T00:00:00+00:00"))
+    db.claim_due_jobs("2100-01-01T00:00:00+00:00", 5)
+    stale = "2000-01-01T00:00:00+00:00"
+    db._conn.execute(
+        "UPDATE jobs SET locked_by = ? WHERE id = ?",
+        (
+            json.dumps(
+                {
+                    "who": "job:harvest",
+                    "pid": 1,
+                    "host": "the-host",
+                    "started": 1,
+                    "instance": "other",
+                }
+            ),
+            theirs,
+        ),
+    )
+    db._conn.execute("UPDATE jobs SET locked_at = ? WHERE id IN (?, ?)", (stale, ours, theirs))
+    db._conn.commit()
+
+    assert db.renew_own_jobs() == 1
+    refreshed = db._conn.execute(
+        "SELECT locked_at FROM jobs WHERE id = ?", (ours,)
+    ).fetchone()["locked_at"]
+    untouched = db._conn.execute(
+        "SELECT locked_at FROM jobs WHERE id = ?", (theirs,)
+    ).fetchone()["locked_at"]
+    assert refreshed != stale
+    assert untouched == stale
+    db.close()

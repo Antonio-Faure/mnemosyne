@@ -80,17 +80,61 @@ def test_the_lease_is_released_after_a_run(cfg):
 
 
 def test_a_dead_pilot_lease_does_not_block(cfg):
+    """A dead LOCAL pilot (pid gone) is reclaimed at once."""
+    import json
+    import socket
+    import time
+
     db = Database(cfg.db_file())
     db._conn.execute(
         "INSERT INTO kv (key, value) VALUES ('lease:agency', ?)",
         (
-            '{"owner": "cli:1", "pid": 4194304, "host": "autre", "started": 1,'
-            ' "expires": 9999999999}',
+            json.dumps(
+                {
+                    "owner": "cli:1",
+                    "pid": 4_194_304,  # cannot exist
+                    "host": socket.gethostname(),
+                    "started": 1,
+                    "instance": "old",
+                    "expires": time.time() + 300,
+                }
+            ),
         ),
     )
     db._conn.commit()
     result = asyncio.run(run_agency(cfg, "mission", start="coder"))
     assert result.turns, "un pilote mort ne bloque pas la file"
+    db.close()
+
+
+def test_a_foreign_live_lease_blocks_until_it_expires(cfg):
+    """Host vs container: a foreign lease is respected, then reclaimed on expiry."""
+    import json
+    import time
+
+    db = Database(cfg.db_file())
+    held = {
+        "owner": "cli:1",
+        "pid": 1,
+        "host": "autre",
+        "started": 1,
+        "instance": "other",
+        "expires": time.time() + 300,
+    }
+    db._conn.execute(
+        "INSERT INTO kv (key, value) VALUES ('lease:agency', ?)", (json.dumps(held),)
+    )
+    db._conn.commit()
+    result = asyncio.run(run_agency(cfg, "mission", start="coder"))
+    assert result.turns == [], "un bail étranger vivant bloque la file"
+
+    held["expires"] = time.time() - 1
+    db._conn.execute(
+        "UPDATE kv SET value = ? WHERE key = 'lease:agency'", (json.dumps(held),)
+    )
+    db._conn.commit()
+    result = asyncio.run(run_agency(cfg, "mission", start="coder"))
+    assert result.turns, "un bail étranger expiré est repris"
     db.close()
 
 

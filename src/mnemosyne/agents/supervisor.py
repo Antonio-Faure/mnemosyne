@@ -13,6 +13,8 @@ No LLM manager: a simple state machine, one activation at a time.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import os
 import re
@@ -28,7 +30,7 @@ from mnemosyne.agents.session_cache import (
     inject_reply,
 )
 from mnemosyne.config import Config
-from mnemosyne.db import NOTE_MAX_CHARS, Database
+from mnemosyne.db import LEASE_TTL_S, NOTE_MAX_CHARS, Database
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.util import finish_text
@@ -148,14 +150,15 @@ async def _run_browser(
 
 _RUNNERS = {"coder": _run_coder, "browser": _run_browser}
 
-#: a browser session may run long (up to 400 turns); hold the Chrome lease well
-#: past the longest plausible session
-BROWSER_LEASE_S = 18000
+#: a browser session may run long (up to 400 turns); the HOLDER renews the
+#: lease every minute while it works (`db.renew_own`), so a crashed generation
+#: frees the driver after ~5 min while a live one never loses it
+BROWSER_LEASE_S = LEASE_TTL_S
 
 #: one pilot at a time: two concurrent supervisors would run two coder turns in
 #: the same git worktree and two browser turns against the same Chrome session.
-#: Held per activation (an activation may itself run long — no time cap).
-AGENCY_LEASE_S = 8 * 3600
+#: Held per activation and renewed while it runs (no time cap).
+AGENCY_LEASE_S = LEASE_TTL_S
 
 
 def _branch_has_commits(config: Config, branch: str) -> bool:
@@ -387,6 +390,20 @@ async def _activate_session(
             "branch": getattr(outcome, "branch", None), "error": None}
 
 
+async def _renew_own_loop(db: Database, interval_s: float = 60.0) -> None:
+    """Keep our leases and job locks fresh for the whole activation.
+
+    An activation has no wall cap: without renewal a long one would let another
+    pilot (or the stale-job recovery) take over mid-flight.
+    """
+    while True:
+        await asyncio.sleep(interval_s)
+        try:
+            db.renew_own()
+        except Exception as exc:  # noqa: BLE001 - renewal must not kill the turn
+            log.warning("lease renewal failed: %s", exc)
+
+
 async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> dict | None:
     """Background activation: the running task continues first, else the oldest
     pending task starts. Called by the heartbeat. Idle => no agent, no cost.
@@ -403,6 +420,7 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
     if not db.try_lease("agency", ttl_s=AGENCY_LEASE_S, owner=f"heartbeat:{os.getpid()}"):
         return None
     held_browser: bool | None = False
+    renew: asyncio.Task | None = None
     try:
         task = db.next_task()
         if task is None:
@@ -427,6 +445,13 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
         held_browser = _acquire_browser_lease(db, agent)
         if held_browser is None:
             return None
+        if agent == "coder" and not config.dev.enabled:
+            # safety switch: the coder stays parked (the task keeps its place)
+            log.warning(
+                "tâche #%s : codeur désactivé (dev.enabled=false) — activation reportée",
+                task["id"],
+            )
+            return None
         if task["status"] == "pending":
             # only now is the task really being worked on: a refused lease must
             # not leave a lying 'running' status behind
@@ -438,13 +463,18 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
         log.info(note)
         if journal:
             journal.append(note, source="agency")
+        renew = asyncio.create_task(_renew_own_loop(db))
         return await _activate_session(
             config, db, mailbox, journal, vault_get, agent, task, messages
         )
     finally:
+        if renew is not None:
+            renew.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await renew
         if held_browser:
-            db.release_lease("browser")
-        db.release_lease("agency")
+            db.release_own_lease("browser")
+        db.release_own_lease("agency")
         db.close()
 
 
