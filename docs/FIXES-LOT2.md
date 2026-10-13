@@ -57,6 +57,12 @@ Chaque correctif est couvert par un test ; **344 tests verts, ruff OK**.
     `drop_session_cache` ne supprimait jamais ». Limite documentée : une réponse
     arrivant à la toute première activation reste intégrée au texte
     (comportement historique, testé).
+13. **Garde anti-double-clic persistant** (`agents/browser_agent.py`). Le
+    harness tourne en **processus neuf par snippet** : la liste des clics
+    récents était réinitialisée à chaque appel, donc un re-clic au même endroit
+    « au pas suivant » passait. L'état est désormais aussi écrit dans
+    `data/agent-workspace/clicks.json` (`MNEMOSYNE_CLICK_STATE`), avec repli
+    mémoire pour les clics d'un même snippet.
 
 ## B. Code mort supprimé
 
