@@ -124,8 +124,20 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
         return {"interval_s": seconds_until_next_window(now, cfg.agents.warmup_window_start)}
 
     db = ctx.engine.db
+    if db.has_open_task(kind="warmup"):
+        # a warmup session is still open: never stack a second one (the session
+        # runs under the agency job; this tick just waits)
+        return {"interval_s": 1800}
     cycle = db.get_kv("mission_cycle", 0)
     candidate = _connexion_candidate(ctx) if cycle % 2 == 1 else None
+    if candidate is not None and not ctx.engine.governor.allowed("outbound"):
+        # the warmup phases cap outbound actions (0 during the first days):
+        # a registration is outbound, so the cycle falls back to a warmup
+        ctx.journal.append(
+            "cycle : connexion reportée (quota outbound du warmup atteint)",
+            source="warmup",
+        )
+        candidate = None
     if candidate is None and count >= target:
         # warmup quota reached and nothing to connect: sleep until tomorrow
         return {"interval_s": seconds_until_next_window(now, cfg.agents.warmup_window_start)}
@@ -154,6 +166,7 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
             "browser", mission, turn_cap=cfg.agents.warmup_max_turns,
             payload={"kind": "connexion", "source_id": candidate.id},
         )
+        ctx.engine.governor.record("outbound")  # a registration is an outbound action
         note = f"connexion « {candidate.name} » postée au navigateur (cycle {cycle + 1})"
     else:
         # humans don't do it on schedule every single time

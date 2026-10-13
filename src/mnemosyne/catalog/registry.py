@@ -23,7 +23,13 @@ class Catalog:
         if not self.sources_path.exists():
             return descriptors
         for path in sorted(self.sources_path.glob("*.yaml")):
-            raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            try:
+                raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except (OSError, yaml.YAMLError) as exc:
+                # an agent may write a source file: a broken YAML must never
+                # kill the heartbeat (it would crash in a restart loop)
+                log.error("unreadable descriptor %s: %s", path.name, exc)
+                continue
             try:
                 descriptors.append(SourceDescriptor(**raw))
             except Exception as exc:  # noqa: BLE001 - surface a clear config error

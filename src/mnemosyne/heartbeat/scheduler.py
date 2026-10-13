@@ -128,7 +128,11 @@ class Heartbeat:
 
     # ── main loop ────────────────────────────────────────────────────────
     async def run_forever(self) -> None:
-        self.bootstrap()
+        try:
+            self.bootstrap()
+        except Exception as exc:  # noqa: BLE001 - a broken config must not kill the loop
+            log.error("bootstrap failed: %s", exc, exc_info=True)
+            await self.notifier.send(f"heartbeat bootstrap failed: {exc}", "error")
         pending = self.engine.db.count_jobs(JobState.PENDING)
         await self.notifier.send(f"mnemosyne heartbeat online — {pending} jobs pending")
         while not self._stop.is_set():

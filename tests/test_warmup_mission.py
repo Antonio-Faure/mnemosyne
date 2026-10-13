@@ -67,6 +67,13 @@ async def test_warmup_leg_posts_a_task_with_its_turn_cap(config, monkeypatch):
         await ctx.engine.aclose()
 
 
+def _finish_open_tasks(ctx) -> None:
+    """The previous session ended before the next hourly tick (the job runs hourly)."""
+    for task in ctx.engine.db.list_tasks():
+        if task["status"] in ("pending", "running"):
+            ctx.engine.db.set_task_status(task["id"], "done")
+
+
 @pytest.mark.asyncio
 async def test_cycle_alternates_warmup_and_connexion(config, monkeypatch):
     """Cycle parity: 0 → warmup, 1 → connexion (candidate), then warmup again."""
@@ -105,8 +112,11 @@ async def test_cycle_alternates_warmup_and_connexion(config, monkeypatch):
     ctx = _ctx(config)
     try:
         await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 0: warmup
+        _finish_open_tasks(ctx)                                    # la session se termine
         await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 1: connexion
+        _finish_open_tasks(ctx)
         await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 2: warmup
+        _finish_open_tasks(ctx)
         await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 3: connexion
 
         tasks = ctx.engine.db.list_tasks()
@@ -151,9 +161,54 @@ async def test_connexion_without_candidate_falls_back_to_warmup(config, monkeypa
     ctx = _ctx(config)
     try:
         await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 0: warmup
+        _finish_open_tasks(ctx)                                    # la session se termine
         await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 1: pas de candidat
         tasks = ctx.engine.db.list_tasks()
         assert len(tasks) == 2
         assert all(t["objective"].startswith("MISSION WARMUP") for t in tasks)
+    finally:
+        await ctx.engine.aclose()
+
+
+@pytest.mark.asyncio
+async def test_connexion_is_gated_by_the_outbound_quota(config, monkeypatch):
+    """A fresh account (0 outbound/day) never posts a registration: warmup instead."""
+    from mnemosyne.heartbeat import jobs
+    from mnemosyne.models import AuthKind
+
+    async def ready(_ctx):
+        return True
+
+    monkeypatch.setattr(jobs, "_browser_ready", ready)
+    monkeypatch.setattr(jobs.random, "random", lambda: 0.99)
+    config.agents.warmup_window_start = 8
+    config.agents.warmup_window_end = 23
+    config.agents.warmup_per_day_min = 4
+    config.agents.warmup_per_day_max = 4
+    config.reputation.account_created_at = datetime.now().date().isoformat()  # day 0
+
+    class _Noon(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 1, 12, 0, 0)
+
+    monkeypatch.setattr(jobs, "datetime", _Noon)
+
+    class _Candidate:
+        id = "europeana"
+        name = "Europeana"
+        base_url = "https://example.org"
+        auth = AuthKind.API_KEY
+
+    monkeypatch.setattr(jobs, "_connexion_candidate", lambda _ctx: _Candidate())
+
+    ctx = _ctx(config)
+    try:
+        ctx.engine.db.set_kv("mission_cycle", 1)  # odd cycle → candidate considered
+        await handle_warmup(ctx, Job(kind="warmup", payload={}))
+
+        tasks = ctx.engine.db.list_tasks()
+        assert len(tasks) == 1
+        assert tasks[0]["objective"].startswith("MISSION WARMUP")
     finally:
         await ctx.engine.aclose()
