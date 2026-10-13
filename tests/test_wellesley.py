@@ -126,7 +126,7 @@ async def test_search_normalizes_v3_manifest():
     assert asset.title == "[Manuscript leaf]"
     assert asset.date_text == "15th century"
     assert asset.year is None  # no machine-readable year in the label
-    assert asset.image_url == f"{IMAGE_SERVICE}/full/full/0/default.jpg"
+    assert asset.image_url == f"{IMAGE_SERVICE}/full/max/0/default.jpg"
     assert asset.thumbnail_url == f"{IMAGE_SERVICE}/full/512,/0/default.jpg"
     # a top-level IIIF `rights` is carried onto the Asset
     assert asset.license == "http://rightsstatements.org/vocab/NoC-US/1.0/"

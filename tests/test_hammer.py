@@ -124,7 +124,7 @@ async def test_search_builds_asset_from_real_manifest():
     assert asset.year == 1859
     assert asset.image_url == (
         "https://hammer-online-collection-images.cogapp.cloud/iiif/3/"
-        "AH.90.17-159247.ptif/full/full/0/default.jpg"
+        "AH.90.17-159247.ptif/full/max/0/default.jpg"
     )
     assert asset.license == "http://creativecommons.org/publicdomain/zero/1.0/"
 

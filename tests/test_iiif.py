@@ -103,7 +103,7 @@ async def test_search_filters_by_query_and_builds_assets():
     asset = assets[0]
     assert asset.title == "Usine de Lacq en 1950"
     assert asset.year == 1950
-    assert asset.image_url == "https://host/iiif/m1/full/full/0/default.jpg"
+    assert asset.image_url == "https://host/iiif/m1/full/max/0/default.jpg"
     assert asset.thumbnail_url == "https://host/iiif/m1/full/512,/0/default.jpg"
     assert asset.page_url == M1
     assert asset.license.startswith("http://creativecommons.org")
@@ -113,6 +113,32 @@ async def test_search_filters_by_query_and_builds_assets():
 async def test_search_without_query_returns_all():
     http = FakeHttp({COL: COLLECTION, M1: MANIFEST_V3, M2: MANIFEST_V2})
     connector = IIIFConnector(_descriptor({"collection": COL}), http)
+    assets = await connector.search("", limit=10)
+    assert len(assets) == 2
+
+
+PAGE2 = "https://host/c/collection?page=2"
+
+COLLECTION_PAGED = {
+    "type": "Collection",
+    "items": [{"id": M1, "type": "Manifest"}],
+    "next": PAGE2,
+}
+
+PAGE2_COLLECTION = {
+    "type": "Collection",
+    "items": [{"id": M2, "type": "Manifest"}],
+}
+
+
+@pytest.mark.asyncio
+async def test_collection_follows_next_pages():
+    """A paginated collection: the `next` pages are walked, not dropped."""
+    http = FakeHttp(
+        {COL: COLLECTION_PAGED, PAGE2: PAGE2_COLLECTION, M1: MANIFEST_V3, M2: MANIFEST_V2}
+    )
+    connector = IIIFConnector(_descriptor({"collection": COL}), http)
+
     assets = await connector.search("", limit=10)
     assert len(assets) == 2
 

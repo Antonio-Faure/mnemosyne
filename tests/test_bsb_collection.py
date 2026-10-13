@@ -26,6 +26,7 @@ COLLECTION_URL = (
 )
 M1 = "https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb12188487/manifest"
 M2 = "https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10598831/manifest"
+NEXT_URL = COLLECTION_URL + "/AoIIP4AAACtic2IxMjE4NzIzMg=="
 
 # Shape mirrors the live collection response (v2 `sc:Collection`, paginated).
 COLLECTION = {
@@ -34,9 +35,18 @@ COLLECTION = {
     "@id": COLLECTION_URL,
     "label": "Collection 'top'",
     "total": 3212019,
-    "next": COLLECTION_URL + "/AoIIP4AAACtic2IxMjE4NzIzMg==",
+    "next": NEXT_URL,
     "manifests": [
         {"@type": "sc:Manifest", "@id": M1, "label": "Die Glori der Lutherischen Kirch"},
+    ],
+}
+
+# The `next` page of the collection (second manifest lives there).
+PAGE_2 = {
+    "@context": "http://iiif.io/api/presentation/2/context.json",
+    "@type": "sc:Collection",
+    "@id": NEXT_URL,
+    "manifests": [
         {
             "@type": "sc:Manifest",
             "@id": M2,
@@ -105,9 +115,15 @@ MANIFEST_1 = {
 class FakeHttp:
     def __init__(self, routes):
         self.routes = routes
+        self.calls: list[str] = []
 
     async def get_json(self, url, **kwargs):
+        self.calls.append(url)
         return self.routes[url]
+
+
+def _routes() -> dict:
+    return {COLLECTION_URL: COLLECTION, NEXT_URL: PAGE_2, M1: MANIFEST_1, M2: MANIFEST_2}
 
 
 def _raw() -> dict:
@@ -139,7 +155,7 @@ def test_protocol_enum_has_iiif():
 
 @pytest.mark.asyncio
 async def test_search_walks_collection_and_normalizes_v2_manifest():
-    http = FakeHttp({COLLECTION_URL: COLLECTION, M1: MANIFEST_1, M2: MANIFEST_2})
+    http = FakeHttp(_routes())
     connector = IIIFConnector(_descriptor(), http)
 
     assets = await connector.search("lexikon", limit=10)
@@ -160,16 +176,18 @@ async def test_search_walks_collection_and_normalizes_v2_manifest():
 
 @pytest.mark.asyncio
 async def test_search_without_query_returns_all_manifests():
-    http = FakeHttp({COLLECTION_URL: COLLECTION, M1: MANIFEST_1, M2: MANIFEST_2})
+    http = FakeHttp(_routes())
     connector = IIIFConnector(_descriptor(), http)
 
     assets = await connector.search("", limit=10)
     assert len(assets) == 2
+    # the second manifest only exists on the `next` page: pagination was walked
+    assert NEXT_URL in http.calls
 
 
 @pytest.mark.asyncio
 async def test_search_filters_by_query():
-    http = FakeHttp({COLLECTION_URL: COLLECTION, M1: MANIFEST_1, M2: MANIFEST_2})
+    http = FakeHttp(_routes())
     connector = IIIFConnector(_descriptor(), http)
 
     assert await connector.search("nonexistentterm", limit=10) == []

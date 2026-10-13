@@ -27,6 +27,8 @@ log = get_logger("sources.iiif")
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 _MAX_MANIFESTS = 40
 _MAX_NESTED_COLLECTIONS = 5
+#: Safety net: never follow more than this many `next` pages per collection.
+_MAX_COLLECTION_PAGES = 10
 
 
 def _label(value: Any) -> str:
@@ -62,8 +64,13 @@ def _metadata(manifest: dict, *names: str) -> str | None:
     return None
 
 
-def _image_service(manifest: dict) -> tuple[str | None, str | None]:
-    """Return (image_service_id, fallback_image_url) for the first canvas."""
+def _image_service(manifest: dict) -> tuple[str | None, str | None, str]:
+    """Return (image_service_id, fallback_image_url, full_size) for the first canvas.
+
+    ``full_size`` is the IIIF Image API size parameter for the full-resolution
+    image: Image API 3.0 spells it ``max`` (``full`` is v2-only syntax), so a v3
+    service would otherwise get a 400 on every image fetch.
+    """
     # v2: sequences -> canvases -> images -> resource
     try:
         body = manifest["sequences"][0]["canvases"][0]["images"][0]["resource"]
@@ -76,7 +83,7 @@ def _image_service(manifest: dict) -> tuple[str | None, str | None]:
         except (KeyError, IndexError, TypeError):
             body = None
     if not isinstance(body, dict):
-        return None, None
+        return None, None, "full"
     if body.get("type") == "Choice" and isinstance(body.get("items"), list):
         body = body["items"][0]
     service = body.get("service")
@@ -85,9 +92,18 @@ def _image_service(manifest: dict) -> tuple[str | None, str | None]:
     if isinstance(service, dict):
         sid = service.get("id") or service.get("@id")
         if sid:
-            return sid, None
+            return sid, None, _service_size(service)
     image = body.get("id") or body.get("@id")
-    return None, image
+    return None, image, "full"
+
+
+def _service_size(service: dict) -> str:
+    """The full-resolution size parameter for a service (v3 -> ``max``)."""
+    if "ImageService3" in str(service.get("type") or ""):
+        return "max"
+    if "image/3" in str(service.get("profile") or ""):
+        return "max"
+    return "full"
 
 
 def _manifest_urls(collection: dict) -> list[str]:
@@ -122,6 +138,18 @@ def _nested_collection_urls(collection: dict) -> list[str]:
     return urls
 
 
+def _next_page_url(collection: dict) -> str | None:
+    """The pagination link of a collection page (v2/v3 ``next``)."""
+    nxt = collection.get("next")
+    if isinstance(nxt, str) and nxt:
+        return nxt
+    if isinstance(nxt, dict):
+        url = nxt.get("@id") or nxt.get("id")
+        if isinstance(url, str) and url:
+            return url
+    return None
+
+
 class IIIFConnector(Connector):
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
         extra = self.descriptor.extra or {}
@@ -151,23 +179,36 @@ class IIIFConnector(Connector):
     async def _collection_manifests(self, url: str, limit: int) -> list[str]:
         urls: list[str] = []
         seen: set[str] = set()
+        fetched: set[str] = set()
         queue = [url]
         depth = 0
         while queue and len(urls) < limit and depth <= _MAX_NESTED_COLLECTIONS:
             next_queue: list[str] = []
             for coll in queue:
-                try:
-                    data = await self.http.get_json(coll, headers={"Accept": "application/json"})
-                except Exception as exc:  # noqa: BLE001
-                    log.debug("iiif collection %s failed: %s", coll, exc)
-                    continue
-                for u in _manifest_urls(data):
-                    if u not in seen:
-                        seen.add(u)
-                        urls.append(u)
-                next_queue.extend(_nested_collection_urls(data))
-                if len(urls) >= limit:
-                    break
+                page: str | None = coll
+                pages = 0
+                # follow the v2/v3 `next` pagination of this collection
+                while page and len(urls) < limit and pages < _MAX_COLLECTION_PAGES:
+                    if page in fetched:
+                        break
+                    fetched.add(page)
+                    try:
+                        data = await self.http.get_json(
+                            page, headers={"Accept": "application/json"}
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        log.debug("iiif collection %s failed: %s", page, exc)
+                        break
+                    if not isinstance(data, dict):
+                        log.debug("iiif collection %s: unexpected payload", page)
+                        break
+                    for u in _manifest_urls(data):
+                        if u not in seen:
+                            seen.add(u)
+                            urls.append(u)
+                    next_queue.extend(_nested_collection_urls(data))
+                    page = _next_page_url(data)
+                    pages += 1
             queue = next_queue
             depth += 1
         return urls[:limit]
@@ -181,8 +222,8 @@ class IIIFConnector(Connector):
         if not isinstance(manifest, dict):
             return None
 
-        service, fallback = _image_service(manifest)
-        image_url = f"{service}/full/full/0/default.jpg" if service else fallback
+        service, fallback, full_size = _image_service(manifest)
+        image_url = f"{service}/full/{full_size}/0/default.jpg" if service else fallback
         thumbnail = f"{service}/full/512,/0/default.jpg" if service else fallback
         if not image_url:
             return None

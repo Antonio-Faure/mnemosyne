@@ -130,7 +130,7 @@ async def test_musee_orsay_manifest_normalizes_to_asset():
     assert "Toulouse-Lautrec" in asset.title
     assert asset.year == 1892
     assert asset.image_url == (
-        "https://iiif.musee-orsay.fr/iiif/3/objects!701/full/full/0/default.jpg"
+        "https://iiif.musee-orsay.fr/iiif/3/objects!701/full/max/0/default.jpg"
     )
     assert asset.thumbnail_url == (
         "https://iiif.musee-orsay.fr/iiif/3/objects!701/full/512,/0/default.jpg"
