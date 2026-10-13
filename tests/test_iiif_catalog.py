@@ -38,6 +38,7 @@ IIIF_SOURCES = {
         "bsb00083127/manifest"
     ),
     "vam": "https://iiif.vam.ac.uk/collections/O117445/manifest.json",
+    "ndl": "https://dl.ndl.go.jp/api/iiif/1169293/manifest.json",
 }
 
 
