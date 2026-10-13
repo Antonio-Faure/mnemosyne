@@ -27,3 +27,4 @@ notes: >-
   first canvas image is served via the IIIF Image API.
 extra:
   manifest: https://digitalcollections.universiteitleiden.nl/iiif_manifest/item%3A1684659/manifest
+  collection_id: "item:1684659"

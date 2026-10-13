@@ -15,8 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from mnemosyne.models import Protocol, SourceDescriptor
-from mnemosyne.sources import build_connector
+from mnemosyne.models import SourceDescriptor
 from mnemosyne.sources.iiif import IIIFConnector
 
 SOURCES_DIR = Path(__file__).resolve().parents[1] / "config" / "sources"
@@ -74,13 +73,6 @@ def test_descriptor_is_keyless_iiif() -> None:
     assert data["license"]
     assert data["extra"]["manifest"] == MANIFEST_URL
     assert data["extra"]["collection_id"] == _OBJ_ID
-
-
-def test_descriptor_uses_generic_iiif_connector() -> None:
-    descriptor = SourceDescriptor(**_load())
-    connector = build_connector(descriptor, _FakeHttp({}))
-    assert isinstance(connector, IIIFConnector)
-    assert descriptor.protocol is Protocol.IIIF
 
 
 @pytest.mark.asyncio

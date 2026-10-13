@@ -23,3 +23,4 @@ notes: >-
   Title/Artist/Date/Copyright.
 extra:
   manifest: https://sammlungenonline.albertina.at/iiif/tms_100813/manifest.json
+  collection_id: "tms_100813"

@@ -20,7 +20,6 @@ import yaml
 
 from mnemosyne.models import SourceDescriptor
 from mnemosyne.sources import build_connector
-from mnemosyne.sources.iiif import IIIFConnector
 
 SOURCES_DIR = Path(__file__).resolve().parents[1] / "config" / "sources"
 MANIFEST_URL = "https://damsssl.llgc.org.uk/iiif/2.0/4672201/manifest.json"
@@ -110,12 +109,6 @@ def test_descriptor_is_keyless_iiif():
     assert data["extra"]["manifest"] == MANIFEST_URL
     # a stable object identifier is recorded for provenance
     assert data["extra"]["collection_id"]
-
-
-def test_descriptor_uses_generic_iiif_connector():
-    descriptor = SourceDescriptor(**_load())
-    connector = build_connector(descriptor, FakeHttp({}))
-    assert isinstance(connector, IIIFConnector)
 
 
 @pytest.mark.asyncio

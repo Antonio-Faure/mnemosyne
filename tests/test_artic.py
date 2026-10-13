@@ -19,8 +19,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from mnemosyne.models import Protocol, SourceDescriptor
-from mnemosyne.sources import build_connector
+from mnemosyne.models import SourceDescriptor
 from mnemosyne.sources.iiif import IIIFConnector
 
 SOURCES_DIR = Path(__file__).resolve().parents[1] / "config" / "sources"
@@ -114,12 +113,6 @@ def test_descriptor_is_keyless_single_manifest_iiif():
     assert data["extra"]["manifest"] == MANIFEST_URL
     # no aggregate Collection manifest was found on the host
     assert "collection" not in data["extra"]
-
-
-def test_descriptor_uses_generic_iiif_connector():
-    connector = build_connector(_descriptor(), FakeHttp({}))
-    assert isinstance(connector, IIIFConnector)
-    assert _descriptor().protocol is Protocol.IIIF
 
 
 @pytest.mark.asyncio

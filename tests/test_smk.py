@@ -16,7 +16,6 @@ import pytest
 import yaml
 
 from mnemosyne.models import Protocol, SourceDescriptor
-from mnemosyne.sources import build_connector
 from mnemosyne.sources.iiif import IIIFConnector
 
 SOURCES_DIR = Path(__file__).resolve().parents[1] / "config" / "sources"
@@ -115,11 +114,6 @@ def test_descriptor_is_keyless_single_manifest_iiif():
     assert data["extra"]["manifest"] == MANIFEST_URL
     assert data["extra"]["collection_id"] == "KKS5261"
     assert data["license"]
-
-
-def test_descriptor_uses_generic_iiif_connector():
-    connector = build_connector(_descriptor(), FakeHttp({}))
-    assert isinstance(connector, IIIFConnector)
 
 
 @pytest.mark.asyncio

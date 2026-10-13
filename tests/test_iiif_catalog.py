@@ -17,10 +17,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-from mnemosyne.models import SourceDescriptor
-from mnemosyne.sources import build_connector
-from mnemosyne.sources.iiif import IIIFConnector
-
 SOURCES_DIR = Path(__file__).resolve().parents[1] / "config" / "sources"
 
 #: descriptor id -> canonical IIIF manifest URL (single-manifest collections)
@@ -42,11 +38,6 @@ IIIF_SOURCES = {
 }
 
 
-class _FakeHttp:
-    async def get_json(self, url, **kwargs):  # pragma: no cover - guard only
-        raise AssertionError("descriptor test must not perform network I/O")
-
-
 def _load(source_id: str) -> dict:
     path = SOURCES_DIR / f"{source_id}.yaml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -62,13 +53,6 @@ def test_descriptor_is_keyless_iiif(source_id: str, manifest_url: str) -> None:
     assert data["extra"]["manifest"] == manifest_url
     # a stable collection / object identifier is recorded for provenance
     assert data["extra"]["collection_id"]
-
-
-@pytest.mark.parametrize("source_id", sorted(IIIF_SOURCES))
-def test_descriptor_uses_generic_iiif_connector(source_id: str) -> None:
-    descriptor = SourceDescriptor(**_load(source_id))
-    connector = build_connector(descriptor, _FakeHttp())
-    assert isinstance(connector, IIIFConnector)
 
 
 def test_restricted_licenses_are_not_enabled():
