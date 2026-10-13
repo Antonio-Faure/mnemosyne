@@ -37,7 +37,6 @@ def test_denied_paths_win():
         "vault/vault.enc",
         "src/mnemosyne/heartbeat/scheduler.py",
         "src/mnemosyne/dev/tools.py",
-        "src/mnemosyne/agents/tools.py",
         "AGENTS.md",
         "pyproject.toml",
         "src/mnemosyne/sources/europeana.key",

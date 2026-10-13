@@ -28,65 +28,26 @@ def normalize(assets: Iterable[Asset]) -> list[Asset]:
     return out
 
 
-def perceptual_hash(image_bytes: bytes) -> str | None:
-    """Optional pHash; returns None when Pillow/imagehash are not installed."""
-    try:
-        import io
-
-        import imagehash
-        from PIL import Image
-    except ImportError:
-        return None
-    try:
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        return str(imagehash.phash(image))
-    except Exception:  # noqa: BLE001 - bad/corrupt image
-        return None
-
-
 class DedupIndex:
-    """In-memory near-duplicate filter across a single run.
+    """In-memory duplicate filter across a single run.
 
-    Exact ids are always dropped. When `use_phash` is enabled and media deps are
-    present, images within a small Hamming distance are considered duplicates.
+    Exact ids are always dropped, plus same-title records from the same source.
+    (A perceptual-hash branch existed but was never fed image bytes — removed;
+    see git history if near-duplicate detection is wired later.)
     """
 
-    def __init__(self, use_phash: bool = False, max_hamming: int = 6):
-        self.use_phash = use_phash
-        self.max_hamming = max_hamming
+    def __init__(self) -> None:
         self._ids: set[str] = set()
         self._title_keys: set[tuple[str, str]] = set()
-        self._hashes: list[object] = []
 
-    def is_duplicate(self, asset: Asset, image_bytes: bytes | None = None) -> bool:
+    def is_duplicate(self, asset: Asset) -> bool:
         if asset.id in self._ids:
             return True
         title_key = (asset.source_id, normalize_title(asset.title))
-        if title_key[1] and title_key in self._title_keys:
-            return True
-        if self.use_phash and image_bytes is not None:
-            h = perceptual_hash(image_bytes)
-            if h is not None:
-                from mnemosyne.normalize.dedup import _phash_close  # local import avoids dep
-
-                if any(_phash_close(h, other, self.max_hamming) for other in self._hashes):
-                    return True
-                self._hashes.append(h)
-        return False
+        return bool(title_key[1] and title_key in self._title_keys)
 
     def add(self, asset: Asset) -> None:
         self._ids.add(asset.id)
         title = normalize_title(asset.title)
         if title:
             self._title_keys.add((asset.source_id, title))
-
-
-def _phash_close(a: str, b: str, max_hamming: int) -> bool:
-    try:
-        import imagehash
-    except ImportError:
-        return False
-    try:
-        return (imagehash.hex_to_hash(a) - imagehash.hex_to_hash(b)) <= max_hamming
-    except Exception:  # noqa: BLE001
-        return False

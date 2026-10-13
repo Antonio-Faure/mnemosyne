@@ -39,7 +39,6 @@ browser = [
 ]
 media = [
     "Pillow>=10.4",
-    "imagehash>=4.3",
 ]
 dev = [
     "pytest>=8.3",

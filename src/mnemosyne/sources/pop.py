@@ -172,55 +172,6 @@ def is_restrictive(src: dict[str, Any]) -> bool:
     return True
 
 
-def manifest_image_services(manifest: dict[str, Any]) -> list[str]:
-    """Extract the ImageService3 ids from a Presentation v3 manifest.
-
-    Path: ``items[].items[].items[].body.service[0].id`` (``service`` may be a
-    dict or a list; ``body`` may be a Choice with nested ``items``).
-    """
-    services: list[str] = []
-    for canvas in _as_list(manifest.get("items")):
-        for page in _as_list(canvas.get("items")):
-            for annotation in _as_list(page.get("items")):
-                services.extend(_service_ids(annotation.get("body")))
-    return services
-
-
-def _service_ids(body: Any) -> list[str]:
-    if isinstance(body, list):
-        out: list[str] = []
-        for item in body:
-            out.extend(_service_ids(item))
-        return out
-    if not isinstance(body, dict):
-        return []
-    service = body.get("service")
-    candidates = service if isinstance(service, list) else [service]
-    ids: list[str] = []
-    for svc in candidates:
-        if isinstance(svc, dict):
-            sid = svc.get("id") or svc.get("@id")
-            if isinstance(sid, str) and sid:
-                ids.append(sid)
-    return ids
-
-
-def facet_buckets(data: dict[str, Any] | None) -> dict[str, list[dict[str, Any]]]:
-    """Normalize ``/search/facets`` aggregations to ``{field: [{key, count}]}``."""
-    out: dict[str, list[dict[str, Any]]] = {}
-    aggregations = (data or {}).get("aggregations") or {}
-    if not isinstance(aggregations, dict):
-        return out
-    for field, payload in aggregations.items():
-        buckets = (payload or {}).get("buckets") if isinstance(payload, dict) else None
-        out[field] = [
-            {"key": b.get("key"), "count": b.get("doc_count")}
-            for b in _as_list(buckets)
-            if isinstance(b, dict)
-        ]
-    return out
-
-
 def _as_list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
@@ -293,24 +244,6 @@ class PopConnector(Connector):
         }
         data = await self.http.get_json(self._api_url("/search/simple"), params=params)
         return data if isinstance(data, dict) else {}
-
-    async def facets(self, term: str, db: str | None = None) -> dict[str, list[dict[str, Any]]]:
-        params: dict[str, Any] = {"text": term}
-        if db:
-            params["bases[0]"] = db
-        data = await self.http.get_json(self._api_url("/search/facets"), params=params)
-        return facet_buckets(data if isinstance(data, dict) else {})
-
-    async def get_notice(self, db: str, ref: str) -> dict[str, Any]:
-        data = await self.http.get_json(self._api_url(f"/notices/{db}/{ref}"))
-        return data if isinstance(data, dict) else {}
-
-    async def fetch_manifest(self, db: str, ref: str) -> dict[str, Any]:
-        data = await self.http.get_json(self._api_url(f"/notices/{db}/{ref}/iiif/manifest"))
-        return data if isinstance(data, dict) else {}
-
-    async def image_services(self, db: str, ref: str) -> list[str]:
-        return manifest_image_services(await self.fetch_manifest(db, ref))
 
     # ── normalization ─────────────────────────────────────────────────────
     def _to_asset(self, db: str, src: dict[str, Any]) -> Asset:

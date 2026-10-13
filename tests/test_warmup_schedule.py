@@ -4,7 +4,6 @@ from datetime import datetime
 from mnemosyne.agents.warmup_schedule import (
     WARMUP_GOALS,
     daily_session_target,
-    goal_weights,
     pick_goal,
     seconds_until_next_slot,
     seconds_until_next_window,
@@ -53,7 +52,7 @@ def test_goals_well_formed():
 
 
 def test_goal_weights_are_not_uniform():
-    weights = set(goal_weights().values())
+    weights = {int(goal["weight"]) for goal in WARMUP_GOALS}
     assert len(weights) > 1  # some sites are visited more than others
 
 

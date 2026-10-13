@@ -2,8 +2,8 @@
 
 Everything is mocked: a :class:`_FakeHttp` returns canned JSON payloads, so no
 network call is ever made. The tests exercise the unit-level helpers (rights
-detection, image-path extraction, IIIF/URL builders, manifest and facet
-parsing) and the full ``search`` normalization + pagination path.
+detection, image-path extraction, IIIF/URL builders) and the full ``search``
+normalization + pagination path.
 """
 
 from __future__ import annotations
@@ -20,13 +20,11 @@ from mnemosyne.sources import pop as pop_mod
 from mnemosyne.sources.pop import (
     PopConnector,
     bucket_url,
-    facet_buckets,
     iiif_image_url,
     iiif_info_url,
     iiif_service_id,
     iiif_thumb_url,
     is_restrictive,
-    manifest_image_services,
     notice_image_paths,
 )
 
@@ -61,49 +59,6 @@ _JOCONDE_HIT: dict[str, Any] = {
         "COPY": "Domaine public",
     }
 }
-
-_MANIFEST: dict[str, Any] = {
-    "type": "Manifest",
-    "items": [
-        {
-            "type": "Canvas",
-            "items": [
-                {
-                    "type": "AnnotationPage",
-                    "items": [
-                        {
-                            "type": "Annotation",
-                            "body": {
-                                "type": "Image",
-                                "service": [
-                                    {
-                                        "id": "https://iiif.prd.cloud.culture.fr/iiif/3/"
-                                        "memoire%2FSAPR44_20235700043%2Fphoto.jpg",
-                                        "type": "ImageService3",
-                                    }
-                                ],
-                            },
-                        }
-                    ],
-                }
-            ],
-        }
-    ],
-}
-
-_FACETS: dict[str, Any] = {
-    "total": 1200000,
-    "aggregations": {
-        "DIFF.keyword": {
-            "buckets": [
-                {"key": "reproduction soumise à autorisation", "doc_count": 1018341},
-                {"key": "tous droits réservés", "doc_count": 5494},
-                {"key": "Domaine public", "doc_count": 3},
-            ]
-        }
-    },
-}
-
 
 class _FakeHttp:
     """Routes requests to canned payloads by URL substring; never touches the net."""
@@ -190,21 +145,6 @@ def test_iiif_and_bucket_urls_are_built_from_the_path():
     )
 
 
-def test_manifest_image_services_extracts_service_id():
-    assert manifest_image_services(_MANIFEST) == [
-        "https://iiif.prd.cloud.culture.fr/iiif/3/memoire%2FSAPR44_20235700043%2Fphoto.jpg"
-    ]
-    assert manifest_image_services({}) == []
-
-
-def test_facet_buckets_normalizes_aggregations():
-    parsed = facet_buckets(_FACETS)
-    top = parsed["DIFF.keyword"][0]
-    assert top == {"key": "reproduction soumise à autorisation", "count": 1018341}
-    assert parsed["DIFF.keyword"][-1] == {"key": "Domaine public", "count": 3}
-    assert facet_buckets({}) == {}
-
-
 # ── search: parsing + pagination ─────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_search_parses_records_and_paginates():
@@ -289,28 +229,3 @@ async def test_search_without_query_iterates_industrial_terms():
     await connector.search("", limit=5)
 
     assert seen_terms[: len(pop_mod.INDUSTRIAL_TERMS)] == list(pop_mod.INDUSTRIAL_TERMS)
-
-
-# ── per-notice IIIF manifest + facets endpoints ──────────────────────────────
-@pytest.mark.asyncio
-async def test_image_services_reads_the_iiif_manifest():
-    http = _FakeHttp({"/iiif/manifest": _MANIFEST})
-    connector = PopConnector(_descriptor(), http)
-
-    services = await connector.image_services("memoire", "SAPR44_20235700043")
-
-    assert services == [
-        "https://iiif.prd.cloud.culture.fr/iiif/3/memoire%2FSAPR44_20235700043%2Fphoto.jpg"
-    ]
-    assert http.calls[0][0].endswith("/notices/memoire/SAPR44_20235700043/iiif/manifest")
-
-
-@pytest.mark.asyncio
-async def test_facets_parses_buckets():
-    http = _FakeHttp({"/search/facets": _FACETS})
-    connector = PopConnector(_descriptor(), http)
-
-    buckets = await connector.facets("usine", db="memoire")
-
-    assert buckets["DIFF.keyword"][0]["count"] == 1018341
-    assert http.calls[0][1]["params"]["bases[0]"] == "memoire"

@@ -140,10 +140,6 @@ def pick_goal(rng: random.Random | None = None) -> dict:
     return rng.choices(WARMUP_GOALS, weights=weights, k=1)[0]
 
 
-def goal_weights() -> dict[str, int]:
-    return {g["name"]: int(g.get("weight", 1)) for g in WARMUP_GOALS}
-
-
 def daily_session_target(day: str, lo: int, hi: int) -> int:
     """Deterministic per-day target (1 or 2 sessions) so all ticks agree."""
     return random.Random(day).randint(lo, max(lo, hi))

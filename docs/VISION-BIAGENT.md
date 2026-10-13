@@ -272,7 +272,7 @@ Outils/permissions :
 - `src/mnemosyne/heartbeat/` — superviseur (jobs durables) ; y ajouter le job agent.
 - `src/mnemosyne/dev/` — agent codeur + garde-fous + git.
 - `src/mnemosyne/agents/browser_agent.py` — agent navigateur (browser-harness).
-- `src/mnemosyne/agents/warmup.py` / `warmup_schedule.py` — warmup.
+- `src/mnemosyne/agents/warmup_schedule.py` — warmup.
 - `src/mnemosyne/discovery/` — découverte de fournisseurs (P3).
 - `src/mnemosyne/sources/iiif.py` — connecteur IIIF générique (P4).
 - `src/mnemosyne/identity.py` — transparence (phrase + repo) pour mails/formulaires.

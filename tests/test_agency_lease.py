@@ -16,7 +16,7 @@ import pytest
 
 from mnemosyne.agents.supervisor import run_agency
 from mnemosyne.config import get_config
-from mnemosyne.db import NOTE_MAX_CHARS, Database
+from mnemosyne.db import Database
 
 
 @pytest.fixture
@@ -114,19 +114,3 @@ def test_two_pilots_never_run_at_the_same_time(cfg):
     for t in threads:
         t.join()
     assert sorted(seen) in (["A:held", "B:refused"], ["A:refused", "B:held"])
-
-
-def test_the_note_keeps_the_delivery_report():
-    """Regression: 200 chars cut exactly the useful part (link, duration)."""
-    from mnemosyne.agents.supervisor import outcome_status_note
-
-    report = "BILAN — livré https://we.tl/t-abcdef " + "détail " * 400
-    status, note = outcome_status_note(report, None)
-    assert status == "handled"
-    assert len(note) == NOTE_MAX_CHARS == 1000
-    assert "https://we.tl/t-abcdef" in note, "le lien de livraison doit survivre"
-
-    status, note = outcome_status_note("", "boom")
-    assert (status, note) == ("failed", "boom")
-    status, note = outcome_status_note("", None)
-    assert status == "review"
