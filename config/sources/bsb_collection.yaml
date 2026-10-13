@@ -1,0 +1,28 @@
+id: bsb_collection
+name: Bavarian State Library — digital collections (IIIF)
+institution: Bayerische Staatsbibliothek, München
+country: DE
+protocol: iiif
+base_url: https://api.digitale-sammlungen.de
+auth: none
+license: varies
+rights: "Bayerische Staatsbibliothek — vérifier par notice (domaine public pour une grande partie)"
+rate_limit_per_s: 1.0
+priority: 39
+tags: [library, germany, manuscripts, iiif, keyless]
+seeds:
+  - "Handschrift"
+  - "Inkunabel"
+  - "Karte"
+notes: >-
+  IIIF Presentation API v2 host of the Bayerische Staatsbibliothek. Its
+  enumerable entry point is the top-level Collection manifest at
+  iiif/presentation/v2/collection/top (a v2 `sc:Collection`, label
+  "Collection 'top'", paginated via `next`, ~3.2M objects), so it is onboarded
+  as a collection-based IIIF source via the generic iiif.py connector, which
+  walks the v2 `sc:Collection.manifests` list. Keyless; images are served by the
+  IIIF Image API (iiif/image/v2/<id>_<page>). Complements the single-manifest
+  `bsb` descriptor with a collection-level entry point.
+extra:
+  collection: https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top
+  collection_id: "top"
