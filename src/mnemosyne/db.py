@@ -114,6 +114,11 @@ CREATE TABLE IF NOT EXISTS operator_asks (
 """
 
 
+def _like_escape(value: str) -> str:
+    """Escape a value for a LIKE pattern (source ids carry ``_``/``%``)."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _proc_start_time(pid: int | None = None) -> int | None:
     """Start time of a process (/proc field 22): identifies an incarnation.
 
@@ -465,10 +470,10 @@ class Database:
         """
         with self._lock:
             if source_id is not None:
-                pattern = f'%"source_id": "{source_id}"%'
+                pattern = f'%"source_id": "{_like_escape(source_id)}"%'
                 row = self._conn.execute(
                     """SELECT 1 FROM jobs
-                       WHERE kind = ? AND state IN (?, ?) AND payload LIKE ?
+                       WHERE kind = ? AND state IN (?, ?) AND payload LIKE ? ESCAPE '\\'
                        LIMIT 1""",
                     (kind, JobState.PENDING.value, JobState.RUNNING.value, pattern),
                 ).fetchone()
@@ -682,11 +687,11 @@ class Database:
             if kind or source_id:
                 conditions, params = [], []
                 if kind:
-                    conditions.append("payload LIKE ?")
-                    params.append(f'%"kind": "{kind}"%')
+                    conditions.append("payload LIKE ? ESCAPE '\\'")
+                    params.append(f'%"kind": "{_like_escape(kind)}"%')
                 if source_id:
-                    conditions.append("payload LIKE ?")
-                    params.append(f'%"source_id": "{source_id}"%')
+                    conditions.append("payload LIKE ? ESCAPE '\\'")
+                    params.append(f'%"source_id": "{_like_escape(source_id)}"%')
                 row = self._conn.execute(
                     f"""SELECT 1 FROM tasks
                         WHERE status IN ('pending', 'running') AND {' AND '.join(conditions)}

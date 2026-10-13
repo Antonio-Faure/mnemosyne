@@ -19,6 +19,23 @@ def test_has_open_job_singleton_and_source(config):
     db.close()
 
 
+def test_has_open_job_escapes_like_wildcards(config):
+    """Source ids carry `_`: it must not act as a LIKE wildcard."""
+    db = _db(config)
+    db.enqueue(Job(kind="harvest", payload={"source_id": "bsbXcollection", "limit": 20}))
+    assert db.has_open_job("harvest", "bsbXcollection") is True
+    assert db.has_open_job("harvest", "bsb_collection") is False
+    db.close()
+
+
+def test_has_open_task_escapes_like_wildcards(config):
+    db = _db(config)
+    db.enqueue_task("browser", "mission", payload={"source_id": "bsbXcollection"})
+    assert db.has_open_task(source_id="bsbXcollection") is True
+    assert db.has_open_task(source_id="bsb_collection") is False
+    db.close()
+
+
 def test_prune_duplicate_jobs_keeps_one(config):
     db = _db(config)
     for _ in range(5):
