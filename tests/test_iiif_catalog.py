@@ -25,6 +25,7 @@ IIIF_SOURCES = {
     "rijksmuseum": (
         "https://iiif.europeana.eu/presentation/90402/SK_A_3262/manifest"
     ),
+    "digi_vatlib": "https://digi.vatlib.it/iiif/MSS_Pal.lat.50/manifest.json",
     "vatican": "https://digi.vatlib.it/iiif/MSS_Barb.gr.252/manifest.json",
     "wellcome": "https://iiif.wellcomecollection.org/presentation/b18035723",
     "yale": "https://collections.library.yale.edu/manifests/2002046",
@@ -60,6 +61,7 @@ def test_restricted_licenses_are_not_enabled():
     for source_id in (
         "belvedere",
         "cudl",
+        "digi_vatlib",
         "ecodices",
         "irht",
         "mai_saint_etienne",

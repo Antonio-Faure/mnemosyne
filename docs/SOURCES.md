@@ -19,9 +19,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **43**
+- Sources déclarées : **44**
 - Sources actives : **32**
-- Sources désactivées : **11**
+- Sources désactivées : **12**
 ## Sources actives (32)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
@@ -56,12 +56,13 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 | yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | US | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
-## Sources désactivées (11)
+## Sources désactivées (12)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
 | belvedere | Belvedere — Sammlung Online | Österreichische Galerie Belvedere, Wien | AT | iiif | varies | Œuvres sous droit d'auteur (© Bildrecht, Wien) — à confirmer par la politique du projet |
 | cudl | Cambridge Digital Library (CUDL) | Cambridge University Library | GB | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
+| digi_vatlib | DigiVatLib — Vatican Library (IIIF) | Biblioteca Apostolica Vaticana | VA | iiif | varies | Usage gratuit non commercial d'après le site — à confirmer par la politique du projet |
 | ecodices | e-codices — Virtual Manuscript Library of Switzerland | e-codices (University of Fribourg) | CH | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | irht | IRHT — Arca (bibliothèque numérique des manuscrits) | Institut de recherche et d'histoire des textes (IRHT-CNRS) | FR | iiif | varies | Licence variable — CC BY-NC 3.0 sur certains manuscrits ; à confirmer par la politique du projet |
 | mai_saint_etienne | Musée d'Art et d'Industrie de Saint-Étienne | Musée d'Art et d'Industrie de Saint-Étienne (Pôle muséal) | FR | rest | © Musée d'Art et d'Industrie de Saint-Étienne | Mention globale réservant l'usage commercial des images (autorisation requise) — non commercial |
@@ -85,8 +86,8 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   `paris_musees`, `princeton_art_museum`, `vanderbilt`, `wellesley`, `wikimedia`,
   `yale`, `yale_lux` — la licence est décidée au niveau de l'`Asset` à la
   frontière du connecteur, pas de la source.
-- **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
-  `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
+- **Non commercial / restrictif** : `belvedere`, `cudl`, `digi_vatlib`, `ecodices`,
+  `irht`, `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
   `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
   Ouverte 2.0 (etalab) ; images soumises à autorisation par notice (DIFF/DIFFU),

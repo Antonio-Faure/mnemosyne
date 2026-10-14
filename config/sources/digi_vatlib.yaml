@@ -1,0 +1,26 @@
+id: digi_vatlib
+name: DigiVatLib — Vatican Library (IIIF)
+institution: Biblioteca Apostolica Vaticana
+country: VA
+protocol: iiif
+base_url: https://digi.vatlib.it
+auth: none
+license: varies
+rights: "Biblioteca Apostolica Vaticana — usage gratuit non commercial (vérifier par notice)"
+enabled: false   # usage gratuit non commercial d'apres le site — activer si la politique du projet l'autorise
+rate_limit_per_s: 1.0
+priority: 40
+tags: [library, vatican, manuscripts, iiif, keyless]
+seeds:
+  - "codex"
+  - "latin manuscript"
+notes: >-
+  DigiVatLib (digi.vatlib.it) serves IIIF Presentation v2 manifests at
+  iiif/<shelfmark>/manifest.json (image API under iiifimage/). No enumerable
+  IIIF Collection and no JSON search endpoint were found — the site search is an
+  HTML/JS UI under /search, disallowed by robots.txt — so the host is onboarded
+  as a single-manifest source via the generic iiif.py connector, pointed at the
+  sample manuscript Pal.lat.50. Keyless. Rights: free non-commercial.
+extra:
+  manifest: https://digi.vatlib.it/iiif/MSS_Pal.lat.50/manifest.json
+  collection_id: "MSS_Pal.lat.50"
