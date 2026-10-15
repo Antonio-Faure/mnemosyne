@@ -1,0 +1,34 @@
+id: lehigh
+name: Lehigh University Libraries — Preserve (IIIF)
+institution: Lehigh University Libraries
+country: US
+protocol: iiif
+base_url: https://preserve.lehigh.edu
+auth: none
+license: varies
+rights: "Lehigh University Libraries — vérifier par notice (droits variables, rightsstatements.org possible)"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [university-library, united-states, manuscripts, iiif, keyless]
+seeds:
+  - "manuscript"
+  - "photograph"
+  - "letter"
+  - "map"
+notes: >-
+  Islandora 2 / Drupal repository (Cantaloupe image server) for Lehigh
+  University Libraries. IIIF Presentation API v2 manifests are served per node:
+  /node/<nid>/manifest returns a single page (sc:Manifest with one canvas) while
+  /node/<nid>/book-manifest aggregates every page of a paged ("book") object.
+  Node 450566 is such a book: its plain /manifest is empty, so the
+  /book-manifest is the working entry point. Images are served by the IIIF
+  Image API v3 at /iiif/3/<url-encoded-source>/…, whose full-resolution size
+  keyword is `max` (a v3-shaped service that only carries the v3 @context — the
+  generic connector now detects this). No aggregate IIIF Collection manifest is
+  exposed (Islandora 2 default) and /browse and /search are HTML (scraping not
+  allowed), so a single-manifest entry point is used with the generic
+  src/mnemosyne/sources/iiif.py connector. Keyless; rights vary per item. The
+  host answers 429 to aggressive clients, so harvest with a low rate limit.
+extra:
+  manifest: "https://preserve.lehigh.edu/node/450566/book-manifest"
+  collection_id: "450566"

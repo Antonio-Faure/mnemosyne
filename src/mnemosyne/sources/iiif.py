@@ -67,10 +67,18 @@ def _image_service(manifest: dict) -> tuple[str | None, str | None, str]:
 
 
 def _service_size(service: dict) -> str:
-    """The full-resolution size parameter for a service (v3 -> ``max``)."""
+    """The full-resolution size parameter for a service (v3 -> ``max``).
+
+    Image API 3.0 services spell the full-resolution size ``max`` (``full`` is
+    v2-only). We detect v3 from the service ``type`` (``ImageService3``), its
+    ``profile`` or its ``@context``: some v3 hosts (e.g. Islandora/Cantaloupe)
+    ship a v2-shaped service object that only carries the v3 ``@context``.
+    """
     if "ImageService3" in str(service.get("type") or ""):
         return "max"
     if "image/3" in str(service.get("profile") or ""):
+        return "max"
+    if "image/3" in str(service.get("@context") or ""):
         return "max"
     return "full"
 
