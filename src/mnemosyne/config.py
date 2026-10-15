@@ -143,6 +143,11 @@ class AgentsConfig(BaseModel):
     warmup_session_min: float = 6.0   # minutes
     warmup_session_max: float = 12.0
     warmup_skip_probability: float = 0.2  # humans don't do it every time
+    #: the mission cycle alternates warmups and SOURCE CONNEXION missions
+    #: (registering on a portal, obtaining an API key, wiring the connector):
+    #: expensive in LLM tokens, so it is OPT-IN. Off = warmups only; onboarding
+    #: stays available, manually (`mnemosyne connect-next`, `mnemosyne agency`).
+    auto_connect: bool = False
 
 
 class DiscoveryConfig(BaseModel):

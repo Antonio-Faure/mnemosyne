@@ -100,7 +100,8 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     never mixed into one session. This job only decides *when* and which leg
     to post; a connexion leg with no candidate falls back to a warmup (the
     daily quota applies to warmup legs only). The session itself runs under
-    the agency job.
+    the agency job. Connexion legs exist only when `agents.auto_connect` is on
+    (opt-in: they cost tokens in both agents); otherwise the cycle is warmups.
     """
     from mnemosyne.agents.warmup_schedule import (
         daily_session_target,
@@ -129,7 +130,9 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
         # runs under the agency job; this tick just waits)
         return {"interval_s": 1800}
     cycle = db.get_kv("mission_cycle", 0)
-    candidate = _connexion_candidate(ctx) if cycle % 2 == 1 else None
+    candidate = (
+        _connexion_candidate(ctx) if cycle % 2 == 1 and cfg.agents.auto_connect else None
+    )
     if candidate is not None and not ctx.engine.governor.allowed("outbound"):
         # the warmup phases cap outbound actions (0 during the first days):
         # a registration is outbound, so the cycle falls back to a warmup
@@ -257,7 +260,9 @@ async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
 
     cfg = ctx.config
     if not cfg.discovery.enabled:
-        return None
+        # scan OFF: return without rescheduling — the scheduler re-arms the job
+        # at boot when `discovery.enabled` is true again
+        return {"interval_s": None}
     records = await run_discovery(ctx.engine.http, limit=cfg.discovery.limit)
 
     known = {host_of(d.base_url) for d in ctx.engine.catalog.list()}

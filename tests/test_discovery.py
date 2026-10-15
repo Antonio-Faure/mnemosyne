@@ -65,3 +65,33 @@ def test_save_and_list_discoveries(config):
     assert db.count_discoveries() == 2
     assert {r.host for r in db.list_discoveries()} == {"a.example", "b.example"}
     db.close()
+
+
+@pytest.mark.asyncio
+async def test_discover_handler_is_a_silent_no_op_when_disabled(config, monkeypatch):
+    """`discovery.enabled: false` : aucun scan, et pas de replanification."""
+    from mnemosyne.engine import Engine
+    from mnemosyne.heartbeat.jobs import JobContext, handle_discover
+    from mnemosyne.journal import Control, Journal
+    from mnemosyne.models import Job
+    from mnemosyne.notify import Notifier
+
+    async def _boom(*_args, **_kwargs):
+        raise AssertionError("run_discovery ne doit pas être appelé")
+
+    monkeypatch.setattr("mnemosyne.discovery.run_discovery", _boom)
+    config.discovery.enabled = False
+
+    engine = Engine(config)
+    ctx = JobContext(
+        config=config,
+        engine=engine,
+        journal=Journal(config.journal_path),
+        control=Control(config.control_path),
+        notifier=Notifier(config.notify.telegram),
+    )
+    try:
+        out = await handle_discover(ctx, Job(kind="discover", payload={"interval_s": 86400}))
+    finally:
+        await engine.aclose()
+    assert out == {"interval_s": None}, "le job ne doit pas se replanifier"

@@ -75,8 +75,10 @@ identity:
   language: fr
 
 # P3: autonomous discovery of new providers.
+# ARRÊTÉ le 15/10/2026 : l'onboarding automatique consommait l'abonnement
+# OpenCode Go. Le scan reste disponible, à la demande (`mnemosyne discover`).
 discovery:
-  enabled: true
+  enabled: false
   interval_s: 86400
   limit: 100
 
@@ -122,6 +124,10 @@ agents:
   warmup_session_min: 6
   warmup_session_max: 12
   warmup_skip_probability: 0.2
+  # Jambe CONNEXION du cycle (inscription portail + clé API + branchement) :
+  # OPT-IN — elle consomme des tokens des deux agents. false = warmups seuls,
+  # onboarding 100 % manuel (`mnemosyne connect-next`, `mnemosyne agency`).
+  auto_connect: false
   warmup_sites:
     - https://gallica.bnf.fr/
     - https://commons.wikimedia.org/wiki/Main_Page

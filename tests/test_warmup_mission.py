@@ -99,6 +99,7 @@ async def test_cycle_alternates_warmup_and_connexion(config, monkeypatch):
     # enough warmup quota so the cycle is not cut short by the daily cap
     config.agents.warmup_per_day_min = 4
     config.agents.warmup_per_day_max = 4
+    config.agents.auto_connect = True  # cette jambe est opt-in
 
     class _Candidate:
         id = "europeana"
@@ -155,6 +156,7 @@ async def test_connexion_without_candidate_falls_back_to_warmup(config, monkeypa
 
     config.agents.warmup_per_day_min = 4
     config.agents.warmup_per_day_max = 4
+    config.agents.auto_connect = True  # la jambe connexion est opt-in
     monkeypatch.setattr(jobs, "datetime", _Noon)
     monkeypatch.setattr(jobs, "_connexion_candidate", lambda _ctx: None)
 
@@ -185,6 +187,7 @@ async def test_connexion_is_gated_by_the_outbound_quota(config, monkeypatch):
     config.agents.warmup_window_end = 23
     config.agents.warmup_per_day_min = 4
     config.agents.warmup_per_day_max = 4
+    config.agents.auto_connect = True  # on teste le quota, pas l'opt-in
     config.reputation.account_created_at = datetime.now().date().isoformat()  # day 0
 
     class _Noon(datetime):
@@ -210,5 +213,50 @@ async def test_connexion_is_gated_by_the_outbound_quota(config, monkeypatch):
         tasks = ctx.engine.db.list_tasks()
         assert len(tasks) == 1
         assert tasks[0]["objective"].startswith("MISSION WARMUP")
+    finally:
+        await ctx.engine.aclose()
+
+
+@pytest.mark.asyncio
+async def test_auto_connect_off_never_posts_a_connexion(config, monkeypatch):
+    """`agents.auto_connect: false` (défaut) : le cycle ne poste que des warmups.
+
+    L'onboarding automatique est opt-in : même sur un cycle impair, le
+    sélecteur de candidat n'est pas consulté — donc aucune inscription.
+    """
+    from mnemosyne.heartbeat import jobs
+
+    async def ready(_ctx):
+        return True
+
+    monkeypatch.setattr(jobs, "_browser_ready", ready)
+    monkeypatch.setattr(jobs.random, "random", lambda: 0.99)
+    config.agents.warmup_window_start = 8
+    config.agents.warmup_window_end = 23
+    config.agents.warmup_per_day_min = 4
+    config.agents.warmup_per_day_max = 4
+
+    class _Noon(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 1, 12, 0, 0)
+
+    monkeypatch.setattr(jobs, "datetime", _Noon)
+    assert config.agents.auto_connect is False  # défaut : pas d'onboarding auto
+
+    def _must_not_be_consulted(_ctx):
+        raise AssertionError("_connexion_candidate ne doit pas être consulté")
+
+    monkeypatch.setattr(jobs, "_connexion_candidate", _must_not_be_consulted)
+
+    ctx = _ctx(config)
+    try:
+        await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 0 : warmup
+        _finish_open_tasks(ctx)
+        await handle_warmup(ctx, Job(kind="warmup", payload={}))   # cycle 1 : warmup aussi
+        bodies = [t["objective"] for t in reversed(ctx.engine.db.list_tasks())]
+        assert len(bodies) == 2
+        assert all(b.startswith("MISSION WARMUP") for b in bodies)
+        assert all("MISSION CONNEXION" not in b for b in bodies)
     finally:
         await ctx.engine.aclose()
