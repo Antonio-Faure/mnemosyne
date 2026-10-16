@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **44**
-- Sources actives : **33**
+- Sources déclarées : **45**
+- Sources actives : **34**
 - Sources désactivées : **11**
-## Sources actives (33)
+## Sources actives (34)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -47,6 +47,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
 | princeton_art_museum | Princeton University Art Museum (IIIF) | Princeton University Art Museum, Princeton, NJ | US | iiif | none | varies | Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
+| rit | RIT Digital Collections (RIT Libraries) | Rochester Institute of Technology Libraries, Rochester, NY | US | iiif | none | varies | RIT Libraries — vérifier la mention de droits par notice (Cary Graphic Arts Collection et autres fonds) ; manifeste unique par objet (pas de Collection IIIF) |
 | rijksmuseum | Rijksmuseum (IIIF via Europeana) | Rijksmuseum, Amsterdam | NL | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Rijksmuseum SK-A-3262 |
 | smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
 | smk | SMK — Statens Museum for Kunst (National Gallery of Denmark) | SMK — Statens Museum for Kunst | DK | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — SMK — the national gallery of Denmark |
@@ -83,7 +84,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
-  `paris_musees`, `princeton_art_museum`, `vanderbilt`, `wellesley`, `wikimedia`,
+  `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
   `yale`, `yale_lux` — la licence est décidée au niveau de l'`Asset` à la
   frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
