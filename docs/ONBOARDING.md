@@ -10,6 +10,22 @@ sans validation humaine préalable.
 |---|---|---|
 | Scan de découverte (candidats fournisseurs) | `discovery.enabled` | **false** |
 | Jambe CONNEXION du cycle (inscription portail, clé API, branchement) | `agents.auto_connect` | **false** |
+| Timer hôte `mnemosyne-connect.timer` (1 connexion/jour) | systemd utilisateur | **désactivé** |
+
+### Timer hôte (la fuite du 16/10)
+
+`mnemosyne-connect.timer` (systemd **utilisateur**, côté hôte) lançait chaque
+jour `scripts/daily-connect.sh` → `docker compose exec mnemosyne mnemosyne
+connect-next` : une source par jour, sans validation de l'opérateur. Les flags
+du conteneur ne le couvraient pas — c'est lui qui a produit la tâche #96 et la
+PR #42 (RIT) le 16/10/2026 à 11:00.
+
+**Désactivé le 16/10/2026** :
+```bash
+systemctl --user disable --now mnemosyne-connect.timer
+```
+Les unités restent dans `deploy/systemd/` pour un réemploi **manuel** ; elles ne
+se relancent plus au démarrage (`disabled`).
 
 - `agents.auto_connect` est **opt-in** (défaut `false` dans le code) : le cycle
   warmup ne poste plus que des missions de lecture, le sélecteur de candidat
@@ -29,6 +45,8 @@ sans validation humaine préalable.
 1. `config/config.yaml` : `discovery.enabled: true` et/ou `agents.auto_connect: true`.
 2. Redémarrer le service (`docker compose restart mnemosyne`) — le YAML est
    monté en read-only, un rebuild n'est requis que pour du code.
+3. Pour le timer hôte :
+   `systemctl --user enable --now mnemosyne-connect.timer`.
 
 ## Ce qui continue de tourner
 
