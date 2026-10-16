@@ -427,3 +427,30 @@ def test_coder_disabled_leaves_the_task_pending(config, monkeypatch):
     db = Database(config.db_file())
     assert db.get_task(1)["status"] == "pending"
     db.close()
+
+
+def test_frozen_onboarding_leaves_the_connect_task_pending(config, monkeypatch):
+    """`dev.sources_freeze`: une tâche d'onboarding reste parquée, qui que ce soit."""
+    calls: list[str] = []
+
+    async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        calls.append(task)
+        return _Outcome(finish="fini")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "coder", fake_coder)
+    config.dev.sources_freeze = True
+
+    db = Database(config.db_file())
+    db.enqueue_task(
+        "coder", "Connect the discovered provider", payload={"kind": "connect", "source_id": "x"}
+    )
+    db.close()
+
+    from mnemosyne.agents.supervisor import drain_queue
+
+    result = asyncio.run(drain_queue(config))
+    assert result.turns == []
+    assert calls == []
+    db = Database(config.db_file())
+    assert db.get_task(1)["status"] == "pending"
+    db.close()

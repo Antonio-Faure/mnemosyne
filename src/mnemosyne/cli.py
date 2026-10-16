@@ -295,8 +295,18 @@ def _cmd_discoveries(args: argparse.Namespace) -> int:
 def _cmd_connect_next(args: argparse.Namespace) -> int:
     """Connect the next discovered provider through the bi-agent loop."""
     cfg = get_config()
+    if cfg.dev.sources_freeze:
+        print(
+            "onboarding gelé (dev.sources_freeze: true) : aucune connexion de "
+            "source ne sera lancée.\n"
+            "Lever le gel : dev.sources_freeze: false dans config/config.yaml, "
+            "puis redémarrer le service."
+        )
+        return 1
     from mnemosyne.agents.supervisor import run_agency
+    from mnemosyne.catalog import Catalog
     from mnemosyne.db import Database
+    from mnemosyne.discovery import host_of
 
     db = Database(cfg.db_file())
     pending = db.list_discoveries(status="new")
@@ -304,7 +314,32 @@ def _cmd_connect_next(args: argparse.Namespace) -> int:
         print("aucun candidat en attente de connexion")
         db.close()
         return 0
-    record = pending[-1]  # list is DESC by date -> last is the oldest
+
+    # a stale "new" discovery from before its host was onboarded must not
+    # produce a duplicate source (cf. digi_vatlib vs vatican): close every host
+    # the catalog already covers and move on to the next candidate
+    catalog = Catalog(cfg.sources_path, db)
+    catalog.sync()
+    known = {host_of(d.base_url) for d in catalog.list()}
+    known.discard("")
+
+    def is_known(host: str) -> bool:
+        return any(
+            host == k or host.endswith("." + k) or k.endswith("." + host) for k in known
+        )
+
+    record = None
+    for candidate in reversed(pending):  # list is DESC by date -> oldest first
+        if is_known(candidate.host):
+            db.set_discovery_status(candidate.id, "connected")
+            print(f"{candidate.host} : déjà couvert par le catalogue — découverte close")
+            continue
+        record = candidate
+        break
+    if record is None:
+        print("aucun candidat à connecter (hôtes déjà couverts par le catalogue)")
+        db.close()
+        return 0
     db.set_discovery_status(record.id, "connecting")
     db.close()
     print(f"connexion de {record.host} ({record.url})")

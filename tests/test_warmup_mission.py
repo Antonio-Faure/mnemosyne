@@ -260,3 +260,36 @@ async def test_auto_connect_off_never_posts_a_connexion(config, monkeypatch):
         assert all("MISSION CONNEXION" not in b for b in bodies)
     finally:
         await ctx.engine.aclose()
+
+
+@pytest.mark.asyncio
+async def test_connexion_candidate_is_none_when_frozen(config):
+    """`dev.sources_freeze` est le maître : aucun candidat, même auto_connect actif."""
+    import yaml
+
+    from mnemosyne.heartbeat.jobs import _connexion_candidate
+
+    (config.sources_path / "cle.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "cle",
+                "name": "Source à clé",
+                "protocol": "iiif",
+                "base_url": "https://cle.example/",
+                "auth": "api_key",
+                "license": "varies",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    ctx = _ctx(config)
+    try:
+        config.agents.auto_connect = True
+        config.dev.sources_freeze = False
+        assert _connexion_candidate(ctx) is not None, "la source à clé est un candidat"
+
+        config.dev.sources_freeze = True
+        assert _connexion_candidate(ctx) is None, "le gel coupe la sélection"
+    finally:
+        await ctx.engine.aclose()

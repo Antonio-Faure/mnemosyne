@@ -162,6 +162,10 @@ class DevConfig(BaseModel):
     """Self-extension: what the developer agent may write and how it integrates."""
 
     enabled: bool = True
+    #: Master switch for SOURCE ONBOARDING: true = nothing onboards, automatic
+    #: (discovery scan, connexion missions) or manual (`connect-next`, queued
+    #: connect/connexion tasks). Lift it explicitly to resume.
+    sources_freeze: bool = False
     branch_prefix: str = "agent/"
     base_branch: str = "main"
     github_repo: str = "Antonio-Faure/mnemosyne"

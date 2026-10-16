@@ -216,6 +216,8 @@ def _connexion_candidate(ctx: JobContext):
     """A source that needs an access the vault does not hold, with no task open."""
     from mnemosyne.models import AuthKind
 
+    if ctx.config.dev.sources_freeze:
+        return None  # master switch: no onboarding of any kind
     db = ctx.engine.db
     vault = _vault_get(ctx)
     for descriptor in ctx.engine.catalog.sync():
@@ -259,9 +261,9 @@ async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
     from mnemosyne.discovery import host_of, run_discovery
 
     cfg = ctx.config
-    if not cfg.discovery.enabled:
-        # scan OFF: return without rescheduling — the scheduler re-arms the job
-        # at boot when `discovery.enabled` is true again
+    if not cfg.discovery.enabled or cfg.dev.sources_freeze:
+        # scan OFF (or frozen): return without rescheduling — the scheduler
+        # re-arms the job at boot when `discovery.enabled` is true again
         return {"interval_s": None}
     records = await run_discovery(ctx.engine.http, limit=cfg.discovery.limit)
 

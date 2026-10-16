@@ -8,9 +8,28 @@ sans validation humaine préalable.
 
 | Mécanisme | Réglage | État |
 |---|---|---|
+| **Tout l'onboarding** (maître) | `dev.sources_freeze` | **true** |
 | Scan de découverte (candidats fournisseurs) | `discovery.enabled` | **false** |
 | Jambe CONNEXION du cycle (inscription portail, clé API, branchement) | `agents.auto_connect` | **false** |
 | Timer hôte `mnemosyne-connect.timer` (1 connexion/jour) | systemd utilisateur | **désactivé** |
+
+### Le gel maître (`dev.sources_freeze: true`)
+
+Il ferme **tous** les chemins, automatiques et manuels :
+
+- `mnemosyne connect-next` refuse (message explicite, code 1) ;
+- `_connexion_candidate` ne propose plus rien (le cycle ne poste que des warmups) ;
+- le job `discover` sort en no-op, même si `discovery.enabled` repassait à `true` ;
+- une tâche `connect`/`connexion` en file reste **parquée** (le superviseur ne
+  l'active pas, elle garde sa place).
+
+Rien n'est supprimé : découvertes, outils et PRs déjà faites restent en place.
+
+### Garde anti-doublon (actif même hors gel)
+
+`connect-next` ferme désormais toute découverte dont l'hôte est **déjà couvert
+par le catalogue** (statut `connected`) au lieu de refaire une source — c'est ce
+qui a produit le doublon `digi_vatlib` vs `vatican` (PR #40, fermée sans merge).
 
 ### Timer hôte (la fuite du 16/10)
 
@@ -42,7 +61,9 @@ se relancent plus au démarrage (`disabled`).
 
 ## Réactiver l'automatique
 
-1. `config/config.yaml` : `discovery.enabled: true` et/ou `agents.auto_connect: true`.
+1. `config/config.yaml` : `dev.sources_freeze: false`, puis selon ce qu'on veut
+   `discovery.enabled: true` (scan) et/ou `agents.auto_connect: true` (missions
+   de connexion).
 2. Redémarrer le service (`docker compose restart mnemosyne`) — le YAML est
    monté en read-only, un rebuild n'est requis que pour du code.
 3. Pour le timer hôte :

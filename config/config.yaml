@@ -84,6 +84,11 @@ discovery:
 
 # Coder agent (bi-agent; also reachable via `mnemosyne agency --to coder`).
 dev:
+  # GEL DE L'ONBOARDING (décision du 16/10/2026) : aucune source ne s'ajoute —
+  # ni scan, ni mission de connexion, ni `connect-next`, ni tâche connect en
+  # file — tant que ce n'est pas repassé à false. Rien n'est supprimé : les
+  # découvertes et les outils restent, ils attendent.
+  sources_freeze: true
   max_turns: 120       # une connexion (lecture + connecteur + tests + PR) dépasse 40 tours
   read_max_chars: 3000
   list_max_entries: 60

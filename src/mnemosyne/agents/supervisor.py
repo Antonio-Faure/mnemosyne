@@ -184,6 +184,15 @@ def _branch_has_commits(config: Config, branch: str) -> bool:
     return False
 
 
+def _onboarding_task(task: dict) -> bool:
+    """True for a queue task that onboards a source (connect/connexion kinds)."""
+    try:
+        payload = json.loads(task.get("payload") or "{}")
+    except ValueError:
+        return False
+    return payload.get("kind") in ("connect", "connexion")
+
+
 def _settle_discovery(config: Config, db: Database, task: dict, branch: str | None) -> None:
     """Close the discovery lifecycle of a connect task, like `connect-next` does.
 
@@ -449,6 +458,14 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
             # safety switch: the coder stays parked (the task keeps its place)
             log.warning(
                 "tâche #%s : codeur désactivé (dev.enabled=false) — activation reportée",
+                task["id"],
+            )
+            return None
+        if config.dev.sources_freeze and _onboarding_task(task):
+            # master switch: a source-onboarding task stays parked, whoever
+            # posted it (queue, connexion leg leftovers, old `connect-next`)
+            log.warning(
+                "tâche #%s : onboarding gelé (dev.sources_freeze) — activation reportée",
                 task["id"],
             )
             return None
