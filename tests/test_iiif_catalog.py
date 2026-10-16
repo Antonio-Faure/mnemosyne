@@ -25,6 +25,10 @@ IIIF_SOURCES = {
     "rijksmuseum": (
         "https://iiif.europeana.eu/presentation/90402/SK_A_3262/manifest"
     ),
+    "rit": (
+        "https://digitalcollections.rit.edu/luna/servlet/iiif/"
+        "m/RIT~1~1~105~3287/manifest"
+    ),
     "vatican": "https://digi.vatlib.it/iiif/MSS_Barb.gr.252/manifest.json",
     "wellcome": "https://iiif.wellcomecollection.org/presentation/b18035723",
     "yale": "https://collections.library.yale.edu/manifests/2002046",

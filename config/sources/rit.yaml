@@ -1,0 +1,26 @@
+id: rit
+name: RIT Digital Collections (RIT Libraries)
+institution: Rochester Institute of Technology Libraries, Rochester, NY
+country: US
+protocol: iiif
+base_url: https://digitalcollections.rit.edu
+auth: none
+license: varies
+rights: "RIT Libraries — vérifier la mention de droits par notice (Cary Graphic Arts Collection et autres fonds)"
+rate_limit_per_s: 1.0
+priority: 30
+tags: [university-library, united-states, manuscripts, graphic-arts, iiif, keyless]
+notes: >-
+  Keyless IIIF. RIT's digital collections run on the Luna image server, which
+  exposes per-object IIIF Presentation v2 manifests at
+  /luna/servlet/iiif/m/<object-id>/manifest. Probes for an aggregate IIIF
+  Collection manifest (/iiif/collection/..., /iiif/collection/top,
+  /iiif/collection) return the Luna HTML web UI or 404, so no Collection entry
+  point exists. Onboarded as a single-manifest IIIF source: the generic
+  src/mnemosyne/sources/iiif.py connector consumes the manifest declared in
+  `extra.manifest` and normalizes its first canvas image. Sample object:
+  "Bible" (Cary Graphic Arts Collection). Single-object source: `seeds` are
+  meaningful only for future multi-object expansion.
+extra:
+  manifest: "https://digitalcollections.rit.edu/luna/servlet/iiif/m/RIT~1~1~105~3287/manifest"
+  collection_id: "RIT~1~1~105~3287"
