@@ -121,6 +121,22 @@ is a **two-way** channel: the agent alerts *and asks questions* on hard blockers
 are read by the heartbeat and handled like operator messages. Set the bot token +
 your chat id in `.env` and send `/start` to the bot once. See `docs/RUNBOOK.md`.
 
+### Observatory (read-only UI)
+
+A local web panel shows every session live (queue tasks **and** system job runs)
+and replays finished ones: a sidebar colored by type, a Make-style canvas
+(orchestrator, browser, mailbox, coder, LLM), an activity panel and a timeline.
+It never launches an agent.
+
+```bash
+cd web && npm install && npm run build && cd ..   # build the SPA once
+docker compose up -d --build                      # heartbeat + observatory service
+xdg-open http://127.0.0.1:8090
+```
+
+See `docs/OBSERVATORY.md` for the session model, the event pipeline and the
+`mnemosyne obs-backfill` history import.
+
 ## LLM auth (OpenCode Go)
 
 The agent uses your OpenCode Go subscription by reading the token **opencode

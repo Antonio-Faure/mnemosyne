@@ -44,6 +44,31 @@ services:
     restart: unless-stopped
     command: ["mnemosyne", "run"]
 
+  # Read-only observatory (sessions/events API + built SPA). Same image and
+  # volumes as the heartbeat; it only reads the shared SQLite database.
+  observatory:
+    build: .
+    image: mnemosyne:local
+    user: "1000:1000"
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
+    env_file:
+      - .env
+    environment:
+      MNEMOSYNE_CONFIG: /app/config/config.yaml
+    volumes:
+      - ./:/repo
+      - ./data:/app/data
+      - ./vault:/app/vault
+      - ./journal:/app/journal
+      - ./control:/app/control
+      - ./config:/app/config:ro
+    ports:
+      - "127.0.0.1:8090:8080"   # observatory UI + API (local only)
+    restart: unless-stopped
+    command: ["mnemosyne", "serve"]
+
 # Fixed subnet so a host policy route can force this traffic onto the physical
 # NIC (see scripts/check-egress.sh) and off any Tailscale exit node.
 networks:

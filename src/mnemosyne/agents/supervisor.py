@@ -481,9 +481,33 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
         if journal:
             journal.append(note, source="agency")
         renew = asyncio.create_task(_renew_own_loop(db))
-        return await _activate_session(
-            config, db, mailbox, journal, vault_get, agent, task, messages
-        )
+        from mnemosyne.observatory import events
+
+        token = events.use_context(db, events.task_session_id(task["id"]), agent)
+        events.record("activation.start", {"agent": agent, "messages": len(messages)})
+        try:
+            result = await _activate_session(
+                config, db, mailbox, journal, vault_get, agent, task, messages
+            )
+            events.record(
+                "activation.end",
+                {
+                    "agent": agent,
+                    "turns": result.get("turns"),
+                    "branch": result.get("branch"),
+                    "error": events.preview(result.get("error"), 400) or None,
+                    "finish": events.preview(result.get("finish"), 400),
+                },
+            )
+            return result
+        except BaseException as exc:
+            events.record(
+                "activation.end",
+                {"agent": agent, "error": events.preview(exc, 400)},
+            )
+            raise
+        finally:
+            events.reset_context(token)
     finally:
         if renew is not None:
             renew.cancel()

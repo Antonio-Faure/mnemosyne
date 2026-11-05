@@ -74,6 +74,8 @@ async def handle_verify(ctx: JobContext, job: Job) -> dict | None:
     if not ok:
         ctx.journal.append(f"source `{source_id}` degraded/failing", level="warn", source="verify")
         await ctx.notifier.send(f"source `{source_id}` is degraded/failing", "warn")
+        return {"_activity": f"verify {source_id} → {state}"}
+    # a healthy verify is a silent run (visible only with "runs silencieux")
     return None
 
 
@@ -89,6 +91,11 @@ async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
     log.info("harvest %s [%s] → %d new assets", source_id, seed, saved)
     if saved:
         ctx.journal.append(f"harvest `{source_id}` « {seed} » → {saved} nouveaux assets")
+        return {
+            "seed_index": index + 1,
+            "_activity": f"harvest {source_id} « {seed} » → {saved} nouveaux",
+        }
+    # an empty harvest is a silent run: hidden from the sidebar by default
     return {"seed_index": index + 1}
 
 
@@ -208,7 +215,8 @@ async def handle_warmup(ctx: JobContext, job: Job) -> dict | None:
     return {
         "interval_s": seconds_until_next_slot(
             now, cfg.agents.warmup_window_start, cfg.agents.warmup_window_end
-        )
+        ),
+        "_activity": note,
     }
 
 
@@ -239,6 +247,9 @@ async def handle_agency(ctx: JobContext, job: Job) -> dict | None:
     ran = await run_pending_once(ctx.config, journal=ctx.journal, vault_get=_vault_get(ctx))
     if ran:
         log.info("agency background ran agent: %s", ran.get("agent"))
+        return {
+            "_activity": f"activation {ran.get('agent')} — tâche #{ran.get('task_id')}"
+        }
     return None
 
 
@@ -288,7 +299,7 @@ async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
             + ", ".join(f"{r.host} ({r.item_count})" for r in top),
             "info",
         )
-    return None
+    return {"_activity": note}
 
 
 @handler("watchdog")
@@ -305,8 +316,10 @@ async def handle_watchdog(ctx: JobContext, job: Job) -> dict | None:
     line, alerts = report(ctx.config, out)
     if alerts:
         log.warning("watchdog: %d alerte(s)\n  %s", len(alerts), "\n  ".join(alerts))
-    # No return: the log is the contract. Returning the line/alerts would grow
-    # the next run's job payload every 5 minutes, with no reader.
+        # `_activity` is consumed by the scheduler (never merged into the job
+        # payload): it titles the job's observatory session.
+        return {"_activity": f"{len(alerts)} alerte(s) : {alerts[0]}"}
+    # No other return: a silent run stays silent.
     return None
 
 

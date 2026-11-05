@@ -234,6 +234,9 @@ class Heartbeat:
         if handler is None:
             self.engine.db.fail_job(job.id, f"no handler for kind={job.kind}")
             return
+        db = self.engine.db
+        # one job RUN = one observatory session (the row is unique per execution)
+        db.open_job_session(job.id, job.kind)
         try:
             if job.kind == "agency":
                 # An agent session is judged on progress (the stall marker),
@@ -248,9 +251,11 @@ class Heartbeat:
                 )
         except GovernorBlocked as exc:
             log.warning("job %s blocked: %s", job.kind, exc)
+            db.close_job_session(job.id, status="blocked", error=str(exc))
             self._reschedule(job, in_seconds=60, error=str(exc))
             return
         except Exception as exc:  # noqa: BLE001
+            db.close_job_session(job.id, status="failed", error=str(exc))
             if job.attempts + 1 >= job.max_attempts:
                 self.engine.db.fail_job(job.id, str(exc))
                 self.journal.append(f"job {job.kind} échoué définitivement : {exc}", level="error")
@@ -259,7 +264,10 @@ class Heartbeat:
                 self.journal.append(f"job {job.kind} erreur (retry) : {exc}", level="warn")
                 self._reschedule(job, in_seconds=2 ** (job.attempts + 1) * 30, error=str(exc))
             return
+        # `_activity` is a session title/relevance hint, never a payload field
+        activity = updates.pop("_activity", None) if updates else None
         self.engine.db.complete_job(job.id)
+        db.close_job_session(job.id, status="done", activity=activity)
 
         payload = dict(job.payload)
         if updates:

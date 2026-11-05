@@ -28,6 +28,9 @@ LEASE_TTL_S = 300.0
 #: the note stored on a message/task row (a WeTransfer link must fit)
 NOTE_MAX_CHARS = 1000
 
+#: task statuses that close a session
+TASK_TERMINAL = ("done", "failed", "review", "cancelled")
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sources (
     id            TEXT PRIMARY KEY,
@@ -121,6 +124,34 @@ CREATE TABLE IF NOT EXISTS operator_asks (
     created_at    TEXT NOT NULL,
     answered_at   TEXT
 );
+
+-- Observatory: the sidebar lists sessions (one queue task OR one job run);
+-- agent activations/handoffs are EVENTS inside a session, never sessions.
+CREATE TABLE IF NOT EXISTS sessions (
+    id         TEXT PRIMARY KEY,          -- 'task:<id>' | 'job:<id>'
+    family     TEXT NOT NULL,             -- task | job
+    type       TEXT NOT NULL,             -- warmup, connexion, connect, harvest, agency…
+    title      TEXT NOT NULL,
+    agent      TEXT,                      -- starting agent (tasks) / null (jobs)
+    status     TEXT NOT NULL,
+    notable    INTEGER NOT NULL DEFAULT 1, -- 0 = silent run (hidden unless asked)
+    started_at TEXT NOT NULL,
+    ended_at   TEXT,
+    updated_at TEXT NOT NULL,
+    meta       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_notable ON sessions(notable, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS events (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    ts         TEXT NOT NULL,
+    kind       TEXT NOT NULL,
+    actor      TEXT,
+    payload    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id, id);
 
 """
 
@@ -616,16 +647,53 @@ class Database:
         self, start_agent: str, objective: str, turn_cap: int | None = None,
         payload: dict | None = None,
     ) -> int:
-        """Create a queue entry. One task = one objective, one starting agent."""
+        """Create a queue entry (and its observatory session)."""
+        now = utcnow_iso()
         with self._lock:
             cur = self._conn.execute(
                 """INSERT INTO tasks (start_agent, objective, turn_cap, payload, status, created_at)
                    VALUES (?, ?, ?, ?, 'pending', ?)""",
                 (start_agent, objective, turn_cap,
-                 json.dumps(payload) if payload else None, utcnow_iso()),
+                 json.dumps(payload) if payload else None, now),
             )
+            task_id = int(cur.lastrowid)
+            self._open_task_session(task_id, start_agent, objective, turn_cap, payload, now)
             self._conn.commit()
-            return int(cur.lastrowid)
+            return task_id
+
+    def _open_task_session(
+        self, task_id: int, start_agent: str, objective: str,
+        turn_cap: int | None, payload: dict | None, created_at: str,
+    ) -> str:
+        """Materialize a task as a session + its first event (lock held)."""
+        session_id = f"task:{task_id}"
+        kind = (payload or {}).get("kind")
+        session_type = str(kind) if kind else start_agent
+        title = (objective.strip().splitlines() or ["(sans objectif)"])[0][:300]
+        self._conn.execute(
+            """INSERT OR IGNORE INTO sessions
+                   (id, family, type, title, agent, status, notable, started_at,
+                    updated_at, meta)
+               VALUES (?, 'task', ?, ?, ?, 'pending', 1, ?, ?, ?)""",
+            (
+                session_id, session_type, title, start_agent, created_at, created_at,
+                json.dumps(
+                    {"task_id": task_id, "turn_cap": turn_cap, "payload": payload or {}}
+                ),
+            ),
+        )
+        self._conn.execute(
+            "INSERT INTO events (session_id, ts, kind, actor, payload) "
+            "VALUES (?, ?, 'session.created', 'orchestrator', ?)",
+            (
+                session_id, created_at,
+                json.dumps(
+                    {"family": "task", "type": session_type, "agent": start_agent,
+                     "title": title}
+                ),
+            ),
+        )
+        return session_id
 
     def next_task(self) -> dict | None:
         """The task to work on.
@@ -664,16 +732,17 @@ class Database:
     def set_task_status(
         self, task_id: int, status: str, note: str | None = None
     ) -> None:
-        """Set task state. started_at on running, finished_at on terminal states."""
+        """Set task state (and mirror it on the observatory session)."""
         now = utcnow_iso()
         with self._lock:
             row = self._conn.execute("SELECT status FROM tasks WHERE id = ?", (task_id,)).fetchone()
+            previous = row["status"] if row else None
             updates = ["status = ?"]
             params: list[Any] = [status]
             if status == "running" and (row is None or row["status"] != "running"):
                 updates.append("started_at = ?")
                 params.append(now)
-            if status in ("done", "failed", "review", "cancelled"):
+            if status in TASK_TERMINAL:
                 updates.append("finished_at = ?")
                 params.append(now)
             if note is not None:
@@ -683,6 +752,28 @@ class Database:
             self._conn.execute(
                 f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?", params
             )
+            if previous is not None and previous != status:
+                session_id = f"task:{task_id}"
+                fields = ["status = ?", "updated_at = ?"]
+                session_params: list[Any] = [status, now]
+                if status in TASK_TERMINAL:
+                    fields.append("ended_at = ?")
+                    session_params.append(now)
+                session_params.append(session_id)
+                self._conn.execute(
+                    f"UPDATE sessions SET {', '.join(fields)} WHERE id = ?",
+                    session_params,
+                )
+                self._conn.execute(
+                    "INSERT INTO events (session_id, ts, kind, actor, payload) "
+                    "VALUES (?, ?, 'task.status', 'orchestrator', ?)",
+                    (
+                        session_id, now,
+                        json.dumps(
+                            {"from": previous, "to": status, "note": (note or "")[:280]}
+                        ),
+                    ),
+                )
             self._conn.commit()
 
     def touch_task_activation(self, task_id: int) -> None:
@@ -693,6 +784,230 @@ class Database:
                 (utcnow_iso(), task_id),
             )
             self._conn.commit()
+
+    # ── observatory: sessions / events ───────────────────────────────────
+    def upsert_session(
+        self,
+        session_id: str,
+        *,
+        family: str,
+        type: str,
+        title: str,
+        agent: str | None = None,
+        status: str = "pending",
+        notable: bool = True,
+        started_at: str | None = None,
+        ended_at: str | None = None,
+        meta: dict | None = None,
+    ) -> None:
+        """Create or refresh a session (title/status may change over time)."""
+        now = utcnow_iso()
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO sessions
+                       (id, family, type, title, agent, status, notable,
+                        started_at, ended_at, updated_at, meta)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(id) DO UPDATE SET
+                       type = excluded.type,
+                       title = excluded.title,
+                       agent = excluded.agent,
+                       status = excluded.status,
+                       notable = excluded.notable,
+                       ended_at = excluded.ended_at,
+                       updated_at = excluded.updated_at,
+                       meta = excluded.meta""",
+                (
+                    session_id, family, type, title[:300], agent, status,
+                    1 if notable else 0, started_at or now, ended_at, now,
+                    json.dumps(meta, default=str) if meta else None,
+                ),
+            )
+            self._conn.commit()
+
+    def update_session(
+        self,
+        session_id: str,
+        *,
+        status: str | None = None,
+        ended_at: str | None = None,
+        notable: bool | None = None,
+        title: str | None = None,
+        meta: dict | None = None,
+    ) -> None:
+        fields = ["updated_at = ?"]
+        params: list[Any] = [utcnow_iso()]
+        if status is not None:
+            fields.append("status = ?")
+            params.append(status)
+        if ended_at is not None:
+            fields.append("ended_at = ?")
+            params.append(ended_at)
+        if notable is not None:
+            fields.append("notable = ?")
+            params.append(1 if notable else 0)
+        if title is not None:
+            fields.append("title = ?")
+            params.append(title[:300])
+        if meta is not None:
+            fields.append("meta = ?")
+            params.append(json.dumps(meta, default=str))
+        params.append(session_id)
+        with self._lock:
+            self._conn.execute(
+                f"UPDATE sessions SET {', '.join(fields)} WHERE id = ?", params
+            )
+            self._conn.commit()
+
+    def add_event(
+        self,
+        session_id: str,
+        kind: str,
+        actor: str | None = None,
+        payload: dict | None = None,
+        ts: str | None = None,
+    ) -> int:
+        """Append one observatory event (an explicit `ts` is used by backfills)."""
+        now = ts or utcnow_iso()
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO events (session_id, ts, kind, actor, payload) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    session_id, now, kind, actor,
+                    json.dumps(payload, default=str) if payload else None,
+                ),
+            )
+            self._conn.execute(
+                "UPDATE sessions SET updated_at = ? WHERE id = ?", (now, session_id)
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def list_sessions(
+        self,
+        limit: int = 60,
+        *,
+        before: str | None = None,
+        include_silent: bool = False,
+        family: str | None = None,
+    ) -> list[dict]:
+        sql = (
+            "SELECT s.*, (SELECT COUNT(*) FROM events e WHERE e.session_id = s.id) "
+            "AS event_count FROM sessions s WHERE 1 = 1"
+        )
+        params: list[Any] = []
+        if not include_silent:
+            sql += " AND s.notable = 1"
+        if family:
+            sql += " AND s.family = ?"
+            params.append(family)
+        if before:
+            sql += " AND s.started_at < ?"
+            params.append(before)
+        sql += " ORDER BY s.started_at DESC, s.id DESC LIMIT ?"
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_session(self, session_id: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT s.*, (SELECT COUNT(*) FROM events e WHERE e.session_id = s.id) "
+                "AS event_count FROM sessions s WHERE s.id = ?",
+                (session_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_events(
+        self,
+        session_id: str,
+        *,
+        after: int | None = None,
+        upto: int | None = None,
+        limit: int = 5000,
+    ) -> list[dict]:
+        sql = "SELECT * FROM events WHERE session_id = ?"
+        params: list[Any] = [session_id]
+        if after is not None:
+            sql += " AND id > ?"
+            params.append(after)
+        if upto is not None:
+            sql += " AND id <= ?"
+            params.append(upto)
+        sql += " ORDER BY id LIMIT ?"
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def events_after(
+        self, after_id: int, *, session_id: str | None = None, limit: int = 300
+    ) -> list[dict]:
+        sql = "SELECT * FROM events WHERE id > ?"
+        params: list[Any] = [after_id]
+        if session_id:
+            sql += " AND session_id = ?"
+            params.append(session_id)
+        sql += " ORDER BY id LIMIT ?"
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def max_event_id(self) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COALESCE(MAX(id), 0) AS n FROM events"
+            ).fetchone()
+        return int(row["n"])
+
+    def open_job_session(
+        self, job_id: int, kind: str, *, title: str | None = None
+    ) -> str:
+        """One job RUN = one session (the job row is unique per execution)."""
+        session_id = f"job:{job_id}"
+        now = utcnow_iso()
+        self.upsert_session(
+            session_id,
+            family="job",
+            type=kind,
+            title=title or kind,
+            status="running",
+            notable=False,
+            started_at=now,
+            meta={"job_id": job_id, "kind": kind},
+        )
+        self.add_event(session_id, "job.start", "orchestrator", {"kind": kind})
+        return session_id
+
+    def close_job_session(
+        self,
+        job_id: int,
+        *,
+        status: str = "done",
+        activity: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        session_id = f"job:{job_id}"
+        self.update_session(
+            session_id,
+            status=status,
+            ended_at=utcnow_iso(),
+            notable=bool(activity),
+            title=activity or None,
+        )
+        self.add_event(
+            session_id,
+            "job.end",
+            "orchestrator",
+            {
+                "status": status,
+                "activity": activity,
+                "error": (error or "")[:400] or None,
+            },
+        )
 
     def has_open_task(
         self, kind: str | None = None, source_id: str | None = None

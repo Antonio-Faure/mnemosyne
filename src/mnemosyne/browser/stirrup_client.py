@@ -156,7 +156,44 @@ class _CompletionsProxy:
             self._sink.record(getattr(response, "usage", None))
         except Exception:  # noqa: BLE001 - never break a call over stats
             pass
+        self._record_events(response, kwargs)
         return response
+
+    def _record_events(self, response: Any, kwargs: dict[str, Any]) -> None:
+        """Feed the observatory (no-op outside an activation context)."""
+        from mnemosyne.observatory import events  # lazy: keep the import light
+
+        usage = getattr(response, "usage", None)
+        text = ""
+        calls: list[dict[str, str]] = []
+        try:
+            message = response.choices[0].message
+            text = events.preview(getattr(message, "content", None), 600)
+            for call in getattr(message, "tool_calls", None) or []:
+                function = getattr(call, "function", None)
+                calls.append(
+                    {
+                        "name": str(getattr(function, "name", "?")),
+                        "args": events.preview(getattr(function, "arguments", ""), 300),
+                    }
+                )
+        except Exception:  # noqa: BLE001 - a provider shape change must not break a turn
+            pass
+        events.record(
+            "llm.call",
+            {
+                "model": kwargs.get("model") or getattr(response, "model", None),
+                "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                "completion_tokens": getattr(usage, "completion_tokens", None),
+                "cached_tokens": getattr(
+                    getattr(usage, "prompt_tokens_details", None), "cached_tokens", None
+                ),
+                "tools": [c["name"] for c in calls],
+                "text": text,
+            },
+        )
+        for call in calls:
+            events.record("tool.call", call)
 
 
 class _ChatProxy:

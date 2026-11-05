@@ -35,6 +35,18 @@ class Mailbox:
         if sender == recipient:
             raise ValueError("cannot message yourself")
         message_id = self.db.post_message(sender, recipient, body.strip(), task_id)
+        from mnemosyne.observatory import events
+
+        events.record(
+            "mailbox.message",
+            {
+                "from": sender,
+                "to": recipient,
+                "message_id": message_id,
+                "preview": events.preview(body.strip(), 400),
+            },
+            actor=sender,
+        )
         log.info(
             "mail #%s (tâche #%s) %s → %s: %s",
             message_id, task_id, sender, recipient, body.strip()[:160],

@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
 
+from mnemosyne.api.observatory import router as observatory_router
 from mnemosyne.config import get_config
 from mnemosyne.engine import Engine
 from mnemosyne.logger import get_logger
@@ -33,6 +35,7 @@ def create_app() -> FastAPI:
         description="Unified search over aggregated historical image archive providers.",
         lifespan=lifespan,
     )
+    app.include_router(observatory_router)
 
     @app.get("/health")
     async def health() -> dict:
@@ -91,7 +94,33 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="asset not found")
         return _serialize(found)
 
+    _mount_frontend(app)
     return app
+
+
+def _mount_frontend(app: FastAPI) -> None:
+    """Serve the built observatory SPA at `/` when it exists.
+
+    Candidates, first match wins: `MNEMOSYNE_WEB_DIST`, the repo's `web/dist`,
+    the container mount (`/repo/web/dist`), then the package-relative path.
+    """
+    import os
+    from pathlib import Path
+
+    candidates: list[Path] = []
+    if os.environ.get("MNEMOSYNE_WEB_DIST"):
+        candidates.append(Path(os.environ["MNEMOSYNE_WEB_DIST"]))
+    try:
+        candidates.append(Path(get_config().root) / "web" / "dist")
+    except Exception:  # noqa: BLE001 - config is optional for the API module
+        pass
+    candidates.append(Path("/repo/web/dist"))
+    candidates.append(Path(__file__).resolve().parents[3] / "web" / "dist")
+    for candidate in candidates:
+        if candidate.is_dir():
+            app.mount("/", StaticFiles(directory=str(candidate), html=True), name="web")
+            log.info("observatory frontend: %s", candidate)
+            return
 
 
 def _apply_filters(

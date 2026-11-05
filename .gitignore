@@ -28,6 +28,10 @@ venv/
 *.log
 logs/
 
+# Observatory frontend (build artifacts + deps)
+/web/node_modules/
+/web/dist/
+
 # OS
 .DS_Store
 .idea/

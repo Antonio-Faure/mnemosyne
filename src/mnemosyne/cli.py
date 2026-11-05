@@ -135,6 +135,24 @@ def _cmd_discover(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_obs_backfill(args: argparse.Namespace) -> int:
+    """Import existing tasks/jobs into the observatory (sessions + events)."""
+    cfg = get_config()
+    from mnemosyne.db import Database
+    from mnemosyne.observatory.backfill import backfill
+
+    db = Database(cfg.db_file())
+    try:
+        created = backfill(db, days=args.days)
+    finally:
+        db.close()
+    print(
+        f"observatoire : {created['tasks']} tâche(s), {created['jobs']} job(s), "
+        f"{created['skipped']} déjà présent(s)"
+    )
+    return 0
+
+
 
 
 
@@ -782,6 +800,12 @@ def build_parser() -> argparse.ArgumentParser:
     pdis.add_argument("--limit", type=int, default=100)
     pdis.add_argument("--top", type=int, default=20)
     pdis.set_defaults(func=_cmd_discover)
+
+    pobs = sub.add_parser(
+        "obs-backfill", help="observatory: import existing tasks/jobs into sessions"
+    )
+    pobs.add_argument("--days", type=int, default=14)
+    pobs.set_defaults(func=_cmd_obs_backfill)
 
     pdisc = sub.add_parser("discoveries", help="list discovered candidate providers")
     pdisc.add_argument("--status", default=None, help="filter: new/connecting/connected/failed")
