@@ -33,9 +33,8 @@ déroule la timeline interne de la session sélectionnée.
 - **Centre** : canvas type Make — **Agency** (le moteur de la file, toujours
   affiché au-dessus), Orchestrateur (le superviseur), Navigateur, Mailbox,
   Codeur (+ nœud Job pour les sessions système hors Agency). Les liens actifs
-  animent une **bille** qui circule dans le tuyau. **Le LLM n'est pas un
-  nœud** : ses appels/tokens/outils flottent en haut à droite du canvas (ils
-  appartiennent au navigateur ou au codeur en cours).
+  animent une **bille** qui circule dans le tuyau. Pas de panneau LLM flottant
+  sur le canvas : les appels/tokens restent des événements de l'étape en cours.
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
   cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
