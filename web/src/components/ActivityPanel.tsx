@@ -63,6 +63,99 @@ function Meta({ children }: { children: ReactNode }) {
   return <div className="text-[10px] text-slate-500">{children}</div>;
 }
 
+/** An assistant turn without text is a pure tool call: not a message. The
+ * final `finish` call is redundant with the activation-end report. */
+function isRenderable(event: ObsEvent): boolean {
+  if (event.kind === "llm.call" && !String(event.payload?.text ?? "").trim()) {
+    return false;
+  }
+  if (
+    (event.kind === "tool.call" || event.kind === "tool.result") &&
+    String(event.payload?.name ?? "").toLowerCase() === "finish"
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function parseJson(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const text = value.trim();
+  if (!text.startsWith("{") && !text.startsWith("[")) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
+  if (value === null || value === undefined) {
+    return <span className="text-slate-500">—</span>;
+  }
+  if (typeof value === "string") {
+    if (value.includes("\n") || value.length > 90) {
+      return (
+        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900/80 p-1.5 font-mono text-[10.5px] leading-relaxed text-slate-200">
+          {value}
+        </pre>
+      );
+    }
+    return <span className="text-slate-200">{value}</span>;
+  }
+  if (typeof value === "number") {
+    return <span className="font-mono text-amber-200">{value}</span>;
+  }
+  if (typeof value === "boolean") {
+    return <span className="font-mono text-sky-200">{String(value)}</span>;
+  }
+  if (Array.isArray(value)) {
+    return (
+      <ul className="ml-3 list-disc space-y-0.5">
+        {value.map((item, index) => (
+          <li key={index}>
+            <JsonValue value={item} depth={depth + 1} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === "object") {
+    return (
+      <div className={depth ? "ml-2 space-y-1 border-l border-ink-600 pl-2" : "space-y-1"}>
+        {Object.entries(value as Record<string, unknown>).map(([key, item]) => (
+          <div key={key}>
+            <div className="text-[9px] uppercase tracking-wider text-slate-500">
+              {key}
+            </div>
+            <div className="mt-0.5">
+              <JsonValue value={item} depth={depth + 1} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <span className="text-slate-300">{String(value)}</span>;
+}
+
+/** Tool arguments rendered from their JSON: fields, code blocks, lists. */
+function ArgsView({ args }: { args: unknown }) {
+  const parsed = parseJson(args);
+  if (parsed === undefined) {
+    return (
+      <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-300">
+        {String(args ?? "")}
+      </pre>
+    );
+  }
+  return (
+    <div className="rounded-md bg-ink-900/70 p-2">
+      <JsonValue value={parsed} />
+    </div>
+  );
+}
+
 /** Tool outputs are often `[{"type":"text","text":"…"}]`: show the text only. */
 function toolText(value: unknown): string {
   const raw = String(value ?? "");
@@ -204,10 +297,18 @@ export function ActivityPanel({
   }, [events]);
 
   const filtered = useMemo(
-    () => events.filter((event) => matchesNode(event, step)),
+    () =>
+      events.filter(
+        (event) => matchesNode(event, step) && isRenderable(event),
+      ),
     [events, step],
   );
-  const currentId = events[cursor]?.id ?? null;
+  const currentId = useMemo(() => {
+    for (let index = Math.min(cursor, events.length - 1); index >= 0; index -= 1) {
+      if (isRenderable(events[index])) return events[index].id;
+    }
+    return null;
+  }, [events, cursor]);
   const currentRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
@@ -354,9 +455,7 @@ export function ActivityPanel({
                     icon={Wrench}
                     color="#c084fc"
                   >
-                    <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-300">
-                      {pretty(payload.args)}
-                    </pre>
+                    <ArgsView args={payload.args} />
                   </Block>
                 </div>
               );
