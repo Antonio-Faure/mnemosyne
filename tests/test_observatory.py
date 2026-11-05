@@ -34,13 +34,20 @@ def test_task_becomes_a_session_with_its_creation_event(config):
 def test_status_changes_are_mirrored_and_terminal_closes_the_session(config):
     db = Database(config.db_file())
     task_id = db.enqueue_task("coder", "mission")
-    db.set_task_status(task_id, "running")
+    db.set_task_status(task_id, "running", agent="coder")
     db.set_task_status(task_id, "done", note="fini")
     session = db.get_session(f"task:{task_id}")
     assert session["status"] == "done"
     assert session["ended_at"]
-    kinds = [r["kind"] for r in db.list_events(f"task:{task_id}")]
-    assert kinds == ["session.created", "task.status", "task.status"]
+    rows = db.list_events(f"task:{task_id}")
+    assert [r["kind"] for r in rows] == [
+        "session.created",
+        "task.status",
+        "task.status",
+    ]
+    # the observatory lights ONE orchestrator link: the agent is in the payload
+    assert json.loads(rows[1]["payload"])["agent"] == "coder"
+    assert "agent" not in json.loads(rows[2]["payload"])
     db.close()
 
 

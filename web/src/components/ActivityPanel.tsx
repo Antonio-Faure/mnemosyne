@@ -19,7 +19,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ObsEvent, Session } from "../lib/types";
-import { kindColor, matchesNode, type NodeId } from "../lib/events";
+import { isRenderable, kindColor, matchesNode, type NodeId } from "../lib/events";
 import { formatTime, fullTimestamp } from "../lib/format";
 import { describeResult, describeTool, parseJson, toolText } from "../lib/describe";
 
@@ -62,21 +62,6 @@ function pretty(value: unknown): string {
 
 function Meta({ children }: { children: ReactNode }) {
   return <div className="text-[10px] text-slate-500">{children}</div>;
-}
-
-/** An assistant turn without text is a pure tool call: not a message. The
- * final `finish` call is redundant with the activation-end report. */
-function isRenderable(event: ObsEvent): boolean {
-  if (event.kind === "llm.call" && !String(event.payload?.text ?? "").trim()) {
-    return false;
-  }
-  if (
-    (event.kind === "tool.call" || event.kind === "tool.result") &&
-    String(event.payload?.name ?? "").toLowerCase() === "finish"
-  ) {
-    return false;
-  }
-  return true;
 }
 
 function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
@@ -655,7 +640,8 @@ export function ActivityPanel({
                     color="#60a5fa"
                   >
                     <Meta>
-                      agent {payload.agent ?? "?"} · tâche {payload.status ?? "?"}
+                      {String(payload.status ?? "?")} · retour{" "}
+                      {String(payload.agent ?? "?")}
                     </Meta>
                   </Block>
                 </div>

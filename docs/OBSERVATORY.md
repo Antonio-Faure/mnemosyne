@@ -32,29 +32,33 @@ déroule la timeline interne de la session sélectionnée.
   Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
 - **Centre** : canvas type Make — **Agency** (le moteur de la file, toujours
   affiché au-dessus), Orchestrateur (le superviseur), Navigateur, Mailbox,
-  Codeur (+ nœud Job pour les sessions système hors Agency). Les liens actifs
-  animent une **bille** qui circule dans le tuyau : **un seul lien à la fois**
-  — orchestrateur → destinataire à l'envoi, destinataire → orchestrateur au
-  retour (bille remontante). La mailbox n'allume que les segments réellement
-  traversés par le message. Pas de panneau LLM flottant sur le canvas : les
-  appels/tokens restent des événements de l'étape en cours.
+  Codeur (+ nœud Job pour les sessions système hors Agency). **Un seul nœud
+  tourne à la fois** : celui qui possède l'événement courant (Navigateur quand
+  il travaille, Orchestrateur sur ses statuts, etc.). Les étapes de
+  **transmission** allument en plus un lien, avec une **bille** qui circule
+  dans le tuyau et **un seul lien à la fois** : mission (orchestrateur →
+  agent), fin d'activation (agent → orchestrateur, bille remontante), statuts
+  (selon `pending→running` / statut final). La mailbox n'allume que les
+  segments réellement traversés. Pas de panneau LLM flottant sur le canvas.
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
   cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
-  Navigateur, Codeur, Mailbox, Job). Les événements sont rendus comme un
+  Navigateur, Codeur, Mailbox, Job). **Un seul bloc est actif** (contour
+  tournant) : celui de l'événement courant. Les événements sont rendus comme un
   **transcript lisible** : bloc *Mission* (objectif complet), messages
   *Navigateur/Codeur* (markdown), cartes *Outil* (arguments rendus en champs
   structurés — code, url… — jamais en JSON brut) et *Résultat* (JSON structuré
   quand il est valide, sinon texte ; un JSON brut reste **replié par défaut**),
   *Message* mailbox, *Fin d'activation* (tours, durée, bilan), puis
-  *Retour à l'orchestrateur* (la tâche repasse au superviseur — c'est l'étape
-  finale de la timeline). Les captures d'écran référencées par un outil sont
+  *Retour à l'orchestrateur* (`done · retour browser` — pendant de *Session
+  ouverte*). Les captures d'écran référencées par un outil sont
   copiées dans `data/obs-artifacts/` et affichées en vignette (clic = plein
   écran). Les appels navigateur sont **traduits en actions** (aller à l'URL,
   attendre, remplir un champ, boucle `for`, `scroll`, imports…), avec le code
-  source replié. Les tours sans texte et l'appel `finish` sont masqués. Chaque
-  bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer un nœud épingle une étape ;
-  « suivre » revient au mode auto.
+  source replié. Les tours sans texte et l'échange `finish` sont **retirés de
+  la timeline** (pas seulement masqués) : une étape = un bloc, sans doublons.
+  Chaque bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer
+  un nœud épingle une étape ; « suivre » revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.
 

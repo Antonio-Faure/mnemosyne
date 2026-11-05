@@ -7,7 +7,7 @@ import { Header } from "./components/Header";
 import { ReplayBar } from "./components/ReplayBar";
 import { Sidebar } from "./components/Sidebar";import { useSessionStream } from "./hooks/useSessionStream";
 import { fetchSessionEvents, fetchSessions, sessionIsLive } from "./lib/api";
-import { eventNode, type NodeId } from "./lib/events";
+import { eventNode, isRenderable, type NodeId } from "./lib/events";
 import type { ObsEvent, Session } from "./lib/types";
 
 export default function App() {
@@ -75,8 +75,10 @@ export default function App() {
       setCursor(0);
       return;
     }
-    setEvents(data);
-    setCursor(Math.max(0, data.length - 1));
+    // One step = one visible block: invisible turns never become a step.
+    const shown = data.filter(isRenderable);
+    setEvents(shown);
+    setCursor(Math.max(0, shown.length - 1));
     setFollowing(true);
     setPlaying(false);
     setPinnedNode(null);
@@ -89,6 +91,7 @@ export default function App() {
   }, [eventsQuery.data]);
 
   useSessionStream(selectedId, streamAfter, (event) => {
+    if (!isRenderable(event)) return;
     setEvents((previous) =>
       previous.some((item) => item.id === event.id)
         ? previous

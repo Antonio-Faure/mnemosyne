@@ -97,7 +97,7 @@ export function summarize(event: ObsEvent): Summary {
     case "activation.returned":
       return {
         title: "retour à l'orchestrateur",
-        detail: `agent ${payload.agent ?? "?"} · tâche ${payload.status ?? "?"}`,
+        detail: `${payload.status ?? "?"} · retour ${payload.agent ?? "?"}`,
       };
     case "activation.start": {
       const bits = [`${payload.messages ?? 0} message(s)`];
@@ -200,7 +200,8 @@ function agentName(value: unknown): "browser" | "coder" | null {
   return value === "browser" || value === "coder" ? value : null;
 }
 
-/** Orchestrator link lit by an event — never both agents at once. */
+/** Orchestrator link lit by an event — never both agents at once. Only real
+ * handoffs produce a flow: mission (down), end of activation (up), status. */
 export function eventHandoff(event: ObsEvent): Handoff | null {
   const payload = event.payload ?? {};
   switch (event.kind) {
@@ -208,13 +209,9 @@ export function eventHandoff(event: ObsEvent): Handoff | null {
       const agent = agentName(event.actor);
       return agent ? { agent, direction: "to" } : null;
     }
-    case "activation.returned": {
-      const agent = agentName(payload.agent);
+    case "activation.end": {
+      const agent = agentName(event.actor);
       return agent ? { agent, direction: "from" } : null;
-    }
-    case "session.created": {
-      const agent = agentName(payload.agent);
-      return agent ? { agent, direction: "to" } : null;
     }
     case "task.status": {
       const agent = agentName(payload.agent);
@@ -224,6 +221,21 @@ export function eventHandoff(event: ObsEvent): Handoff | null {
     default:
       return null;
   }
+}
+
+/** Events the observatory does not show as steps: pure tool-call turns and the
+ * redundant `finish` exchange. Filtering them out keeps one step = one block. */
+export function isRenderable(event: ObsEvent): boolean {
+  if (event.kind === "llm.call" && !String(event.payload?.text ?? "").trim()) {
+    return false;
+  }
+  if (
+    (event.kind === "tool.call" || event.kind === "tool.result") &&
+    String(event.payload?.name ?? "").toLowerCase() === "finish"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** Aggregate the visible timeline into per-step state (canvas highlighting). */
