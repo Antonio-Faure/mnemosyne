@@ -1,5 +1,6 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
+import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 
 export type AgentNodeData = {
@@ -26,14 +27,17 @@ export function AgentNode({ data }: NodeProps<AgentNodeType>) {
       transition={{ duration: 0.45 }}
       className={`w-[196px] rounded-xl border px-3 py-2.5 ${
         data.muted ? "opacity-45" : "opacity-100"
-      }`}
-      style={{
-        borderColor: lit ? data.color : "#243045",
-        background: "rgba(14, 20, 27, 0.94)",
-        boxShadow: lit
-          ? `0 0 0 1px ${data.color}55, 0 0 26px ${data.color}2e`
-          : "0 8px 24px rgba(0, 0, 0, 0.25)",
-      }}
+      } ${lit ? "obs-live" : ""}`}
+      style={
+        {
+          borderColor: lit ? data.color : "#243045",
+          background: "rgba(14, 20, 27, 0.94)",
+          boxShadow: lit
+            ? `0 0 0 1px ${data.color}55, 0 0 26px ${data.color}2e`
+            : "0 8px 24px rgba(0, 0, 0, 0.25)",
+          "--obs-color": data.color,
+        } as CSSProperties
+      }
     >
       <Handle id="t" type="target" position={Position.Top} className={HANDLE} />
       <Handle id="l" type="target" position={Position.Left} className={HANDLE} />

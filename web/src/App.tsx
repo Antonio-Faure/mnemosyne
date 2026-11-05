@@ -217,6 +217,7 @@ export default function App() {
             onIncludeSilent={setIncludeSilent}
             family={family}
             onFamily={setFamily}
+            hiddenCount={sessionsQuery.data?.silent_count ?? 0}
           />
         )}
         <main className="relative flex min-w-0 flex-1 flex-col">

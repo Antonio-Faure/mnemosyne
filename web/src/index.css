@@ -61,6 +61,49 @@ body {
   transition: stroke 160ms ease, opacity 160ms ease;
 }
 
+/* Rotating light ring around the element currently in progress. */
+@property --obs-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes obs-spin {
+  to {
+    --obs-angle: 360deg;
+  }
+}
+
+.obs-live {
+  position: relative;
+}
+
+.obs-live::before {
+  content: "";
+  position: absolute;
+  inset: var(--obs-inset, -2px);
+  padding: 2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--obs-angle),
+    transparent 0deg 55deg,
+    var(--obs-color, #38bdf8) 80deg,
+    #ffffff 92deg,
+    transparent 125deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: obs-spin 2.6s linear infinite;
+  pointer-events: none;
+}
+
 /* Assistant markdown, sized for the activity transcript. */
 .md {
   font-size: 12px;

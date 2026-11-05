@@ -71,6 +71,9 @@ def list_sessions(
         return {
             "sessions": [_session(row) for row in rows],
             "latest_event_id": db.max_event_id(),
+            "silent_count": (
+                0 if include_silent else db.count_sessions(family=family, notable=False)
+            ),
         }
     finally:
         db.close()

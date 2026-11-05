@@ -27,4 +27,5 @@ export interface ObsEvent {
 export interface SessionsResponse {
   sessions: Session[];
   latest_event_id: number;
+  silent_count: number;
 }

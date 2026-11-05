@@ -237,6 +237,30 @@ def test_api_serves_a_screenshot_artifact(tmp_path, monkeypatch):
     assert client.get("/api/obs/artifacts/missing.png").status_code == 404
 
 
+def test_api_reports_the_silent_runs_it_hides(config, monkeypatch):
+    db = Database(config.db_file())
+    db.upsert_session(
+        "job:silent",
+        family="job",
+        type="agency",
+        title="agency",
+        status="done",
+        notable=False,
+    )
+    task_id = db.enqueue_task("browser", "mission")
+    db.close()
+
+    client = _client(config, monkeypatch)
+    listing = client.get("/api/obs/sessions").json()
+    ids = [session["id"] for session in listing["sessions"]]
+    assert f"task:{task_id}" in ids
+    assert "job:silent" not in ids
+    assert listing["silent_count"] == 1
+
+    everything = client.get("/api/obs/sessions?include_silent=true").json()
+    assert everything["silent_count"] == 0
+
+
 def _client(config, monkeypatch) -> TestClient:
     import mnemosyne.api.observatory as obs
     from mnemosyne.api.app import create_app

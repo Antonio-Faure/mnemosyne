@@ -158,7 +158,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
       target,
       sourceHandle,
       targetHandle,
-      type: "smoothstep",
+      type: "default",
       animated: pulsing && !muted,
       style: {
         stroke: color,

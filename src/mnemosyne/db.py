@@ -930,6 +930,21 @@ class Database:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
+    def count_sessions(
+        self, *, family: str | None = None, notable: bool | None = None
+    ) -> int:
+        sql = "SELECT COUNT(*) AS n FROM sessions WHERE 1 = 1"
+        params: list[Any] = []
+        if family:
+            sql += " AND family = ?"
+            params.append(family)
+        if notable is not None:
+            sql += " AND notable = ?"
+            params.append(1 if notable else 0)
+        with self._lock:
+            row = self._conn.execute(sql, params).fetchone()
+        return int(row["n"])
+
     def get_session(self, session_id: str) -> dict | None:
         with self._lock:
             row = self._conn.execute(

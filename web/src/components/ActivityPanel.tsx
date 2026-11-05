@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowDown,
   Briefcase,
@@ -264,9 +264,14 @@ function Block({
       }}
       className={`relative block w-full cursor-pointer overflow-hidden rounded-lg border px-2.5 py-2 text-left transition ${
         current
-          ? "border-sky-500/50 bg-sky-500/[0.07]"
+          ? "obs-live border-sky-500/50 bg-sky-500/[0.07]"
           : "border-transparent hover:border-ink-600 hover:bg-ink-800"
       }`}
+      style={
+        current
+          ? ({ "--obs-color": color, "--obs-inset": "0px" } as CSSProperties)
+          : undefined
+      }
     >
       <span
         className="absolute left-0 top-0 h-full w-[2px]"

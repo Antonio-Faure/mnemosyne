@@ -25,6 +25,7 @@ interface Props {
   onIncludeSilent: (value: boolean) => void;
   family: "all" | "task" | "job";
   onFamily: (family: "all" | "task" | "job") => void;
+  hiddenCount: number;
 }
 
 function StatusIcon({ status }: { status: string }) {
@@ -57,6 +58,7 @@ export function Sidebar({
   onIncludeSilent,
   family,
   onFamily,
+  hiddenCount,
 }: Props) {
   const groups = useMemo(() => {
     const map = new Map<string, Session[]>();
@@ -104,6 +106,16 @@ export function Sidebar({
           />
           inclure les runs silencieux
         </label>
+        {!includeSilent && hiddenCount > 0 && (
+          <button
+            onClick={() => onIncludeSilent(true)}
+            className="w-full rounded-md border border-ink-600 bg-ink-800/60 px-2 py-1 text-left text-[10px] text-slate-400 transition hover:border-sky-500/40 hover:text-sky-300"
+            title="Les runs de jobs qui n'ont rien produit sont masqués par défaut"
+          >
+            {hiddenCount} run{hiddenCount > 1 ? "s" : ""} silencieux masqué
+            {hiddenCount > 1 ? "s" : ""} — afficher
+          </button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
