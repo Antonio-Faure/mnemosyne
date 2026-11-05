@@ -15,6 +15,20 @@ import {
 import { eventNode, isRenderable, type NodeId } from "./lib/events";
 import type { ObsEvent, Session } from "./lib/types";
 
+const SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32] as const;
+/** Same-timestamp events still get a visible frame. */
+const MIN_STEP_MS = 30;
+
+function stepSpeed(current: number, faster: boolean): number {
+  const index = SPEEDS.findIndex((value) => value >= current - 1e-6);
+  const base = index === -1 ? SPEEDS.length - 1 : index;
+  const next = Math.max(
+    0,
+    Math.min(SPEEDS.length - 1, base + (faster ? 1 : -1)),
+  );
+  return SPEEDS[next];
+}
+
 export default function App() {
   const [includeSilent, setIncludeSilent] = useState(false);
   const [family, setFamily] = useState<"all" | "task" | "job">("all");
@@ -115,18 +129,44 @@ export default function App() {
     if (following && events.length) setCursor(events.length - 1);
   }, [events.length, following]);
 
+  // The mouse wheel is the speed control: 1× = real time. Panels keep their
+  // native scroll (transcript, session list); everywhere else the wheel sets
+  // the simulated-time multiplier.
+  useEffect(() => {
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("aside, input, select, textarea, [data-wheel-scroll]")) {
+        return;
+      }
+      event.preventDefault();
+      setSpeed((current) => stepSpeed(current, event.deltaY < 0));
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, []);
+
   useEffect(() => {
     if (!playing || !events.length) return;
     if (cursor >= events.length - 1) {
       setPlaying(false);
       return;
     }
+    const current = events[cursor];
+    const next = events[cursor + 1];
+    const from = current ? Date.parse(current.ts) : Number.NaN;
+    const to = next ? Date.parse(next.ts) : Number.NaN;
+    const delta = Number.isFinite(from) && Number.isFinite(to)
+      ? Math.max(0, to - from)
+      : 1000;
+    // 1× replays the real gap between two events; the wheel scales it.
+    const delay = Math.max(MIN_STEP_MS, delta / speed);
     const timer = window.setTimeout(
       () => setCursor((current) => Math.min(current + 1, events.length - 1)),
-      420 / speed,
+      delay,
     );
     return () => window.clearTimeout(timer);
-  }, [playing, cursor, events.length, speed]);
+  }, [playing, cursor, events, speed]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -262,7 +302,6 @@ export default function App() {
               setFollowing(false);
               setPlaying((value) => !value);
             }}
-            onSpeed={setSpeed}
             onLive={goLive}
             onReplay={replay}
           />

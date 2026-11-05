@@ -66,7 +66,11 @@ déroule la timeline interne de la session sélectionnée.
   sans doublons. Chaque bloc est dépliable pour le JSON brut et l'horodatage
   complet (« valeur brute »). Cliquer un nœud épingle une étape ; « suivre »
   revient au mode auto.
-- **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
+- **Bas** : replay — lecture/pause, pas à pas, scrubbing. La **molette règle
+  la vitesse** (0,25× → 32×) ; **1× = temps réel**, les délais entre étapes
+  sont calculés depuis leurs horodatages (les événements simultanés gardent
+  une frame de 30 ms). Au-dessus du panneau d'étape ou de la liste des
+  sessions, la molette garde son scroll natif. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay. À
   l'intérieur d'une même seconde, l'ordre logique est rétabli (**fin
   d'activation → statut → retour**), y compris pour les sessions historiques.

@@ -1,4 +1,5 @@
 import {
+  Mouse,
   Pause,
   Play,
   Radio,
@@ -16,13 +17,16 @@ interface Props {
   following: boolean;
   onSeek: (index: number) => void;
   onToggle: () => void;
-  onSpeed: (speed: number) => void;
   onLive: () => void;
   onReplay: () => void;
 }
 
 const BUTTON =
   "grid h-7 w-7 place-items-center rounded-md border border-ink-600 bg-ink-800 text-slate-300 transition hover:border-sky-500/50 hover:text-sky-300 disabled:opacity-40";
+
+function formatSpeed(value: number): string {
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(value)}×`;
+}
 
 export function ReplayBar({
   total,
@@ -33,7 +37,6 @@ export function ReplayBar({
   following,
   onSeek,
   onToggle,
-  onSpeed,
   onLive,
   onReplay,
 }: Props) {
@@ -76,17 +79,13 @@ export function ReplayBar({
         </button>
       </div>
 
-      <select
-        value={speed}
-        onChange={(event) => onSpeed(Number(event.target.value))}
-        className="h-7 rounded-md border border-ink-600 bg-ink-800 px-1.5 text-[11px] text-slate-300 outline-none"
-        title="Vitesse de replay"
+      <span
+        title="Molette : régler la vitesse — 1× = temps réel (délais des horodatages)"
+        className="flex h-7 items-center gap-1 rounded-md border border-ink-600 bg-ink-800 px-2 font-mono text-[11px] text-slate-300"
       >
-        <option value={0.5}>0,5×</option>
-        <option value={1}>1×</option>
-        <option value={2}>2×</option>
-        <option value={4}>4×</option>
-      </select>
+        <Mouse size={12} className="text-slate-500" />
+        {formatSpeed(speed)}
+      </span>
 
       <input
         type="range"

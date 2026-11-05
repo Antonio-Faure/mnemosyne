@@ -253,8 +253,8 @@ export function Canvas({ session, visible, onFocus }: Props) {
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
-        panOnScroll
-        zoomOnScroll
+        panOnScroll={false}
+        zoomOnScroll={false}
         minZoom={0.45}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
