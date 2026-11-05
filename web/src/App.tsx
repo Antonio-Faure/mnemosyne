@@ -203,7 +203,6 @@ export default function App() {
             <Canvas
               session={selected}
               visible={visible}
-              pinned={pinnedNode}
               onFocus={setPinnedNode}
             />
           </div>

@@ -26,7 +26,6 @@ const nodeTypes: NodeTypes = { agent: AgentNode };
 interface Props {
   session: Session | null;
   visible: ObsEvent[];
-  pinned: NodeId | null;
   onFocus: (node: NodeId | null) => void;
 }
 
@@ -38,7 +37,7 @@ const COLORS = {
   job: "#34d399",
 };
 
-export function Canvas({ session, visible, pinned, onFocus }: Props) {
+export function Canvas({ session, visible, onFocus }: Props) {
   const state = useMemo(() => computeState(visible), [visible]);
   const isJob = session?.family === "job";
 
@@ -278,12 +277,6 @@ export function Canvas({ session, visible, pinned, onFocus }: Props) {
           ) : null}
         </div>
       </motion.div>
-
-      {pinned && (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-ink-600 bg-ink-850/90 px-3 py-1 text-[11px] text-slate-400">
-          étape « {pinned} » épinglée — cliquez le fond pour suivre la timeline
-        </div>
-      )}
     </div>
   );
 }
