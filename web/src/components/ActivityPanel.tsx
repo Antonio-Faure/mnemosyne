@@ -15,6 +15,7 @@ interface Props {
   events: ObsEvent[];
   cursor: number;
   focus: NodeId | "all";
+  loading?: boolean;
   onFocus: (focus: NodeId | "all") => void;
   onSeek: (index: number) => void;
 }
@@ -33,6 +34,7 @@ export function ActivityPanel({
   events,
   cursor,
   focus,
+  loading = false,
   onFocus,
   onSeek,
 }: Props) {
@@ -70,7 +72,9 @@ export function ActivityPanel({
             Activité
           </span>
           <span className="ml-auto font-mono text-[10px] text-slate-500">
-            {filtered.length} événement{filtered.length > 1 ? "s" : ""}
+            {loading
+              ? "…"
+              : `${filtered.length} événement${filtered.length > 1 ? "s" : ""}`}
           </span>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -131,7 +135,9 @@ export function ActivityPanel({
         })}
         {!filtered.length && (
           <div className="p-3 text-[12px] text-slate-500">
-            Aucun événement pour ce filtre.
+            {loading
+              ? "chargement de la session…"
+              : "Aucun événement pour ce filtre."}
           </div>
         )}
       </div>

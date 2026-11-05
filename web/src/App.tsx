@@ -224,6 +224,7 @@ export default function App() {
           events={events}
           cursor={cursor}
           focus={focus}
+          loading={eventsQuery.isPending}
           onFocus={setFocus}
           onSeek={seek}
         />

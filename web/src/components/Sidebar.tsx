@@ -131,6 +131,16 @@ export function Sidebar({
                     <StatusIcon status={session.status} />
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 pl-4 font-mono text-[10px] text-slate-500">
+                    <span
+                      className="rounded bg-ink-700/80 px-1 py-[1px] text-[9px] uppercase tracking-wider text-slate-300"
+                      title={
+                        session.family === "task"
+                          ? "tâche de la queue — session d'agent (coût LLM)"
+                          : "run de job système — déclencheur (aucun LLM)"
+                      }
+                    >
+                      {session.family === "task" ? "tâche" : "job"}
+                    </span>
                     <span>{formatTime(session.started_at)}</span>
                     <span>·</span>
                     <span>{durationLabel(session)}</span>
