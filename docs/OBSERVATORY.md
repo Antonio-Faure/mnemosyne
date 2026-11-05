@@ -31,8 +31,11 @@ déroule la timeline interne de la session sélectionnée.
   **`navigateur`** (la tâche d'agent postée par ce job, turquoise — compte
   Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
 - **Centre** : canvas type Make — **Agency** (le moteur de la file, toujours
-  affiché au-dessus), Orchestrateur (le superviseur), Navigateur, Mailbox,
-  Codeur (+ nœud Job pour les sessions système hors Agency). **Un seul nœud
+  affiché au-dessus, et **étape d'ouverture** : c'est lui qui met la mission
+  en file), Orchestrateur (le superviseur), Navigateur, Mailbox,
+  Codeur (+ nœud Job pour les sessions système hors Agency). Le flux d'une
+  tâche est **Agency (session ouverte / mission en file) → Orchestrateur
+  (statut) → Navigateur (Mission, 1re étape de l'agent)**. **Un seul nœud
   tourne à la fois** : celui qui possède l'événement courant (Navigateur quand
   il travaille, Orchestrateur sur ses statuts, etc.). Les étapes de
   **transmission** allument en plus un lien, avec une **bille** qui circule
@@ -45,10 +48,11 @@ déroule la timeline interne de la session sélectionnée.
   tailles de nœuds et les handles ont un fallback avant mesure DOM.
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
-  cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
-  Navigateur, Codeur, Mailbox, Job). **Un seul bloc est actif** (contour
-  tournant) : celui de l'événement courant. Les événements sont rendus comme un
-  **transcript lisible** : bloc *Mission* (objectif complet), messages
+  cours** (pas d'onglets) : il suit l'événement de la timeline (Agency,
+  Orchestrateur, Navigateur, Codeur, Mailbox, Job). **Un seul bloc est actif**
+  (contour tournant) : celui de l'événement courant. Les événements sont rendus
+  comme un **transcript lisible** : bloc *Session ouverte / mission en file*
+  (titre de la mission), bloc *Mission* (objectif complet), messages
   *Navigateur/Codeur* (markdown), cartes *Outil* (arguments rendus en champs
   structurés — code, url… — jamais en JSON brut) et *Résultat* (JSON structuré
   quand il est valide, sinon texte ; un JSON brut reste **replié par défaut**),

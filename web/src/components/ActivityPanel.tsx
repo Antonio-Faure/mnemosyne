@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Code2,
+  Cog,
   Flag,
   Globe,
   Inbox,
@@ -44,6 +45,7 @@ interface Props {
 }
 
 const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> = {
+  agency: { label: "Agency · file", color: "#f59e0b", icon: Cog },
   orchestrator: { label: "Orchestrateur", color: "#60a5fa", icon: Network },
   browser: { label: "Navigateur", color: "#38bdf8", icon: Globe },
   coder: { label: "Codeur", color: "#818cf8", icon: Code2 },
@@ -949,10 +951,15 @@ export function ActivityPanel({
                   key={event.id}
                   ref={current ? currentRef : undefined}
                 >
-                  <Block {...common} label="Session ouverte" icon={Network} color="#94a3b8">
+                  <Block {...common} label="Session ouverte" icon={Cog} color="#f59e0b">
                     <Meta>
                       {payload.type ?? "—"} · départ {payload.agent ?? "—"}
                     </Meta>
+                    {payload.title && (
+                      <p className="whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-slate-200">
+                        {String(payload.title)}
+                      </p>
+                    )}
                   </Block>
                 </div>
               );

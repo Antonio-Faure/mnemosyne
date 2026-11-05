@@ -3,10 +3,16 @@ import type { ObsEvent } from "./types";
 
 /** Canvas nodes. The LLM has no node: it lives inside the browser/coder step
  * (its calls are shown in that step's panel). */
-export type NodeId = "orchestrator" | "browser" | "coder" | "mailbox" | "job";
+export type NodeId =
+  | "agency"
+  | "orchestrator"
+  | "browser"
+  | "coder"
+  | "mailbox"
+  | "job";
 
 export const KIND_COLORS: Record<string, string> = {
-  "session.created": "#94a3b8",
+  "session.created": "#f59e0b",
   "task.status": "#60a5fa",
   "activation.start": "#22d3ee",
   "activation.end": "#38bdf8",
@@ -23,7 +29,6 @@ export function kindColor(kind: string): string {
 }
 
 const ORCHESTRATOR_KINDS = new Set([
-  "session.created",
   "task.status",
   "activation.returned",
   "job.start",
@@ -33,6 +38,8 @@ const ORCHESTRATOR_KINDS = new Set([
 /** The canvas step an event belongs to. */
 export function eventNode(event: ObsEvent): NodeId | null {
   if (event.kind === "mailbox.message") return "mailbox";
+  // the queue (Agency) opens the session / enqueues the mission
+  if (event.kind === "session.created") return "agency";
   if (ORCHESTRATOR_KINDS.has(event.kind)) {
     return event.kind.startsWith("job.") ? "job" : "orchestrator";
   }
@@ -55,9 +62,9 @@ export function eventNode(event: ObsEvent): NodeId | null {
 /** Does an event belong to the given step? */
 export function matchesNode(event: ObsEvent, node: NodeId): boolean {
   if (node === "mailbox") return event.kind === "mailbox.message";
+  if (node === "agency") return event.kind === "session.created";
   if (node === "orchestrator") {
     return (
-      event.kind === "session.created" ||
       event.kind === "task.status" ||
       event.kind === "activation.returned"
     );

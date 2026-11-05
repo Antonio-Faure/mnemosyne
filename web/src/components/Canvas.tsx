@@ -138,10 +138,14 @@ export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
           label: "Agency",
           subtitle: isAgency
             ? `moteur de la file · ${session?.status ?? ""}`
-            : "moteur de la file · ~2 min",
+            : last === "agency"
+              ? "mission en file"
+              : "moteur de la file · ~2 min",
           color: COLORS.agency,
           icon: Cog,
-          active: isAgency && (state.jobActive || last === "job"),
+          active:
+            last === "agency" ||
+            (isAgency && (state.jobActive || last === "job")),
         },
       },
       {
@@ -285,7 +289,7 @@ export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
         "b",
         "t",
         COLORS.agency,
-        isAgency && state.jobActive,
+        state.lastNode === "agency" || (isAgency && state.jobActive),
         false,
       ),
       make(
@@ -359,7 +363,7 @@ export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node) => {
           if (node.id === "agency") {
-            if (session?.type === "agency") onFocus("job");
+            onFocus(session?.family === "job" ? "job" : "agency");
             return;
           }
           onFocus(node.id as NodeId);
