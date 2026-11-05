@@ -350,6 +350,10 @@ export function ActivityPanel({
   onSeek,
 }: Props) {
   const meta = STEPS[step];
+  const stepLabel =
+    step === "job" && session?.type === "agency"
+      ? "Agency · moteur de file"
+      : meta.label;
   const Icon = meta.icon;
 
   const indices = useMemo(() => {
@@ -402,7 +406,7 @@ export function ActivityPanel({
               étape en cours
             </div>
             <div className="text-[12.5px] font-semibold text-slate-100">
-              {meta.label}
+              {stepLabel}
             </div>
           </div>
           <div className="ml-auto flex items-center gap-1.5">

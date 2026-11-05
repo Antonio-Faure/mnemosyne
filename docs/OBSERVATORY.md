@@ -30,10 +30,11 @@ déroule la timeline interne de la session sélectionnée.
   **`système`** (run du job planificateur, gris — aucun LLM) et
   **`navigateur`** (la tâche d'agent postée par ce job, turquoise — compte
   Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
-- **Centre** : canvas type Make — Orchestrateur, Navigateur, Mailbox, Codeur
-  (+ nœud Job pour les sessions système). **Le LLM n'est pas un nœud** : ses
-  appels/tokens/outils flottent en haut à droite du canvas (ils appartiennent
-  au navigateur ou au codeur en cours).
+- **Centre** : canvas type Make — **Agency** (le moteur de la file, toujours
+  affiché au-dessus), Orchestrateur (le superviseur), Navigateur, Mailbox,
+  Codeur (+ nœud Job pour les sessions système hors Agency). **Le LLM n'est pas
+  un nœud** : ses appels/tokens/outils flottent en haut à droite du canvas (ils
+  appartiennent au navigateur ou au codeur en cours).
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
   cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,

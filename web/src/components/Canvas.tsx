@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import {
   Briefcase,
   Code2,
+  Cog,
   Globe,
   Inbox,
   Network,
@@ -30,6 +31,7 @@ interface Props {
 }
 
 const COLORS = {
+  agency: "#f59e0b",
   orchestrator: "#60a5fa",
   browser: "#38bdf8",
   coder: "#818cf8",
@@ -40,6 +42,7 @@ const COLORS = {
 export function Canvas({ session, visible, onFocus }: Props) {
   const state = useMemo(() => computeState(visible), [visible]);
   const isJob = session?.family === "job";
+  const isAgency = session?.type === "agency";
 
   const lastLlm = useMemo(
     () => [...visible].reverse().find((event) => event.kind === "llm.call") ?? null,
@@ -61,6 +64,21 @@ export function Canvas({ session, visible, onFocus }: Props) {
     const browserActive = state.openAgents.has("browser");
     const coderActive = state.openAgents.has("coder");
     const list: AgentNodeType[] = [
+      {
+        id: "agency",
+        type: "agent",
+        position: { x: 400, y: -120 },
+        data: {
+          label: "Agency",
+          subtitle: isAgency
+            ? `moteur de la file · ${session?.status ?? ""}`
+            : "moteur de la file · ~2 min",
+          color: COLORS.agency,
+          icon: Cog,
+          active: isAgency && (state.jobActive || session?.status === "running"),
+          pulse: isAgency && state.jobActive,
+        },
+      },
       {
         id: "orchestrator",
         type: "agent",
@@ -122,7 +140,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
         },
       },
     ];
-    if (isJob) {
+    if (isJob && !isAgency) {
       list.push({
         id: "job",
         type: "agent",
@@ -171,6 +189,16 @@ export function Canvas({ session, visible, onFocus }: Props) {
     const orchestrationPulse = last === "orchestrator";
 
     const list = [
+      make(
+        "a-o",
+        "agency",
+        "orchestrator",
+        "b",
+        "t",
+        COLORS.agency,
+        isAgency && state.jobActive,
+        false,
+      ),
       make("o-b", "orchestrator", "browser", "b", "t", COLORS.browser, orchestrationPulse, isJob),
       make("o-c", "orchestrator", "coder", "b", "t", COLORS.coder, orchestrationPulse, isJob),
       make("b-m", "browser", "mailbox", "sr", "l", COLORS.mailbox, mailboxPulse, isJob),
@@ -178,7 +206,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
       make("c-m", "coder", "mailbox", "sl", "r", COLORS.mailbox, mailboxPulse, isJob),
       make("m-b", "mailbox", "browser", "sl", "r", COLORS.mailbox, mailboxPulse, isJob),
     ];
-    if (isJob) {
+    if (isJob && !isAgency) {
       list.push(
         make(
           "o-j",
@@ -193,7 +221,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
       );
     }
     return list;
-  }, [isJob, state.lastNode, state.jobActive]);
+  }, [isAgency, isJob, state.lastNode, state.jobActive]);
 
   return (
     <div className="relative h-full w-full">
@@ -211,7 +239,13 @@ export function Canvas({ session, visible, onFocus }: Props) {
         minZoom={0.45}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
-        onNodeClick={(_, node) => onFocus(node.id as NodeId)}
+        onNodeClick={(_, node) => {
+          if (node.id === "agency") {
+            if (session?.type === "agency") onFocus("job");
+            return;
+          }
+          onFocus(node.id as NodeId);
+        }}
         onPaneClick={() => onFocus(null)}
         className="bg-ink-900"
       >
