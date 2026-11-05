@@ -40,11 +40,14 @@ déroule la timeline interne de la session sélectionnée.
   Navigateur, Codeur, Mailbox, Job). Les événements sont rendus comme un
   **transcript lisible** : bloc *Mission* (objectif complet), messages
   *Navigateur/Codeur* (markdown), cartes *Outil* (arguments rendus en champs
-  structurés — code, url… — jamais en JSON brut) et *Résultat* (sortie),
-  *Message* mailbox, *Fin d'activation* (tours, durée, bilan). Les tours sans
-  texte et l'appel `finish` (redondant avec le bilan) sont masqués. Chaque
-  bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer un nœud
-  épingle une étape ; « suivre » revient au mode auto.
+  structurés — code, url… — jamais en JSON brut) et *Résultat* (JSON structuré
+  quand il est valide, sinon texte ; un JSON brut reste **replié par défaut**),
+  *Message* mailbox, *Fin d'activation* (tours, durée, bilan). Les captures
+  d'écran référencées par un outil sont copiées dans `data/obs-artifacts/` et
+  affichées en vignette (clic = plein écran). Les tours sans texte et l'appel
+  `finish` (redondant avec le bilan) sont masqués. Chaque bloc est dépliable
+  pour le JSON brut et l'horodatage complet. Cliquer un nœud épingle une étape ;
+  « suivre » revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.
 
@@ -104,6 +107,8 @@ de statut) : à n'utiliser que si l'on veut l'historique « queue » sans détai
 - Lecture seule (pas de « annuler », « répondre » ou « relancer »).
 - Le panneau droit montre **l'étape en cours** ; il n'y a plus de vue « tout le
   flux » (c'est le prix de la lisibilité demandée).
-- Pas de captures d'écran dans le panneau : les sorties d'outils texte sont
-  affichées, les images sont remplacées par `[capture d'écran]`.
+- Les captures d'écran sont copiées dans `data/obs-artifacts/` (volume partagé)
+  et servies par `/api/obs/artifacts/<fichier>` ; elles ne sont pas purgées
+  automatiquement. Une capture n'est disponible que si le fichier existait au
+  moment du résultat (les anciennes sessions, elles, ont perdu leur `/tmp`).
 - L'historique d'avant le 5/11/2026 n'a pas d'événements fins.

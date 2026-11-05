@@ -156,6 +156,49 @@ function ArgsView({ args }: { args: unknown }) {
   );
 }
 
+/** Tool output: structured JSON when it parses, otherwise a readable block.
+ * JSON-ish payloads (e.g. a Python dict repr) stay collapsed by default. */
+function ResultView({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const parsed = parseJson(text);
+  if (parsed !== undefined && parsed !== null && typeof parsed === "object") {
+    return (
+      <div className="rounded-md bg-ink-900/70 p-2">
+        <JsonValue value={parsed} />
+      </div>
+    );
+  }
+  const jsonLike = /^[[{]/.test(text.trim());
+  if (jsonLike) {
+    return (
+      <div className="rounded-md bg-ink-900/70 p-2">
+        <button
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full items-center gap-1 text-left text-[10.5px] text-slate-400 transition hover:text-slate-200"
+        >
+          {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          <span className="font-mono uppercase tracking-wider">résultat JSON</span>
+          <span className="ml-auto text-slate-500">{text.length} car.</span>
+        </button>
+        {open ? (
+          <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-[10.5px] leading-relaxed text-slate-300">
+            {text}
+          </pre>
+        ) : (
+          <div className="mt-1 truncate font-mono text-[10px] text-slate-500">
+            {text.slice(0, 140)}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-300">
+      {text || "(sortie vide)"}
+    </pre>
+  );
+}
+
 /** Tool outputs are often `[{"type":"text","text":"…"}]`: show the text only. */
 function toolText(value: unknown): string {
   const raw = String(value ?? "");
@@ -460,7 +503,11 @@ export function ActivityPanel({
                 </div>
               );
 
-            case "tool.result":
+            case "tool.result": {
+              const artifacts = Array.isArray(payload.artifacts)
+                ? (payload.artifacts as { name?: string; url: string }[])
+                : [];
+              const text = toolText(payload.preview);
               return (
                 <div
                   key={event.id}
@@ -472,12 +519,34 @@ export function ActivityPanel({
                     icon={ArrowDown}
                     color="#f0abfc"
                   >
-                    <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-300">
-                      {toolText(payload.preview) || "(sortie vide)"}
-                    </pre>
+                    {artifacts.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {artifacts.map((artifact) => (
+                          <a
+                            key={artifact.url}
+                            href={artifact.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block overflow-hidden rounded-md border border-ink-600 transition hover:border-sky-500/60"
+                            title={artifact.name ?? "capture"}
+                          >
+                            <img
+                              src={artifact.url}
+                              alt={artifact.name ?? "capture d'écran"}
+                              loading="lazy"
+                              className="max-h-52 w-auto"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {(!artifacts.length || (text && text !== "(no output)")) && (
+                      <ResultView text={text} />
+                    )}
                   </Block>
                 </div>
               );
+            }
 
             case "mailbox.message":
               return (

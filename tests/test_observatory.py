@@ -208,6 +208,35 @@ def test_tool_results_are_emitted_once(config):
     db.close()
 
 
+def test_tool_screenshot_is_copied_to_the_shared_artifacts_dir(tmp_path, monkeypatch):
+    from mnemosyne.browser.stirrup_client import _copy_artifacts
+
+    monkeypatch.setenv("MNEMOSYNE_DATA_DIR", str(tmp_path))
+    shot = tmp_path / "shot.png"
+    shot.write_bytes(b"\x89PNG\r\n\x1a\n")
+    artifacts = _copy_artifacts(
+        f'{{"code": "capture_screenshot(\\"{shot}\\", max_dim=1800)"}}'
+    )
+    assert len(artifacts) == 1
+    assert artifacts[0]["url"].startswith("/api/obs/artifacts/")
+    name = artifacts[0]["url"].rsplit("/", 1)[1]
+    assert (tmp_path / "obs-artifacts" / name).read_bytes().startswith(b"\x89PNG")
+
+
+def test_api_serves_a_screenshot_artifact(tmp_path, monkeypatch):
+    from mnemosyne.api.app import create_app
+
+    monkeypatch.setenv("MNEMOSYNE_DATA_DIR", str(tmp_path))
+    base = tmp_path / "obs-artifacts"
+    base.mkdir()
+    (base / "shot.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    client = TestClient(create_app())
+    response = client.get("/api/obs/artifacts/shot.png")
+    assert response.status_code == 200
+    assert response.content.startswith(b"\x89PNG")
+    assert client.get("/api/obs/artifacts/missing.png").status_code == 404
+
+
 def _client(config, monkeypatch) -> TestClient:
     import mnemosyne.api.observatory as obs
     from mnemosyne.api.app import create_app

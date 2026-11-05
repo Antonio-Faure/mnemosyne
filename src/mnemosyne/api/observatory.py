@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from mnemosyne.config import get_config
 from mnemosyne.db import Database
@@ -100,6 +102,16 @@ def get_events(
         return {"events": [_event(row) for row in rows]}
     finally:
         db.close()
+
+
+@router.get("/artifacts/{name}")
+def get_artifact(name: str):
+    """Serve a screenshot copied from the (ephemeral) agent /tmp directory."""
+    base = (Path(os.environ.get("MNEMOSYNE_DATA_DIR", "data")) / "obs-artifacts").resolve()
+    path = (base / name).resolve()
+    if path.parent != base or not path.is_file():
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return FileResponse(path)
 
 
 @router.get("/stream")

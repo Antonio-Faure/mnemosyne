@@ -8,6 +8,11 @@ and rebuild the underlying `AsyncOpenAI` with those headers.
 from __future__ import annotations
 
 import json
+import os
+import re
+import shutil
+import uuid
+from pathlib import Path
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -70,6 +75,41 @@ def trim_request_images(
                 message = {**message, "content": new_content}
         out.append(message)
     return out
+
+
+_IMAGE_PATH_RE = re.compile(
+    r"""["']([^"'\\\n]+\.(?:png|jpe?g|webp|gif))\\?["']""", re.IGNORECASE
+)
+
+
+def _copy_artifacts(args: str, *, limit: int = 3) -> list[dict[str, str]]:
+    """Copy screenshots referenced by a tool call into the shared data volume.
+
+    The harness writes screenshots under /tmp: ephemeral, and not shared with
+    the observatory container. Copy them when the result comes back so the API
+    can serve them and the UI can show them.
+    """
+    base = Path(os.environ.get("MNEMOSYNE_DATA_DIR", "data")) / "obs-artifacts"
+    found: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for match in _IMAGE_PATH_RE.finditer(args or ""):
+        source = Path(match.group(1))
+        key = str(source)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if not source.is_file() or source.stat().st_size > 5_000_000:
+                continue
+            base.mkdir(parents=True, exist_ok=True)
+            name = f"{uuid.uuid4().hex[:12]}-{source.name}"
+            shutil.copyfile(source, base / name)
+        except OSError:
+            continue
+        found.append({"name": source.name, "url": f"/api/obs/artifacts/{name}"})
+        if len(found) >= limit:
+            break
+    return found
 
 
 class UsageSink:
@@ -206,6 +246,7 @@ class _CompletionsProxy:
         from mnemosyne.observatory import events
 
         names: dict[str, str] = {}
+        arguments: dict[str, str] = {}
         for message in messages:
             if not isinstance(message, dict):
                 continue
@@ -213,9 +254,9 @@ class _CompletionsProxy:
                 for call in message.get("tool_calls") or []:
                     call_id = call.get("id")
                     if call_id:
-                        names[call_id] = str(
-                            (call.get("function") or {}).get("name") or "tool"
-                        )
+                        function = call.get("function") or {}
+                        names[call_id] = str(function.get("name") or "tool")
+                        arguments[call_id] = str(function.get("arguments") or "")
             elif message.get("role") == "tool":
                 call_id = str(message.get("tool_call_id") or "")
                 if call_id in self._seen_tool_calls:
@@ -226,14 +267,15 @@ class _CompletionsProxy:
                     content = json.dumps(content, default=str)
                 if "data:image" in content:
                     content = "[capture d'écran]"
-                events.record(
-                    "tool.result",
-                    {
-                        "name": names.get(call_id, "tool"),
-                        "preview": events.clip(content, 2000),
-                        "call_id": call_id or None,
-                    },
-                )
+                payload: dict[str, Any] = {
+                    "name": names.get(call_id, "tool"),
+                    "preview": events.clip(content, 2000),
+                    "call_id": call_id or None,
+                }
+                artifacts = _copy_artifacts(arguments.get(call_id, ""))
+                if artifacts:
+                    payload["artifacts"] = artifacts
+                events.record("tool.result", payload)
 
 
 class _ChatProxy:
