@@ -2,7 +2,7 @@ import { formatNumber } from "./format";
 import type { ObsEvent } from "./types";
 
 /** Canvas nodes. The LLM has no node: it lives inside the browser/coder step
- * (its calls are shown in that step's panel and in the floating HUD). */
+ * (its calls are shown in that step's panel). */
 export type NodeId = "orchestrator" | "browser" | "coder" | "mailbox" | "job";
 
 export const KIND_COLORS: Record<string, string> = {
@@ -176,10 +176,54 @@ export interface TimelineState {
   openAgents: Set<string>;
   jobActive: boolean;
   lastNode: NodeId | null;
+  /** orchestrator link lit by the current step (direction: to/from agent) */
+  handoff: Handoff | null;
+  /** mailbox message currently travelling (selects the lit segments) */
+  mailRoute: MailRoute | null;
   llmCalls: number;
   toolCalls: number;
   mailboxMessages: number;
   eventsByAgent: Record<string, number>;
+}
+
+export interface Handoff {
+  agent: "browser" | "coder";
+  direction: "to" | "from";
+}
+
+export interface MailRoute {
+  from: string;
+  to: string;
+}
+
+function agentName(value: unknown): "browser" | "coder" | null {
+  return value === "browser" || value === "coder" ? value : null;
+}
+
+/** Orchestrator link lit by an event — never both agents at once. */
+export function eventHandoff(event: ObsEvent): Handoff | null {
+  const payload = event.payload ?? {};
+  switch (event.kind) {
+    case "activation.start": {
+      const agent = agentName(event.actor);
+      return agent ? { agent, direction: "to" } : null;
+    }
+    case "activation.returned": {
+      const agent = agentName(payload.agent);
+      return agent ? { agent, direction: "from" } : null;
+    }
+    case "session.created": {
+      const agent = agentName(payload.agent);
+      return agent ? { agent, direction: "to" } : null;
+    }
+    case "task.status": {
+      const agent = agentName(payload.agent);
+      if (!agent) return null; // status without a known target: no link
+      return { agent, direction: payload.to === "running" ? "to" : "from" };
+    }
+    default:
+      return null;
+  }
 }
 
 /** Aggregate the visible timeline into per-step state (canvas highlighting). */
@@ -190,6 +234,8 @@ export function computeState(visible: ObsEvent[]): TimelineState {
     openAgents,
     jobActive: false,
     lastNode: null,
+    handoff: null,
+    mailRoute: null,
     llmCalls: 0,
     toolCalls: 0,
     mailboxMessages: 0,
@@ -205,6 +251,14 @@ export function computeState(visible: ObsEvent[]): TimelineState {
     if (event.kind === "mailbox.message") state.mailboxMessages += 1;
     if (event.actor) eventsByAgent[event.actor] = (eventsByAgent[event.actor] ?? 0) + 1;
     state.lastNode = eventNode(event);
+    state.handoff = eventHandoff(event);
+    state.mailRoute =
+      event.kind === "mailbox.message"
+        ? {
+            from: String(event.payload?.from ?? ""),
+            to: String(event.payload?.to ?? ""),
+          }
+        : null;
   }
   return state;
 }

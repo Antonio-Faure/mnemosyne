@@ -735,9 +735,18 @@ class Database:
         return dict(row) if row else None
 
     def set_task_status(
-        self, task_id: int, status: str, note: str | None = None
+        self,
+        task_id: int,
+        status: str,
+        note: str | None = None,
+        agent: str | None = None,
     ) -> None:
-        """Set task state (and mirror it on the observatory session)."""
+        """Set task state (and mirror it on the observatory session).
+
+        ``agent`` is carried in the ``task.status`` payload when the caller knows
+        which agent holds the task, so the observatory can light the right
+        orchestrator link (never both).
+        """
         now = utcnow_iso()
         with self._lock:
             row = self._conn.execute("SELECT status FROM tasks WHERE id = ?", (task_id,)).fetchone()
@@ -775,7 +784,12 @@ class Database:
                     (
                         session_id, now,
                         json.dumps(
-                            {"from": previous, "to": status, "note": (note or "")[:280]}
+                            {
+                                "from": previous,
+                                "to": status,
+                                "note": (note or "")[:280],
+                                **({"agent": agent} if agent else {}),
+                            }
                         ),
                     ),
                 )

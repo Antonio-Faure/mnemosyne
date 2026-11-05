@@ -144,7 +144,6 @@ export function Canvas({ session, visible, onFocus }: Props) {
   }, [session, isJob, state, visible.length]);
 
   const edges = useMemo<Edge[]>(() => {
-    const last = state.lastNode;
     const make = (
       id: string,
       source: string,
@@ -154,6 +153,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
       color: string,
       pulsing: boolean,
       muted: boolean,
+      reverse = false,
     ): Edge => ({
       id,
       source,
@@ -162,7 +162,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
       targetHandle,
       type: "bead",
       animated: pulsing && !muted,
-      data: { active: pulsing && !muted, color },
+      data: { active: pulsing && !muted, color, reverse },
       style: {
         stroke: color,
         strokeWidth: pulsing ? 2.1 : 1.2,
@@ -170,8 +170,20 @@ export function Canvas({ session, visible, onFocus }: Props) {
       },
     });
 
-    const mailboxPulse = last === "mailbox";
-    const orchestrationPulse = last === "orchestrator";
+    // One link at a time: the handoff points to (or comes back from) a single
+    // agent. Never light both o→browser and o→coder.
+    const handoff = state.handoff;
+    const toBrowser = handoff?.agent === "browser" && handoff.direction === "to";
+    const fromBrowser = handoff?.agent === "browser" && handoff.direction === "from";
+    const toCoder = handoff?.agent === "coder" && handoff.direction === "to";
+    const fromCoder = handoff?.agent === "coder" && handoff.direction === "from";
+
+    // Mailbox: only the segments the message actually crosses are lit.
+    const mail = state.mailRoute;
+    const mailFromBrowser = mail?.from === "browser";
+    const mailToBrowser = mail?.to === "browser";
+    const mailFromCoder = mail?.from === "coder";
+    const mailToCoder = mail?.to === "coder";
 
     const list = [
       make(
@@ -184,12 +196,32 @@ export function Canvas({ session, visible, onFocus }: Props) {
         isAgency && state.jobActive,
         false,
       ),
-      make("o-b", "orchestrator", "browser", "b", "t", COLORS.browser, orchestrationPulse, isJob),
-      make("o-c", "orchestrator", "coder", "b", "t", COLORS.coder, orchestrationPulse, isJob),
-      make("b-m", "browser", "mailbox", "sr", "l", COLORS.mailbox, mailboxPulse, isJob),
-      make("m-c", "mailbox", "coder", "sr", "l", COLORS.mailbox, mailboxPulse, isJob),
-      make("c-m", "coder", "mailbox", "sl", "r", COLORS.mailbox, mailboxPulse, isJob),
-      make("m-b", "mailbox", "browser", "sl", "r", COLORS.mailbox, mailboxPulse, isJob),
+      make(
+        "o-b",
+        "orchestrator",
+        "browser",
+        "b",
+        "t",
+        COLORS.browser,
+        toBrowser || fromBrowser,
+        isJob,
+        fromBrowser,
+      ),
+      make(
+        "o-c",
+        "orchestrator",
+        "coder",
+        "b",
+        "t",
+        COLORS.coder,
+        toCoder || fromCoder,
+        isJob,
+        fromCoder,
+      ),
+      make("b-m", "browser", "mailbox", "sr", "l", COLORS.mailbox, mailFromBrowser, isJob),
+      make("m-c", "mailbox", "coder", "sr", "l", COLORS.mailbox, mailToCoder, isJob),
+      make("c-m", "coder", "mailbox", "sl", "r", COLORS.mailbox, mailFromCoder, isJob),
+      make("m-b", "mailbox", "browser", "sl", "r", COLORS.mailbox, mailToBrowser, isJob),
     ];
     if (isJob && !isAgency) {
       list.push(
@@ -200,13 +232,19 @@ export function Canvas({ session, visible, onFocus }: Props) {
           "b",
           "t",
           COLORS.job,
-          orchestrationPulse || state.jobActive,
+          state.jobActive,
           false,
         ),
       );
     }
     return list;
-  }, [isAgency, isJob, state.lastNode, state.jobActive]);
+  }, [
+    isAgency,
+    isJob,
+    state.jobActive,
+    state.handoff,
+    state.mailRoute,
+  ]);
 
   return (
     <div className="relative h-full w-full">

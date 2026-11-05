@@ -372,7 +372,7 @@ async def _activate_session(
                         "branch": getattr(outcome, "branch", None), "error": error}
             error = f"{error} — abandon après {attempts} tentatives transitoires"
         db.delete_kv(transient_key)
-        db.set_task_status(task_id, "failed", note=error[:NOTE_MAX_CHARS])
+        db.set_task_status(task_id, "failed", note=error[:NOTE_MAX_CHARS], agent=agent)
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
         _settle_discovery(config, db, task, getattr(outcome, "branch", None))
@@ -385,7 +385,7 @@ async def _activate_session(
 
     if mailbox.pending_count(task_id) == 0:
         status = "done" if finish else "review"
-        db.set_task_status(task_id, status, note=finish[:NOTE_MAX_CHARS] or None)
+        db.set_task_status(task_id, status, note=finish[:NOTE_MAX_CHARS] or None, agent=agent)
         db.delete_kv(f"transient:{task_id}")
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
@@ -473,7 +473,7 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
         if task["status"] == "pending":
             # only now is the task really being worked on: a refused lease must
             # not leave a lying 'running' status behind
-            db.set_task_status(task["id"], "running")
+            db.set_task_status(task["id"], "running", agent=agent)
         note = (
             f"agency (fond) → agent {agent} : tâche #{task['id']} : "
             f"{len(messages)} message(s)"
