@@ -21,7 +21,16 @@ import remarkGfm from "remark-gfm";
 import type { ObsEvent, Session } from "../lib/types";
 import { isRenderable, kindColor, matchesNode, type NodeId } from "../lib/events";
 import { formatTime, fullTimestamp } from "../lib/format";
-import { describeResult, describeTool, parseJson, toolText } from "../lib/describe";
+import {
+  describeResult,
+  describeTool,
+  findValue,
+  pageFrom,
+  parseJson,
+  salvageList,
+  toolText,
+  type PageInfo,
+} from "../lib/describe";
 
 interface Props {
   session: Session | null;
@@ -64,11 +73,115 @@ function Meta({ children }: { children: ReactNode }) {
   return <div className="text-[10px] text-slate-500">{children}</div>;
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  url: "URL",
+  title: "Titre",
+  w: "Largeur",
+  h: "Hauteur",
+  sx: "Scroll X",
+  sy: "Scroll Y",
+  pw: "Largeur page",
+  ph: "Hauteur page",
+  text: "Texte",
+  type: "Type",
+  name: "Nom",
+  path: "Chemin",
+  selector: "Sélecteur",
+  code: "Code",
+  status: "Statut",
+  message: "Message",
+  query: "Recherche",
+  command: "Commande",
+  preview: "Aperçu",
+  artifacts: "Captures",
+  from: "De",
+  to: "À",
+  id: "Identifiant",
+};
+
+function fieldLabel(key: string): string {
+  return FIELD_LABELS[key] ?? key.replace(/_/g, " ");
+}
+
+const URL_RE = /^https?:\/\/\S+$/;
+
+function isPrimitive(value: unknown): boolean {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+const LABEL_KEYS = ["t", "title", "name", "label", "text", "type"];
+
+function inlineValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+/** One row of an array of objects: primary label + compact fields. */
+function ObjectRow({ item }: { item: Record<string, unknown> }) {
+  const labelKey = LABEL_KEYS.find((key) => {
+    const value = item[key];
+    return typeof value === "string" && value.trim() !== "";
+  });
+  const label = labelKey ? String(item[labelKey]) : null;
+  const rest = Object.entries(item)
+    .filter(([key, value]) => key !== labelKey && value !== null && value !== "")
+    .slice(0, 6);
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded bg-ink-900/50 px-1.5 py-1">
+      {label && (
+        <span className="max-w-full truncate text-[11px] font-medium text-slate-200">
+          {label}
+        </span>
+      )}
+      {rest.map(([key, value]) => (
+        <span
+          key={key}
+          title={inlineValue(value)}
+          className="max-w-full truncate font-mono text-[9.5px] text-slate-400"
+        >
+          <span className="text-slate-500">{fieldLabel(key)}</span>{" "}
+          {inlineValue(value)}
+        </span>
+      ))}
+      {Object.keys(item).filter((key) => key !== labelKey).length > rest.length && (
+        <span className="text-[9px] text-slate-500">
+          +{Object.keys(item).filter((key) => key !== labelKey).length - rest.length}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Structured value: labelled fields, link URLs, chips for simple lists. */
 function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   if (value === null || value === undefined) {
     return <span className="text-slate-500">—</span>;
   }
   if (typeof value === "string") {
+    if (URL_RE.test(value)) {
+      return (
+        <a
+          href={value}
+          target="_blank"
+          rel="noreferrer"
+          className="break-all text-sky-300 underline"
+        >
+          {value.replace(/^https?:\/\//, "")}
+        </a>
+      );
+    }
     if (value.includes("\n") || value.length > 90) {
       return (
         <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900/80 p-1.5 font-mono text-[10.5px] leading-relaxed text-slate-200">
@@ -76,32 +189,83 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
         </pre>
       );
     }
-    return <span className="text-slate-200">{value}</span>;
+    return <span className="break-words text-slate-200">{value}</span>;
   }
   if (typeof value === "number") {
-    return <span className="font-mono text-amber-200">{value}</span>;
+    return (
+      <span className="font-mono text-amber-200">{value.toLocaleString("fr-FR")}</span>
+    );
   }
   if (typeof value === "boolean") {
     return <span className="font-mono text-sky-200">{String(value)}</span>;
   }
   if (Array.isArray(value)) {
+    if (value.every(isPrimitive)) {
+      const shown = value.slice(0, 30);
+      return (
+        <div className="flex flex-wrap gap-1">
+          {shown.map((item, index) => (
+            <span
+              key={index}
+              title={String(item ?? "")}
+              className="max-w-full truncate rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-200"
+            >
+              {String(item ?? "—")}
+            </span>
+          ))}
+          {value.length > shown.length && (
+            <span className="text-[10px] text-slate-500">
+              +{value.length - shown.length} autres
+            </span>
+          )}
+        </div>
+      );
+    }
+    if (
+      value.every(
+        (item) =>
+          item !== null && typeof item === "object" && !Array.isArray(item),
+      )
+    ) {
+      const rows = value.slice(0, 30) as Record<string, unknown>[];
+      return (
+        <div className="space-y-1">
+          {rows.map((item, index) => (
+            <ObjectRow key={index} item={item} />
+          ))}
+          {value.length > rows.length && (
+            <div className="text-[10px] text-slate-500">
+              +{value.length - rows.length} autres
+            </div>
+          )}
+        </div>
+      );
+    }
+    const shown = value.slice(0, 40);
     return (
-      <ul className="ml-3 list-disc space-y-0.5">
-        {value.map((item, index) => (
+      <ul className="ml-3 list-disc space-y-1">
+        {shown.map((item, index) => (
           <li key={index}>
             <JsonValue value={item} depth={depth + 1} />
           </li>
         ))}
+        {value.length > shown.length && (
+          <li className="text-[10px] text-slate-500">
+            +{value.length - shown.length} autres
+          </li>
+        )}
       </ul>
     );
   }
   if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (!entries.length) return <span className="text-slate-500">(vide)</span>;
     return (
       <div className={depth ? "ml-2 space-y-1 border-l border-ink-600 pl-2" : "space-y-1"}>
-        {Object.entries(value as Record<string, unknown>).map(([key, item]) => (
+        {entries.map(([key, item]) => (
           <div key={key}>
             <div className="text-[9px] uppercase tracking-wider text-slate-500">
-              {key}
+              {fieldLabel(key)}
             </div>
             <div className="mt-0.5">
               <JsonValue value={item} depth={depth + 1} />
@@ -112,6 +276,74 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
     );
   }
   return <span className="text-slate-300">{String(value)}</span>;
+}
+
+/** A second value attached to a result (coordinates, URL, …). */
+function ExtraValue({ text }: { text: string }) {
+  const parsed = findValue(text);
+  const structured =
+    parsed && !parsed.prefix && !parsed.suffix ? parsed.value : null;
+  return structured !== null ? (
+    <JsonValue value={structured} />
+  ) : (
+    <pre className="whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-slate-400">
+      {text}
+    </pre>
+  );
+}
+
+/** Browser page metadata, rendered as a readable card (no raw dict). */
+function PageCard({ page }: { page: PageInfo }) {
+  const metrics: string[] = [];
+  if (page.width !== undefined && page.height !== undefined) {
+    metrics.push(`fenêtre ${page.width}×${page.height}`);
+  }
+  if (page.scrollX !== undefined || page.scrollY !== undefined) {
+    metrics.push(`scroll ${page.scrollX ?? 0}, ${page.scrollY ?? 0}`);
+  }
+  if (page.pageWidth !== undefined && page.pageHeight !== undefined) {
+    metrics.push(`page ${page.pageWidth}×${page.pageHeight}`);
+  }
+  const extra = page.extra && page.extra !== page.url ? page.extra : null;
+  return (
+    <div className="rounded-md bg-ink-900/70 p-2 text-[11.5px] leading-snug text-slate-200">
+      {page.prefix && (
+        <div className="mb-1 whitespace-pre-wrap break-words text-[11px] text-slate-300">
+          {page.prefix}
+        </div>
+      )}
+      <div>
+        <span className="text-slate-500">Page</span> « {page.title || "sans titre"} »
+      </div>
+      {page.url && (
+        <a
+          href={page.url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-0.5 block break-all text-sky-300 underline"
+        >
+          {page.url.replace(/^https?:\/\//, "")}
+        </a>
+      )}
+      {metrics.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {metrics.map((metric) => (
+            <span
+              key={metric}
+              className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[9.5px] text-slate-400"
+            >
+              {metric}
+            </span>
+          ))}
+        </div>
+      )}
+      {extra && (
+        <div className="mt-1 border-t border-ink-700 pt-1">
+          <ExtraValue text={extra} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Tool arguments rendered from their JSON: fields, code blocks, lists. */
@@ -180,15 +412,62 @@ function ToolArgs({ name, args }: { name?: string; args: unknown }) {
  * JSON-ish payloads (e.g. a Python dict repr) stay collapsed by default. */
 function ResultView({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const parsed = parseJson(text);
-  if (parsed !== undefined && parsed !== null && typeof parsed === "object") {
+  const found = findValue(text);
+  if (found) {
+    const page = pageFrom(found.value);
+    if (page) {
+      return (
+        <PageCard
+          page={{
+            ...page,
+            prefix: found.prefix || undefined,
+            extra: found.suffix || undefined,
+          }}
+        />
+      );
+    }
     return (
       <div className="rounded-md bg-ink-900/70 p-2">
-        <JsonValue value={parsed} />
+        {found.prefix && (
+          <div className="mb-1 whitespace-pre-wrap break-words text-[11px] text-slate-300">
+            {found.prefix}
+          </div>
+        )}
+        <JsonValue value={found.value} />
+        {found.suffix && (
+          <div className="mt-1 border-t border-ink-700 pt-1">
+            <ExtraValue text={found.suffix} />
+          </div>
+        )}
+        <button
+          onClick={() => setOpen((value) => !value)}
+          className="mt-1.5 flex items-center gap-1 text-[9.5px] text-slate-500 transition hover:text-slate-300"
+        >
+          {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+          valeur brute
+        </button>
+        {open && (
+          <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-slate-400">
+            {pretty(found.value)}
+          </pre>
+        )}
       </div>
     );
   }
   const jsonLike = /^[[{]/.test(text.trim());
+  const salvaged = salvageList(text);
+  if (salvaged) {
+    return (
+      <div className="rounded-md bg-ink-900/70 p-2">
+        <JsonValue value={salvaged.items} />
+        {salvaged.truncated && (
+          <div className="mt-1 text-[9.5px] italic text-slate-500">
+            liste tronquée par l'aperçu
+          </div>
+        )}
+      </div>
+    );
+  }
   if (jsonLike) {
     return (
       <div className="rounded-md bg-ink-900/70 p-2">
@@ -197,7 +476,7 @@ function ResultView({ text }: { text: string }) {
           className="flex w-full items-center gap-1 text-left text-[10.5px] text-slate-400 transition hover:text-slate-200"
         >
           {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-          <span className="font-mono uppercase tracking-wider">résultat JSON</span>
+          <span className="font-mono uppercase tracking-wider">sortie structurée</span>
           <span className="ml-auto text-slate-500">{text.length} car.</span>
         </button>
         {open ? (
@@ -549,28 +828,24 @@ export function ActivityPanel({
                         ))}
                       </div>
                     )}
-                    {described.kind === "page" && (
-                      <div className="rounded-md bg-ink-900/70 p-2 text-[11.5px] leading-snug text-slate-200">
-                        <span className="text-slate-500">Page</span> «{" "}
-                        {described.page?.title || "sans titre"} »
-                        {described.page?.url && (
-                          <>
-                            <span className="mx-1 text-slate-600">·</span>
-                            <a
-                              href={described.page.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="break-all text-sky-300 underline"
-                            >
-                              {described.page.url.replace(/^https?:\/\//, "")}
-                            </a>
-                          </>
-                        )}
-                      </div>
+                    {described.kind === "page" && described.page && (
+                      <PageCard page={described.page} />
                     )}
                     {described.kind === "error" && (
-                      <div className="rounded-md bg-rose-500/10 p-2 text-[11px] text-rose-300">
-                        {described.error}
+                      <div className="rounded-md bg-rose-500/10 p-2">
+                        <div className="text-[11px] text-rose-300">
+                          {described.error}
+                        </div>
+                        {described.traceback && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-[10px] text-rose-300/80">
+                              trace complète
+                            </summary>
+                            <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-rose-200/80">
+                              {described.traceback}
+                            </pre>
+                          </details>
+                        )}
                       </div>
                     )}
                     {described.kind === "empty" && !artifacts.length && (
@@ -695,9 +970,9 @@ export function ActivityPanel({
                     color="#34d399"
                   >
                     {payload.payload && (
-                      <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10px] text-slate-400">
-                        {pretty(payload.payload)}
-                      </pre>
+                      <div className="rounded-md bg-ink-900/70 p-2">
+                        <JsonValue value={payload.payload} />
+                      </div>
                     )}
                   </Block>
                 </div>

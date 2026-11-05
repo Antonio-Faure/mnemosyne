@@ -217,7 +217,7 @@ class _CompletionsProxy:
                 calls.append(
                     {
                         "name": str(getattr(function, "name", "?")),
-                        "args": events.clip(getattr(function, "arguments", ""), 1200),
+                        "args": events.clip(getattr(function, "arguments", ""), 4000),
                     }
                 )
         except Exception:  # noqa: BLE001 - a provider shape change must not break a turn
@@ -269,7 +269,7 @@ class _CompletionsProxy:
                     content = "[capture d'écran]"
                 payload: dict[str, Any] = {
                     "name": names.get(call_id, "tool"),
-                    "preview": events.clip(content, 2000),
+                    "preview": events.clip(content, 4000),
                     "call_id": call_id or None,
                 }
                 artifacts = _copy_artifacts(arguments.get(call_id, ""))

@@ -49,16 +49,23 @@ déroule la timeline interne de la session sélectionnée.
   *Navigateur/Codeur* (markdown), cartes *Outil* (arguments rendus en champs
   structurés — code, url… — jamais en JSON brut) et *Résultat* (JSON structuré
   quand il est valide, sinon texte ; un JSON brut reste **replié par défaut**),
-  *Message* mailbox, *Fin d'activation* (tours, durée, bilan), puis
+  *Message* mailbox, *Fin d'activation* (tours, durée, bilan), *Statut*
+  (l'orchestrateur ferme la tâche **après** la fin d'activation), puis
   *Retour à l'orchestrateur* (`done · retour browser` — pendant de *Session
   ouverte*). Les captures d'écran référencées par un outil sont
   copiées dans `data/obs-artifacts/` et affichées en vignette (clic = plein
   écran). Les appels navigateur sont **traduits en actions** (aller à l'URL,
-  attendre, remplir un champ, boucle `for`, `scroll`, imports…), avec le code
-  source replié. Les tours sans texte et l'échange `finish` sont **retirés de
-  la timeline** (pas seulement masqués) : une étape = un bloc, sans doublons.
-  Chaque bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer
-  un nœud épingle une étape ; « suivre » revient au mode auto.
+  attendre, remplir un champ, boucle `for`, `scroll`, onglets, JavaScript
+  résumé par intention…), avec le code source replié. Les sorties sont
+  **rendues**, pas dumpées : les dicts Python de `page_info()` deviennent une
+  carte page (titre, URL, fenêtre, scroll, hauteur de page), les listes
+  deviennent des pastilles/lignes compactes, les dicts des champs étiquetés,
+  les erreurs un résumé + trace dépliable, et les listes tronquées sont
+  récupérées item par item. Les tours sans texte et l'échange `finish` sont
+  **retirés de la timeline** (pas seulement masqués) : une étape = un bloc,
+  sans doublons. Chaque bloc est dépliable pour le JSON brut et l'horodatage
+  complet (« valeur brute »). Cliquer un nœud épingle une étape ; « suivre »
+  revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.
 

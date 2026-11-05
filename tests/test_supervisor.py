@@ -136,6 +136,32 @@ def test_a_single_session_task_closes_done(config, monkeypatch):
     db.close()
 
 
+def test_activation_end_precedes_the_terminal_status(config, monkeypatch):
+    """The agent stops, THEN the orchestrator closes the task.
+
+    The observatory timeline must read: fin d'activation (browser) →
+    statut running→done (orchestrator) → retour à l'orchestrateur.
+    """
+
+    async def fake_browser(
+        cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None, model=None
+    ):
+        return _Outcome(finish="fini")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    asyncio.run(run_agency(config, "mission", start="browser"))
+    db = Database(config.db_file())
+    events = db.list_events("task:1")
+    assert [(e["kind"], e["actor"]) for e in events[-3:]] == [
+        ("activation.end", "browser"),
+        ("task.status", "orchestrator"),
+        ("activation.returned", "orchestrator"),
+    ]
+    assert '"agent": "browser"' in events[-2]["payload"]
+    db.close()
+
+
 def test_no_finish_is_review_not_silence(config, monkeypatch):
     async def fake_coder(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
         return _Outcome(finish=None)  # type: ignore[arg-type]

@@ -372,7 +372,6 @@ async def _activate_session(
                         "branch": getattr(outcome, "branch", None), "error": error}
             error = f"{error} — abandon après {attempts} tentatives transitoires"
         db.delete_kv(transient_key)
-        db.set_task_status(task_id, "failed", note=error[:NOTE_MAX_CHARS], agent=agent)
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
         _settle_discovery(config, db, task, getattr(outcome, "branch", None))
@@ -381,11 +380,14 @@ async def _activate_session(
                 f"tâche #{task_id} échouée : {error[:160]}", level="error", source="agency"
             )
         return {"agent": agent, "task_id": task_id, "finish": "", "turns": _turns_of(outcome),
-                "branch": getattr(outcome, "branch", None), "error": error}
+                "branch": getattr(outcome, "branch", None), "error": error,
+                # emitted by _run_task AFTER activation.end: the agent stops,
+                # then the orchestrator closes the task (logical order)
+                "close_status": "failed", "close_note": error[:NOTE_MAX_CHARS]}
 
     if mailbox.pending_count(task_id) == 0:
         status = "done" if finish else "review"
-        db.set_task_status(task_id, status, note=finish[:NOTE_MAX_CHARS] or None, agent=agent)
+        close_note = finish[:NOTE_MAX_CHARS] or None
         db.delete_kv(f"transient:{task_id}")
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
@@ -396,6 +398,9 @@ async def _activate_session(
                 + (f" : {finish[:160]}" if finish else ""),
                 source="agency",
             )
+        return {"agent": agent, "task_id": task_id, "finish": finish, "turns": _turns_of(outcome),
+                "branch": getattr(outcome, "branch", None), "error": None,
+                "close_status": status, "close_note": close_note}
     return {"agent": agent, "task_id": task_id, "finish": finish, "turns": _turns_of(outcome),
             "branch": getattr(outcome, "branch", None), "error": None}
 
@@ -511,6 +516,16 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                     "duration_s": round(time.monotonic() - started, 1),
                 },
             )
+            # The task closes AFTER the agent's activation.end: the observatory
+            # then shows "fin d'activation" (browser) → "statut" (orchestrator).
+            close_status = result.get("close_status")
+            if close_status:
+                db.set_task_status(
+                    task["id"],
+                    str(close_status),
+                    note=result.get("close_note"),
+                    agent=agent,
+                )
             task_now = db.get_task(task["id"])
             events.record(
                 "activation.returned",
