@@ -164,7 +164,11 @@ export function Sidebar({
                     <span>·</span>
                     <span>{durationLabel(session)}</span>
                     <span>·</span>
-                    <span>{session.event_count} ev.</span>
+                    <span
+                      title="événements stockés (les tours sans texte sont masqués dans la timeline)"
+                    >
+                      {session.event_count} ev.
+                    </span>
                     <span className="ml-auto uppercase tracking-wider text-slate-600">
                       {sessionTypeLabel(session)}
                     </span>
