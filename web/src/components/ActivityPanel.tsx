@@ -1,22 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
+  ArrowDown,
   Briefcase,
   ChevronDown,
   ChevronRight,
   Code2,
+  Flag,
   Globe,
   Inbox,
+  MessageSquare,
   Network,
+  Sparkles,
+  Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import type { ObsEvent, Session } from "../lib/types";
-import {
-  kindColor,
-  matchesNode,
-  summarize,
-  type NodeId,
-} from "../lib/events";
+import { kindColor, matchesNode, type NodeId } from "../lib/events";
 import { formatTime, fullTimestamp } from "../lib/format";
 
 interface Props {
@@ -37,6 +40,149 @@ const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> 
   mailbox: { label: "Mailbox", color: "#fbbf24", icon: Inbox },
   job: { label: "Système · job", color: "#34d399", icon: Briefcase },
 };
+
+/** Pretty-print a JSON string when possible (tool arguments). */
+function pretty(value: unknown): string {
+  if (typeof value !== "string") {
+    try {
+      return JSON.stringify(value, null, 2) ?? String(value);
+    } catch {
+      return String(value);
+    }
+  }
+  const text = value.trim();
+  if (!text || (!text.startsWith("{") && !text.startsWith("["))) return text;
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+function Meta({ children }: { children: ReactNode }) {
+  return <div className="text-[10px] text-slate-500">{children}</div>;
+}
+
+/** Tool outputs are often `[{"type":"text","text":"…"}]`: show the text only. */
+function toolText(value: unknown): string {
+  const raw = String(value ?? "");
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const texts = parsed
+        .map((part) =>
+          part && typeof part === "object" && "text" in part
+            ? String((part as { text: unknown }).text)
+            : null,
+        )
+        .filter((text): text is string => Boolean(text));
+      if (texts.length) return texts.join("\n");
+    }
+  } catch {
+    // plain text: keep it as-is
+  }
+  return raw;
+}
+
+function Markdown({ text }: { text: string }) {
+  return (
+    <div className="md">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+interface BlockProps {
+  event: ObsEvent;
+  label: string;
+  color: string;
+  icon: LucideIcon;
+  current: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onSeek: () => void;
+  children: ReactNode;
+}
+
+function Block({
+  event,
+  label,
+  color,
+  icon: Icon,
+  current,
+  open,
+  onToggle,
+  onSeek,
+  children,
+}: BlockProps) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSeek}
+      onKeyDown={(keyEvent) => {
+        if (keyEvent.key === "Enter" || keyEvent.key === " ") {
+          keyEvent.preventDefault();
+          onSeek();
+        }
+      }}
+      className={`relative block w-full cursor-pointer overflow-hidden rounded-lg border px-2.5 py-2 text-left transition ${
+        current
+          ? "border-sky-500/50 bg-sky-500/[0.07]"
+          : "border-transparent hover:border-ink-600 hover:bg-ink-800"
+      }`}
+    >
+      <span
+        className="absolute left-0 top-0 h-full w-[2px]"
+        style={{ background: color }}
+      />
+      <div className="flex items-center gap-1.5">
+        <span className="font-mono text-[9.5px] text-slate-500">
+          {formatTime(event.ts)}
+        </span>
+        <Icon size={11} style={{ color }} />
+        <span
+          className="truncate text-[9.5px] font-semibold uppercase tracking-wider"
+          style={{ color }}
+        >
+          {label}
+        </span>
+        <button
+          onClick={(clickEvent) => {
+            clickEvent.stopPropagation();
+            onToggle();
+          }}
+          className="ml-auto rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
+          title={open ? "Masquer les détails" : "Détails complets (JSON, horodatage)"}
+        >
+          {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </button>
+      </div>
+
+      <div className="mt-1 space-y-1">{children}</div>
+
+      {open && (
+        <div className="mt-1.5 rounded-md border border-ink-600 bg-ink-900/80 p-2">
+          <div className="mb-1 font-mono text-[9.5px] text-slate-500">
+            {fullTimestamp(event.ts)} · {event.kind} · #{event.id}
+          </div>
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-slate-300">
+            {JSON.stringify(
+              {
+                kind: event.kind,
+                actor: event.actor,
+                ts: event.ts,
+                payload: event.payload,
+              },
+              null,
+              2,
+            )}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ActivityPanel({
   session,
@@ -79,7 +225,7 @@ export function ActivityPanel({
   };
 
   return (
-    <aside className="absolute bottom-4 right-4 top-4 z-20 flex w-[388px] flex-col overflow-hidden rounded-xl border border-ink-600 bg-ink-850/95 shadow-2xl backdrop-blur">
+    <aside className="absolute bottom-4 right-4 top-4 z-20 flex w-[420px] flex-col overflow-hidden rounded-xl border border-ink-600 bg-ink-850/95 shadow-2xl backdrop-blur">
       <div className="border-b border-ink-700 p-3">
         <div className="flex items-center gap-2">
           <span
@@ -129,82 +275,250 @@ export function ActivityPanel({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
         {filtered.map((event) => {
           const index = indices.get(event.id) ?? 0;
-          const summary = summarize(event);
-          const isCurrent = event.id === currentId;
+          const payload = event.payload ?? {};
+          const current = event.id === currentId;
           const open = expanded.has(event.id);
-          return (
-            <div
-              key={event.id}
-              role="button"
-              tabIndex={0}
-              ref={isCurrent ? currentRef : undefined}
-              onClick={() => onSeek(index)}
-              onKeyDown={(keyEvent) => {
-                if (keyEvent.key === "Enter" || keyEvent.key === " ") {
-                  keyEvent.preventDefault();
-                  onSeek(index);
-                }
-              }}
-              className={`relative block w-full cursor-pointer overflow-hidden rounded-lg border px-2.5 py-1.5 text-left transition ${
-                isCurrent
-                  ? "border-sky-500/50 bg-sky-500/[0.07]"
-                  : "border-transparent hover:border-ink-600 hover:bg-ink-800"
-              }`}
-            >
-              <span
-                className="absolute left-0 top-0 h-full w-[2px]"
-                style={{ background: kindColor(event.kind) }}
-              />
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[9.5px] text-slate-500">
-                  {formatTime(event.ts)}
-                </span>
-                <span className="rounded bg-ink-700 px-1.5 py-[1px] text-[9.5px] uppercase tracking-wide text-slate-400">
-                  {event.actor ?? "système"}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-slate-200">
-                  {summary.title}
-                </span>
-                <button
-                  onClick={(clickEvent) => {
-                    clickEvent.stopPropagation();
-                    toggle(event.id);
-                  }}
-                  className="rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
-                  title={open ? "Masquer les détails" : "Voir les détails (JSON, horodatage complet)"}
+          const seek = () => onSeek(index);
+          const common = {
+            event,
+            current,
+            open,
+            onToggle: () => toggle(event.id),
+            onSeek: seek,
+            color: kindColor(event.kind),
+          };
+
+          switch (event.kind) {
+            case "activation.start":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
                 >
-                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                </button>
-              </div>
-              {summary.detail && (
-                <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[10.5px] leading-snug text-slate-400">
-                  {summary.detail}
-                </p>
-              )}
-              {open && (
-                <div className="mt-1.5 rounded-md border border-ink-600 bg-ink-900/80 p-2">
-                  <div className="mb-1 font-mono text-[9.5px] text-slate-500">
-                    {fullTimestamp(event.ts)} · {event.kind} · #{event.id}
-                  </div>
-                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-slate-300">
-                    {JSON.stringify(
-                      {
-                        kind: event.kind,
-                        actor: event.actor,
-                        ts: event.ts,
-                        payload: event.payload,
-                      },
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  <Block {...common} label="Mission" icon={Flag} color="#22d3ee">
+                    <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-slate-200">
+                      {String(payload.objective ?? "—")}
+                    </p>
+                    <Meta>
+                      agent {event.actor} · cap {payload.turn_cap ?? "—"} tours ·{" "}
+                      {payload.messages ?? 0} message(s) injecté(s)
+                    </Meta>
+                  </Block>
                 </div>
-              )}
-            </div>
-          );
+              );
+
+            case "llm.call":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={event.actor === "coder" ? "Codeur" : "Navigateur"}
+                    icon={Sparkles}
+                    color={event.actor === "coder" ? "#818cf8" : "#38bdf8"}
+                  >
+                    {payload.text ? (
+                      <Markdown text={String(payload.text)} />
+                    ) : (
+                      <p className="text-[11.5px] italic text-slate-500">
+                        (pas de texte — l'agent appelle un outil)
+                      </p>
+                    )}
+                    <Meta>
+                      {payload.model ?? "—"} ·{" "}
+                      {Number(payload.prompt_tokens ?? 0).toLocaleString("fr-FR")} prompt
+                      {" · "}
+                      {Number(payload.completion_tokens ?? 0).toLocaleString("fr-FR")} sortie
+                      {" · "}
+                      {Number(payload.cached_tokens ?? 0).toLocaleString("fr-FR")} cache
+                      {payload.messages_count ? ` · ${payload.messages_count} msg` : ""}
+                    </Meta>
+                  </Block>
+                </div>
+              );
+
+            case "tool.call":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={`Outil · ${payload.name ?? "?"}`}
+                    icon={Wrench}
+                    color="#c084fc"
+                  >
+                    <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-300">
+                      {pretty(payload.args)}
+                    </pre>
+                  </Block>
+                </div>
+              );
+
+            case "tool.result":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={`Résultat · ${payload.name ?? "outil"}`}
+                    icon={ArrowDown}
+                    color="#f0abfc"
+                  >
+                    <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-300">
+                      {toolText(payload.preview) || "(sortie vide)"}
+                    </pre>
+                  </Block>
+                </div>
+              );
+
+            case "mailbox.message":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={`Message · ${payload.from ?? "?"} → ${payload.to ?? "?"}`}
+                    icon={MessageSquare}
+                    color="#fbbf24"
+                  >
+                    <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-slate-200">
+                      {String(payload.body || payload.preview || "—")}
+                    </p>
+                  </Block>
+                </div>
+              );
+
+            case "activation.end":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block {...common} label="Fin d'activation" icon={Flag} color="#38bdf8">
+                    <Meta>
+                      {payload.turns ?? "?"} tour(s)
+                      {payload.duration_s !== undefined ? ` · ${payload.duration_s}s` : ""}
+                      {payload.branch ? ` · branche ${payload.branch}` : ""}
+                    </Meta>
+                    {payload.finish && <Markdown text={String(payload.finish)} />}
+                    {payload.error && (
+                      <p className="rounded-md bg-rose-500/10 p-2 text-[11px] text-rose-300">
+                        {String(payload.error)}
+                      </p>
+                    )}
+                  </Block>
+                </div>
+              );
+
+            case "task.status":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={`Statut · ${payload.from ?? "?"} → ${payload.to ?? "?"}`}
+                    icon={Network}
+                    color="#60a5fa"
+                  >
+                    {payload.note && (
+                      <p className="whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-slate-300">
+                        {String(payload.note)}
+                      </p>
+                    )}
+                  </Block>
+                </div>
+              );
+
+            case "session.created":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block {...common} label="Session ouverte" icon={Network} color="#94a3b8">
+                    <Meta>
+                      {payload.type ?? "—"} · départ {payload.agent ?? "—"}
+                    </Meta>
+                  </Block>
+                </div>
+              );
+
+            case "job.start":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={`Job · ${payload.kind ?? "?"} démarré`}
+                    icon={Briefcase}
+                    color="#34d399"
+                  >
+                    {payload.payload && (
+                      <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md bg-ink-900/70 p-2 font-mono text-[10px] text-slate-400">
+                        {pretty(payload.payload)}
+                      </pre>
+                    )}
+                  </Block>
+                </div>
+              );
+
+            case "job.end":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={`Job · ${payload.status ?? "terminé"}`}
+                    icon={Briefcase}
+                    color="#10b981"
+                  >
+                    <Meta>
+                      {payload.duration_s !== undefined ? `${payload.duration_s}s` : "—"}
+                      {payload.activity ? ` · ${payload.activity}` : ""}
+                    </Meta>
+                    {payload.error && (
+                      <p className="rounded-md bg-rose-500/10 p-2 text-[11px] text-rose-300">
+                        {String(payload.error)}
+                      </p>
+                    )}
+                  </Block>
+                </div>
+              );
+
+            default:
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label={event.kind}
+                    icon={Network}
+                    color="#94a3b8"
+                  >
+                    <Meta>{event.actor ?? "système"}</Meta>
+                  </Block>
+                </div>
+              );
+          }
         })}
         {!filtered.length && (
           <div className="p-3 text-[12px] text-slate-500">

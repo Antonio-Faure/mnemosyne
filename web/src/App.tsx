@@ -49,7 +49,10 @@ export default function App() {
   useEffect(() => {
     if (!sessions.length) return;
     if (!selectedId || !sessions.some((session) => session.id === selectedId)) {
-      setSelectedId(sessions[0].id);
+      // open on the actual work (the newest task) rather than on the agency
+      // job run that merely executed it
+      const newestTask = sessions.find((session) => session.family === "task");
+      setSelectedId((newestTask ?? sessions[0]).id);
     }
   }, [sessions, selectedId]);
 

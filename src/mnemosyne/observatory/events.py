@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from mnemosyne.observatory import (
+    clip,
     job_session_id,
     preview,
     record,
@@ -16,6 +17,7 @@ from mnemosyne.observatory import (
 )
 
 __all__ = [
+    "clip",
     "job_session_id",
     "preview",
     "record",

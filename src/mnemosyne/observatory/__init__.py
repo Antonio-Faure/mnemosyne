@@ -59,6 +59,12 @@ def preview(value: Any, limit: int = 280) -> str:
     return text[:limit] + ("…" if len(text) > limit else "")
 
 
+def clip(value: Any, limit: int = 2000) -> str:
+    """Bounded text that keeps its line breaks (transcripts, reports)."""
+    text = str(value or "").strip()
+    return text[:limit] + ("…" if len(text) > limit else "")
+
+
 def record(
     kind: str, payload: dict[str, Any] | None = None, *, actor: str | None = None
 ) -> None:

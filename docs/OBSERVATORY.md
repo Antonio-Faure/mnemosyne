@@ -37,10 +37,12 @@ déroule la timeline interne de la session sélectionnée.
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
   cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
-  Navigateur, Codeur, Mailbox, Job). Cliquer un nœud épingle une étape ;
-  « suivre » revient au mode auto. Chaque événement est dépliable : horodatage
-  complet, kind, acteur et payload JSON (outils, résultats, tokens, durées,
-  erreurs…).
+  Navigateur, Codeur, Mailbox, Job). Les événements sont rendus comme un
+  **transcript lisible** : bloc *Mission* (objectif complet), messages
+  *Navigateur/Codeur* (markdown), cartes *Outil* (arguments) et *Résultat*
+  (sortie), *Message* mailbox, *Fin d'activation* (tours, durée, bilan). Chaque
+  bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer un nœud
+  épingle une étape ; « suivre » revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.
 

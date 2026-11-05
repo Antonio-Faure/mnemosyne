@@ -492,7 +492,7 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                 "agent": agent,
                 "messages": len(messages),
                 "task_id": task["id"],
-                "objective": events.preview(task.get("objective"), 400),
+                "objective": events.clip(task.get("objective"), 2000),
                 "turn_cap": task.get("turn_cap"),
             },
         )
@@ -507,7 +507,7 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                     "turns": result.get("turns"),
                     "branch": result.get("branch"),
                     "error": events.preview(result.get("error"), 400) or None,
-                    "finish": events.preview(result.get("finish"), 600),
+                    "finish": events.clip(result.get("finish"), 2000),
                     "duration_s": round(time.monotonic() - started, 1),
                 },
             )

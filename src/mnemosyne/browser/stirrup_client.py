@@ -171,13 +171,13 @@ class _CompletionsProxy:
         calls: list[dict[str, str]] = []
         try:
             message = response.choices[0].message
-            text = events.preview(getattr(message, "content", None), 600)
+            text = events.clip(getattr(message, "content", None), 1600)
             for call in getattr(message, "tool_calls", None) or []:
                 function = getattr(call, "function", None)
                 calls.append(
                     {
                         "name": str(getattr(function, "name", "?")),
-                        "args": events.preview(getattr(function, "arguments", ""), 300),
+                        "args": events.clip(getattr(function, "arguments", ""), 1200),
                     }
                 )
         except Exception:  # noqa: BLE001 - a provider shape change must not break a turn
@@ -230,7 +230,7 @@ class _CompletionsProxy:
                     "tool.result",
                     {
                         "name": names.get(call_id, "tool"),
-                        "preview": " ".join(content.split())[:800],
+                        "preview": events.clip(content, 2000),
                         "call_id": call_id or None,
                     },
                 )
