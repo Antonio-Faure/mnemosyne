@@ -44,6 +44,7 @@ class Mailbox:
                 "to": recipient,
                 "message_id": message_id,
                 "preview": events.preview(body.strip(), 400),
+                "body": body.strip()[:2000],
             },
             actor=sender,
         )

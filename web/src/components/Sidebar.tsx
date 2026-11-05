@@ -8,7 +8,14 @@ import {
 } from "lucide-react";
 
 import type { Session } from "../lib/types";
-import { dayLabel, durationLabel, formatTime, typeColor } from "../lib/format";
+import {
+  dayLabel,
+  durationLabel,
+  formatTime,
+  sessionColor,
+  sessionFamilyLabel,
+  sessionTypeLabel,
+} from "../lib/format";
 
 interface Props {
   sessions: Session[];
@@ -107,7 +114,7 @@ export function Sidebar({
             </div>
             {items.map((session) => {
               const selected = session.id === selectedId;
-              const color = typeColor(session.type);
+              const color = sessionColor(session);
               return (
                 <button
                   key={session.id}
@@ -139,7 +146,7 @@ export function Sidebar({
                           : "run de job système — déclencheur (aucun LLM)"
                       }
                     >
-                      {session.family === "task" ? "tâche" : "job"}
+                      {sessionFamilyLabel(session)}
                     </span>
                     <span>{formatTime(session.started_at)}</span>
                     <span>·</span>
@@ -147,7 +154,7 @@ export function Sidebar({
                     <span>·</span>
                     <span>{session.event_count} ev.</span>
                     <span className="ml-auto uppercase tracking-wider text-slate-600">
-                      {session.type}
+                      {sessionTypeLabel(session)}
                     </span>
                   </div>
                 </button>

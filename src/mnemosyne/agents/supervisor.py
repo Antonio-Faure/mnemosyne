@@ -19,6 +19,7 @@ import json
 import os
 import re
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -484,7 +485,17 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
         from mnemosyne.observatory import events
 
         token = events.use_context(db, events.task_session_id(task["id"]), agent)
-        events.record("activation.start", {"agent": agent, "messages": len(messages)})
+        started = time.monotonic()
+        events.record(
+            "activation.start",
+            {
+                "agent": agent,
+                "messages": len(messages),
+                "task_id": task["id"],
+                "objective": events.preview(task.get("objective"), 400),
+                "turn_cap": task.get("turn_cap"),
+            },
+        )
         try:
             result = await _activate_session(
                 config, db, mailbox, journal, vault_get, agent, task, messages
@@ -496,14 +507,19 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                     "turns": result.get("turns"),
                     "branch": result.get("branch"),
                     "error": events.preview(result.get("error"), 400) or None,
-                    "finish": events.preview(result.get("finish"), 400),
+                    "finish": events.preview(result.get("finish"), 600),
+                    "duration_s": round(time.monotonic() - started, 1),
                 },
             )
             return result
         except BaseException as exc:
             events.record(
                 "activation.end",
-                {"agent": agent, "error": events.preview(exc, 400)},
+                {
+                    "agent": agent,
+                    "error": events.preview(exc, 400),
+                    "duration_s": round(time.monotonic() - started, 1),
+                },
             )
             raise
         finally:

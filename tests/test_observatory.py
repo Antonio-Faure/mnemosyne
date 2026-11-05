@@ -5,6 +5,8 @@ No agent is launched here: the observatory only reads/writes its own tables.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -132,6 +134,13 @@ async def test_scheduler_titles_the_job_session_with_activity(config, monkeypatc
         assert session["status"] == "done"
         assert session["notable"] == 1
 
+        end = next(
+            row
+            for row in heartbeat.engine.db.list_events(f"job:{job_id}")
+            if row["kind"] == "job.end"
+        )
+        assert "duration_s" in json.loads(end["payload"])
+
         again = heartbeat.engine.db.claim_due_jobs("2200-01-01T00:00:00+00:00", 5)
         assert len(again) == 1
         assert "_activity" not in again[0].payload
@@ -160,6 +169,42 @@ def test_backfill_creates_sessions_for_past_tasks(config):
     assert kinds[0] == "session.created"
     assert "task.status" in kinds
     assert backfill(db, days=365)["tasks"] == 0, "idempotent"
+    db.close()
+
+
+def test_tool_results_are_emitted_once(config):
+    from mnemosyne.browser.stirrup_client import UsageSink, _CompletionsProxy
+
+    db = Database(config.db_file())
+    task_id = db.enqueue_task("browser", "mission")
+    token = events.use_context(db, events.task_session_id(task_id), "browser")
+    try:
+        proxy = _CompletionsProxy(None, UsageSink())
+        messages = [
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {"id": "c1", "function": {"name": "navigate", "arguments": "{}"}}
+                ],
+            },
+            {"role": "tool", "tool_call_id": "c1", "content": "page loaded"},
+        ]
+        proxy._record_tool_results(messages)
+        proxy._record_tool_results(messages)  # deduplicated per activation
+        # a NEW activation replays the conversation: the DB dedupes on call_id
+        _CompletionsProxy(None, UsageSink())._record_tool_results(messages)
+    finally:
+        events.reset_context(token)
+
+    rows = [
+        row
+        for row in db.list_events(f"task:{task_id}")
+        if row["kind"] == "tool.result"
+    ]
+    assert len(rows) == 1
+    payload = json.loads(rows[0]["payload"])
+    assert payload["name"] == "navigate"
+    assert "page loaded" in payload["preview"]
     db.close()
 
 

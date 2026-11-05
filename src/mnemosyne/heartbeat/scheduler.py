@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
 from datetime import UTC, datetime, timedelta
 
 from mnemosyne.config import Config
@@ -236,7 +237,8 @@ class Heartbeat:
             return
         db = self.engine.db
         # one job RUN = one observatory session (the row is unique per execution)
-        db.open_job_session(job.id, job.kind)
+        db.open_job_session(job.id, job.kind, payload=job.payload)
+        started = time.monotonic()
         try:
             if job.kind == "agency":
                 # An agent session is judged on progress (the stall marker),
@@ -251,11 +253,21 @@ class Heartbeat:
                 )
         except GovernorBlocked as exc:
             log.warning("job %s blocked: %s", job.kind, exc)
-            db.close_job_session(job.id, status="blocked", error=str(exc))
+            db.close_job_session(
+                job.id,
+                status="blocked",
+                error=str(exc),
+                extra={"duration_s": round(time.monotonic() - started, 1)},
+            )
             self._reschedule(job, in_seconds=60, error=str(exc))
             return
         except Exception as exc:  # noqa: BLE001
-            db.close_job_session(job.id, status="failed", error=str(exc))
+            db.close_job_session(
+                job.id,
+                status="failed",
+                error=str(exc),
+                extra={"duration_s": round(time.monotonic() - started, 1)},
+            )
             if job.attempts + 1 >= job.max_attempts:
                 self.engine.db.fail_job(job.id, str(exc))
                 self.journal.append(f"job {job.kind} échoué définitivement : {exc}", level="error")
@@ -267,7 +279,15 @@ class Heartbeat:
         # `_activity` is a session title/relevance hint, never a payload field
         activity = updates.pop("_activity", None) if updates else None
         self.engine.db.complete_job(job.id)
-        db.close_job_session(job.id, status="done", activity=activity)
+        db.close_job_session(
+            job.id,
+            status="done",
+            activity=activity,
+            extra={
+                "duration_s": round(time.monotonic() - started, 1),
+                "updates": updates or {},
+            },
+        )
 
         payload = dict(job.payload)
         if updates:

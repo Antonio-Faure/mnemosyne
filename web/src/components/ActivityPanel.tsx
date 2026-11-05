@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Activity } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Briefcase,
+  ChevronDown,
+  ChevronRight,
+  Code2,
+  Globe,
+  Inbox,
+  Network,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import type { ObsEvent, Session } from "../lib/types";
 import {
@@ -8,43 +17,39 @@ import {
   summarize,
   type NodeId,
 } from "../lib/events";
-import { formatTime } from "../lib/format";
+import { formatTime, fullTimestamp } from "../lib/format";
 
 interface Props {
   session: Session | null;
   events: ObsEvent[];
   cursor: number;
-  focus: NodeId | "all";
+  step: NodeId;
+  pinned: boolean;
   loading?: boolean;
-  onFocus: (focus: NodeId | "all") => void;
+  onFollow: () => void;
   onSeek: (index: number) => void;
 }
 
-const BASE_FOCUS: { id: NodeId | "all"; label: string }[] = [
-  { id: "all", label: "Tout" },
-  { id: "orchestrator", label: "Orchestrateur" },
-  { id: "browser", label: "Browser" },
-  { id: "coder", label: "Codeur" },
-  { id: "mailbox", label: "Mailbox" },
-  { id: "llm", label: "LLM" },
-];
+const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> = {
+  orchestrator: { label: "Orchestrateur", color: "#60a5fa", icon: Network },
+  browser: { label: "Navigateur", color: "#38bdf8", icon: Globe },
+  coder: { label: "Codeur", color: "#818cf8", icon: Code2 },
+  mailbox: { label: "Mailbox", color: "#fbbf24", icon: Inbox },
+  job: { label: "Système · job", color: "#34d399", icon: Briefcase },
+};
 
 export function ActivityPanel({
   session,
   events,
   cursor,
-  focus,
+  step,
+  pinned,
   loading = false,
-  onFocus,
+  onFollow,
   onSeek,
 }: Props) {
-  const focusOptions = useMemo(
-    () =>
-      session?.family === "job"
-        ? [...BASE_FOCUS, { id: "job" as NodeId, label: "Job" }]
-        : BASE_FOCUS,
-    [session?.family],
-  );
+  const meta = STEPS[step];
+  const Icon = meta.icon;
 
   const indices = useMemo(() => {
     const map = new Map<number, number>();
@@ -53,45 +58,68 @@ export function ActivityPanel({
   }, [events]);
 
   const filtered = useMemo(
-    () => events.filter((event) => matchesNode(event, focus)),
-    [events, focus],
+    () => events.filter((event) => matchesNode(event, step)),
+    [events, step],
   );
   const currentId = events[cursor]?.id ?? null;
-  const currentRef = useRef<HTMLButtonElement>(null);
+  const currentRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     currentRef.current?.scrollIntoView({ block: "nearest" });
-  }, [currentId, focus]);
+  }, [currentId, step]);
+
+  const toggle = (id: number) => {
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <aside className="flex min-h-0 w-[400px] shrink-0 flex-col border-l border-ink-700 bg-ink-850">
-      <div className="space-y-2 border-b border-ink-700 p-3">
+      <div className="border-b border-ink-700 p-3">
         <div className="flex items-center gap-2">
-          <Activity size={14} className="text-sky-400" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Activité
+          <span
+            className="grid h-6 w-6 place-items-center rounded-md"
+            style={{ background: `${meta.color}1f`, color: meta.color }}
+          >
+            <Icon size={13} />
           </span>
-          <span className="ml-auto font-mono text-[10px] text-slate-500">
-            {loading
-              ? "…"
-              : `${filtered.length} événement${filtered.length > 1 ? "s" : ""}`}
-          </span>
+          <div className="min-w-0">
+            <div className="text-[9px] uppercase tracking-[0.20em] text-slate-500">
+              étape en cours
+            </div>
+            <div className="text-[12.5px] font-semibold text-slate-100">
+              {meta.label}
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="font-mono text-[10px] text-slate-500">
+              {loading ? "…" : `${filtered.length} ev.`}
+            </span>
+            {pinned ? (
+              <button
+                onClick={onFollow}
+                className="rounded-md bg-sky-500/15 px-2 py-1 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/40 transition hover:bg-sky-500/25"
+                title="Suivre l'étape de la timeline"
+              >
+                suivre
+              </button>
+            ) : (
+              <span className="rounded-md bg-ink-700 px-2 py-1 text-[10px] text-slate-400">
+                auto
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {focusOptions.map((option) => (
-            <button
-              key={option.id}
-              onClick={() => onFocus(option.id)}
-              className={`rounded-md px-2 py-1 text-[10.5px] transition ${
-                focus === option.id
-                  ? "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/40"
-                  : "text-slate-400 hover:bg-ink-700 hover:text-slate-200"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        {session && (
+          <div className="mt-2 truncate font-mono text-[9.5px] text-slate-500">
+            {session.id} · {session.title}
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
@@ -99,12 +127,21 @@ export function ActivityPanel({
           const index = indices.get(event.id) ?? 0;
           const summary = summarize(event);
           const isCurrent = event.id === currentId;
+          const open = expanded.has(event.id);
           return (
-            <button
+            <div
               key={event.id}
+              role="button"
+              tabIndex={0}
               ref={isCurrent ? currentRef : undefined}
               onClick={() => onSeek(index)}
-              className={`relative block w-full overflow-hidden rounded-lg border px-2.5 py-1.5 text-left transition ${
+              onKeyDown={(keyEvent) => {
+                if (keyEvent.key === "Enter" || keyEvent.key === " ") {
+                  keyEvent.preventDefault();
+                  onSeek(index);
+                }
+              }}
+              className={`relative block w-full cursor-pointer overflow-hidden rounded-lg border px-2.5 py-1.5 text-left transition ${
                 isCurrent
                   ? "border-sky-500/50 bg-sky-500/[0.07]"
                   : "border-transparent hover:border-ink-600 hover:bg-ink-800"
@@ -121,23 +158,52 @@ export function ActivityPanel({
                 <span className="rounded bg-ink-700 px-1.5 py-[1px] text-[9.5px] uppercase tracking-wide text-slate-400">
                   {event.actor ?? "système"}
                 </span>
-                <span className="truncate text-[11.5px] font-medium text-slate-200">
+                <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-slate-200">
                   {summary.title}
                 </span>
+                <button
+                  onClick={(clickEvent) => {
+                    clickEvent.stopPropagation();
+                    toggle(event.id);
+                  }}
+                  className="rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
+                  title={open ? "Masquer les détails" : "Voir les détails (JSON, horodatage complet)"}
+                >
+                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </button>
               </div>
               {summary.detail && (
-                <p className="mt-0.5 line-clamp-3 text-[10.5px] leading-snug text-slate-400">
+                <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-[10.5px] leading-snug text-slate-400">
                   {summary.detail}
                 </p>
               )}
-            </button>
+              {open && (
+                <div className="mt-1.5 rounded-md border border-ink-600 bg-ink-900/80 p-2">
+                  <div className="mb-1 font-mono text-[9.5px] text-slate-500">
+                    {fullTimestamp(event.ts)} · {event.kind} · #{event.id}
+                  </div>
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-slate-300">
+                    {JSON.stringify(
+                      {
+                        kind: event.kind,
+                        actor: event.actor,
+                        ts: event.ts,
+                        payload: event.payload,
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </div>
+              )}
+            </div>
           );
         })}
         {!filtered.length && (
           <div className="p-3 text-[12px] text-slate-500">
             {loading
               ? "chargement de la session…"
-              : "Aucun événement pour ce filtre."}
+              : "Aucun événement pour cette étape."}
           </div>
         )}
       </div>

@@ -678,7 +678,12 @@ class Database:
             (
                 session_id, session_type, title, start_agent, created_at, created_at,
                 json.dumps(
-                    {"task_id": task_id, "turn_cap": turn_cap, "payload": payload or {}}
+                    {
+                        "task_id": task_id,
+                        "turn_cap": turn_cap,
+                        "payload": payload or {},
+                        "objective": objective[:4000],
+                    }
                 ),
             ),
         )
@@ -867,9 +872,23 @@ class Database:
         payload: dict | None = None,
         ts: str | None = None,
     ) -> int:
-        """Append one observatory event (an explicit `ts` is used by backfills)."""
+        """Append one observatory event (an explicit `ts` is used by backfills).
+
+        `tool.result` events carry the provider's tool_call_id: a resumed
+        activation replays the whole conversation, so the same result would be
+        emitted again — dedupe on (session, call_id) before inserting.
+        """
         now = ts or utcnow_iso()
         with self._lock:
+            if kind == "tool.result" and payload and payload.get("call_id"):
+                key = f'%"call_id": "{_like_escape(str(payload["call_id"]))}"%'
+                existing = self._conn.execute(
+                    "SELECT 1 FROM events WHERE session_id = ? AND kind = 'tool.result' "
+                    "AND payload LIKE ? ESCAPE '\\' LIMIT 1",
+                    (session_id, key),
+                ).fetchone()
+                if existing:
+                    return 0
             cur = self._conn.execute(
                 "INSERT INTO events (session_id, ts, kind, actor, payload) "
                 "VALUES (?, ?, ?, ?, ?)",
@@ -964,7 +983,12 @@ class Database:
         return int(row["n"])
 
     def open_job_session(
-        self, job_id: int, kind: str, *, title: str | None = None
+        self,
+        job_id: int,
+        kind: str,
+        *,
+        title: str | None = None,
+        payload: dict | None = None,
     ) -> str:
         """One job RUN = one session (the job row is unique per execution)."""
         session_id = f"job:{job_id}"
@@ -977,9 +1001,14 @@ class Database:
             status="running",
             notable=False,
             started_at=now,
-            meta={"job_id": job_id, "kind": kind},
+            meta={"job_id": job_id, "kind": kind, "payload": payload or {}},
         )
-        self.add_event(session_id, "job.start", "orchestrator", {"kind": kind})
+        self.add_event(
+            session_id,
+            "job.start",
+            "orchestrator",
+            {"kind": kind, "payload": payload or {}},
+        )
         return session_id
 
     def close_job_session(
@@ -989,6 +1018,7 @@ class Database:
         status: str = "done",
         activity: str | None = None,
         error: str | None = None,
+        extra: dict | None = None,
     ) -> None:
         session_id = f"job:{job_id}"
         self.update_session(
@@ -998,16 +1028,10 @@ class Database:
             notable=bool(activity),
             title=activity or None,
         )
-        self.add_event(
-            session_id,
-            "job.end",
-            "orchestrator",
-            {
-                "status": status,
-                "activity": activity,
-                "error": (error or "")[:400] or None,
-            },
-        )
+        payload = {"status": status, "activity": activity, "error": (error or "")[:400] or None}
+        if extra:
+            payload.update(extra)
+        self.add_event(session_id, "job.end", "orchestrator", payload)
 
     def has_open_task(
         self, kind: str | None = None, source_id: str | None = None

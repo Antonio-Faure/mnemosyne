@@ -7,6 +7,7 @@ and rebuild the underlying `AsyncOpenAI` with those headers.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -123,6 +124,7 @@ class _CompletionsProxy:
         self._tip_every = tip_every
         self._max_images = max_images
         self._requests = 0
+        self._seen_tool_calls: set[str] = set()
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
@@ -144,6 +146,7 @@ class _CompletionsProxy:
                 "messages": trim_request_images(list(messages), self._max_images),
             }
         self._requests += 1
+        self._record_tool_results(kwargs.get("messages"))
         if self._tip_due(self._requests):
             messages = list(kwargs.get("messages") or [])
             messages.append(
@@ -183,6 +186,7 @@ class _CompletionsProxy:
             "llm.call",
             {
                 "model": kwargs.get("model") or getattr(response, "model", None),
+                "messages_count": len(kwargs.get("messages") or []),
                 "prompt_tokens": getattr(usage, "prompt_tokens", None),
                 "completion_tokens": getattr(usage, "completion_tokens", None),
                 "cached_tokens": getattr(
@@ -194,6 +198,42 @@ class _CompletionsProxy:
         )
         for call in calls:
             events.record("tool.call", call)
+
+    def _record_tool_results(self, messages: Any) -> None:
+        """Emit the tool outputs that the next request carries (never twice)."""
+        if not messages:
+            return
+        from mnemosyne.observatory import events
+
+        names: dict[str, str] = {}
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            if message.get("role") == "assistant":
+                for call in message.get("tool_calls") or []:
+                    call_id = call.get("id")
+                    if call_id:
+                        names[call_id] = str(
+                            (call.get("function") or {}).get("name") or "tool"
+                        )
+            elif message.get("role") == "tool":
+                call_id = str(message.get("tool_call_id") or "")
+                if call_id in self._seen_tool_calls:
+                    continue
+                self._seen_tool_calls.add(call_id)
+                content = message.get("content")
+                if not isinstance(content, str):
+                    content = json.dumps(content, default=str)
+                if "data:image" in content:
+                    content = "[capture d'écran]"
+                events.record(
+                    "tool.result",
+                    {
+                        "name": names.get(call_id, "tool"),
+                        "preview": " ".join(content.split())[:800],
+                        "call_id": call_id or None,
+                    },
+                )
 
 
 class _ChatProxy:

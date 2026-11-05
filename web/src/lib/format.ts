@@ -18,11 +18,46 @@ export function typeColor(type: string): string {
   return TYPE_COLORS[type] ?? "#94a3b8";
 }
 
+/** Session color: the system warmup (planner) is deliberately distinct from
+ * the browser warmup (Gmail/navigation account). */
+export function sessionColor(session: Session): string {
+  if (session.type === "warmup" && session.family === "job") return "#64748b";
+  return typeColor(session.type);
+}
+
+export function sessionTypeLabel(session: Session): string {
+  if (session.type === "warmup") {
+    return session.family === "job" ? "warmup système" : "warmup navigateur";
+  }
+  return session.type;
+}
+
+export function sessionFamilyLabel(session: Session): string {
+  if (session.family === "job") return "système";
+  if (session.agent === "browser") return "navigateur";
+  if (session.agent === "coder") return "codeur";
+  return "tâche";
+}
+
 export function formatTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+export function fullTimestamp(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("fr-FR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

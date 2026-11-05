@@ -8,7 +8,7 @@ import { ReplayBar } from "./components/ReplayBar";
 import { Sidebar } from "./components/Sidebar";
 import { useSessionStream } from "./hooks/useSessionStream";
 import { fetchSessionEvents, fetchSessions, sessionIsLive } from "./lib/api";
-import type { NodeId } from "./lib/events";
+import { eventNode, type NodeId } from "./lib/events";
 import type { ObsEvent, Session } from "./lib/types";
 
 export default function App() {
@@ -20,7 +20,7 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [following, setFollowing] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [focus, setFocus] = useState<NodeId | "all">("all");
+  const [pinnedNode, setPinnedNode] = useState<NodeId | null>(null);
   const [streamAfter, setStreamAfter] = useState(0);
 
   const sessionsQuery = useQuery({
@@ -64,6 +64,7 @@ export default function App() {
     setCursor(Math.max(0, data.length - 1));
     setFollowing(true);
     setPlaying(false);
+    setPinnedNode(null);
   }, [eventsQuery.data, selectedId]);
 
   useEffect(() => {
@@ -158,6 +159,10 @@ export default function App() {
     () => events.slice(0, Math.min(cursor + 1, events.length)),
     [events, cursor],
   );
+  const currentEvent = events[cursor] ?? null;
+  const step: NodeId =
+    pinnedNode ??
+    (currentEvent ? eventNode(currentEvent) ?? "orchestrator" : "orchestrator");
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-ink-900 text-slate-200">
@@ -198,8 +203,8 @@ export default function App() {
             <Canvas
               session={selected}
               visible={visible}
-              focus={focus}
-              onFocus={setFocus}
+              pinned={pinnedNode}
+              onFocus={setPinnedNode}
             />
           </div>
           <ReplayBar
@@ -223,9 +228,10 @@ export default function App() {
           session={selected}
           events={events}
           cursor={cursor}
-          focus={focus}
+          step={step}
+          pinned={pinnedNode !== null}
           loading={eventsQuery.isPending}
-          onFocus={setFocus}
+          onFollow={() => setPinnedNode(null)}
           onSeek={seek}
         />
       </div>

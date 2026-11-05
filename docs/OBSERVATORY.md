@@ -25,17 +25,22 @@ déroule la timeline interne de la session sélectionnée.
 
 ## L'écran
 
-- **Gauche** : sessions groupées par jour, colorées par type (warmup, connexion,
-  connect, browser, coder, harvest, verify, discover, agency…), avec statut,
-  durée et nombre d'événements. Filtres « Tout / Tâches / Système » et
-  « inclure les runs silencieux ».
-- **Centre** : canvas type Make — Orchestrateur, Navigateur, Mailbox, Codeur,
-  LLM (+ nœud Job pour les sessions système). Les liens s'allument et s'animent
-  quand un message, un appel LLM ou une activation passe.
-- **Droite** : l'activité du nœud sélectionné (ou tout le flux) : statuts,
-  activations, messages mailbox, appels LLM, outils, tokens, extraits.
+- **Gauche** : sessions groupées par jour, colorées par type. Deux warmups
+  distincts : **`système`** (run du job planificateur, gris — aucun LLM) et
+  **`navigateur`** (la tâche d'agent postée par ce job, turquoise — compte
+  Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
+- **Centre** : canvas type Make — Orchestrateur, Navigateur, Mailbox, Codeur
+  (+ nœud Job pour les sessions système). **Le LLM n'est pas un nœud** : ses
+  appels/tokens/outils flottent en haut à droite du canvas (ils appartiennent
+  au navigateur ou au codeur en cours).
+- **Droite** : **uniquement l'étape en cours** (pas d'onglets) : le panneau
+  suit l'événement de la timeline (Orchestrateur, Navigateur, Codeur, Mailbox,
+  Job). Cliquer un nœud épingle une étape ; « suivre » revient au mode auto.
+  Chaque événement est dépliable : horodatage complet, kind, acteur et payload
+  JSON (outils, résultats, tokens, durées, erreurs…).
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.
+
 
 ## Comment ça marche
 
@@ -44,11 +49,15 @@ déroule la timeline interne de la session sélectionnée.
 - Émission **best-effort** (une panne d'observatoire ne casse jamais le
   travail) depuis :
   - `db.enqueue_task` / `db.set_task_status` (cycle de vie des tâches) ;
-  - le superviseur (`activation.start` / `activation.end`) ;
-  - la mailbox (`mailbox.message`, y compris les handoffs browser → codeur) ;
-  - le proxy LLM de stirrup (`llm.call`, `tool.call` : tokens, outils, extraits) ;
-  - le scheduler (`job.start` / `job.end` ; `_activity` devient le titre de la
-    session, les runs sans activité restent silencieux).
+  - le superviseur (`activation.start` / `activation.end` : objectif, nombre de
+    messages, cap de tours, branche, durée, bilan, erreur) ;
+  - la mailbox (`mailbox.message` : expéditeur, destinataire, corps complet) ;
+  - le proxy LLM de stirrup (`llm.call` : modèle, messages, tokens, cache,
+    outils, extrait de réponse ; `tool.call` : nom + arguments ; `tool.result` :
+    sortie de l'outil, dédupliquée) ;
+  - le scheduler (`job.start` / `job.end` : payload du job, durée, mises à jour ;
+    `_activity` devient le titre de la session, les runs sans activité restent
+    silencieux).
 - Le frontend consomme `GET /api/obs/sessions`,
   `/api/obs/sessions/{id}/events` et le flux SSE `GET /api/obs/stream`.
   L'API **taille la table** (toutes les 400 ms) : pas de bus inter-process, et
@@ -74,22 +83,20 @@ et les volumes du heartbeat ; il ne lit que la base.
 
 ## Historique
 
-Les tables d'observatoire sont apparues le 31/10/2026. Pour voir le passé :
+Les tables d'observatoire ont été **remises à zéro le 5/11/2026** : les
+sessions antérieures n'avaient pas les détails d'exécution (les événements
+structurés n'existaient pas encore). Seules les nouvelles sessions enregistrent
+les outils, les tours, les durées et les payloads.
 
-```bash
-mnemosyne obs-backfill --days 14
-```
-
-Il crée une session par tâche et un run par type de job et par jour
-(**idempotent** : une session déjà présente n'est jamais dupliquée). Les
-sessions antérieures ont une timeline minimale (création + changements de
-statut) ; les événements fins (tours, outils, messages) n'existent que pour les
-sessions postérieures.
+`mnemosyne obs-backfill --days N` existe encore pour réimporter d'anciennes
+tâches, mais il ne produit qu'une timeline **minimale** (création + changements
+de statut) : à n'utiliser que si l'on veut l'historique « queue » sans détails.
 
 ## Limites assumées (v1)
 
 - Lecture seule (pas de « annuler », « répondre » ou « relancer »).
-- Pas de captures d'écran du navigateur dans le panneau (les événements texte,
-  oui) — les artefacts pourront être exposés ensuite.
-- Le backfill ne reconstitue pas les tool calls passés (ils n'étaient pas
-  enregistrés).
+- Le panneau droit montre **l'étape en cours** ; il n'y a plus de vue « tout le
+  flux » (c'est le prix de la lisibilité demandée).
+- Pas de captures d'écran dans le panneau : les sorties d'outils texte sont
+  affichées, les images sont remplacées par `[capture d'écran]`.
+- L'historique d'avant le 5/11/2026 n'a pas d'événements fins.

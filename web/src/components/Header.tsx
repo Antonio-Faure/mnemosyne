@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, RotateCcw, Waypoints } from "lucide-react";
 
 import type { Session } from "../lib/types";
-import { durationLabel, typeColor } from "../lib/format";
+import { durationLabel, sessionColor, sessionTypeLabel } from "../lib/format";
 
 interface Props {
   session: Session | null;
@@ -48,8 +48,8 @@ export function Header({
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full"
             style={{
-              background: typeColor(session.type),
-              boxShadow: `0 0 10px ${typeColor(session.type)}77`,
+              background: sessionColor(session),
+              boxShadow: `0 0 10px ${sessionColor(session)}77`,
             }}
           />
           <div className="min-w-0">
@@ -58,7 +58,7 @@ export function Header({
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
               <span className="uppercase tracking-wider text-slate-400">
-                {session.type}
+                {sessionTypeLabel(session)}
               </span>
               <span>·</span>
               <span className="font-mono">{session.id}</span>
