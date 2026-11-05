@@ -32,8 +32,9 @@ déroule la timeline interne de la session sélectionnée.
   Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
 - **Centre** : canvas type Make — **Agency** (le moteur de la file, toujours
   affiché au-dessus), Orchestrateur (le superviseur), Navigateur, Mailbox,
-  Codeur (+ nœud Job pour les sessions système hors Agency). **Le LLM n'est pas
-  un nœud** : ses appels/tokens/outils flottent en haut à droite du canvas (ils
+  Codeur (+ nœud Job pour les sessions système hors Agency). Les liens actifs
+  animent une **bille** qui circule dans le tuyau. **Le LLM n'est pas un
+  nœud** : ses appels/tokens/outils flottent en haut à droite du canvas (ils
   appartiennent au navigateur ou au codeur en cours).
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
@@ -43,11 +44,14 @@ déroule la timeline interne de la session sélectionnée.
   *Navigateur/Codeur* (markdown), cartes *Outil* (arguments rendus en champs
   structurés — code, url… — jamais en JSON brut) et *Résultat* (JSON structuré
   quand il est valide, sinon texte ; un JSON brut reste **replié par défaut**),
-  *Message* mailbox, *Fin d'activation* (tours, durée, bilan). Les captures
-  d'écran référencées par un outil sont copiées dans `data/obs-artifacts/` et
-  affichées en vignette (clic = plein écran). Les tours sans texte et l'appel
-  `finish` (redondant avec le bilan) sont masqués. Chaque bloc est dépliable
-  pour le JSON brut et l'horodatage complet. Cliquer un nœud épingle une étape ;
+  *Message* mailbox, *Fin d'activation* (tours, durée, bilan), puis
+  *Retour à l'orchestrateur* (la tâche repasse au superviseur — c'est l'étape
+  finale de la timeline). Les captures d'écran référencées par un outil sont
+  copiées dans `data/obs-artifacts/` et affichées en vignette (clic = plein
+  écran). Les appels navigateur sont **traduits en actions** (aller à l'URL,
+  attendre, remplir un champ, boucle `for`, `scroll`, imports…), avec le code
+  source replié. Les tours sans texte et l'appel `finish` sont masqués. Chaque
+  bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer un nœud épingle une étape ;
   « suivre » revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.

@@ -511,6 +511,16 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                     "duration_s": round(time.monotonic() - started, 1),
                 },
             )
+            task_now = db.get_task(task["id"])
+            events.record(
+                "activation.returned",
+                {
+                    "agent": agent,
+                    "task_id": task["id"],
+                    "status": (task_now or {}).get("status"),
+                },
+                actor="orchestrator",
+            )
             return result
         except BaseException as exc:
             events.record(
@@ -520,6 +530,17 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                     "error": events.preview(exc, 400),
                     "duration_s": round(time.monotonic() - started, 1),
                 },
+            )
+            task_now = db.get_task(task["id"])
+            events.record(
+                "activation.returned",
+                {
+                    "agent": agent,
+                    "task_id": task["id"],
+                    "status": (task_now or {}).get("status"),
+                    "error": True,
+                },
+                actor="orchestrator",
             )
             raise
         finally:

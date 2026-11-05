@@ -642,6 +642,25 @@ export function ActivityPanel({
                 </div>
               );
 
+            case "activation.returned":
+              return (
+                <div
+                  key={event.id}
+                  ref={current ? currentRef : undefined}
+                >
+                  <Block
+                    {...common}
+                    label="Retour à l'orchestrateur"
+                    icon={Network}
+                    color="#60a5fa"
+                  >
+                    <Meta>
+                      agent {payload.agent ?? "?"} · tâche {payload.status ?? "?"}
+                    </Meta>
+                  </Block>
+                </div>
+              );
+
             case "task.status":
               return (
                 <div

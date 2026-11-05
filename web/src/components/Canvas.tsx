@@ -21,8 +21,10 @@ import type { ObsEvent, Session } from "../lib/types";
 import { computeState, type NodeId } from "../lib/events";
 import { formatNumber } from "../lib/format";
 import { AgentNode, type AgentNodeType } from "./AgentNode";
+import { BeadEdge } from "./BeadEdge";
 
 const nodeTypes: NodeTypes = { agent: AgentNode };
+const edgeTypes = { bead: BeadEdge };
 
 interface Props {
   session: Session | null;
@@ -176,8 +178,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       target,
       sourceHandle,
       targetHandle,
-      type: "default",
+      type: "bead",
       animated: pulsing && !muted,
+      data: { active: pulsing && !muted, color },
       style: {
         stroke: color,
         strokeWidth: pulsing ? 2.1 : 1.2,
@@ -229,6 +232,7 @@ export function Canvas({ session, visible, onFocus }: Props) {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.24 }}
         nodesDraggable={false}

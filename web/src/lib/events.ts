@@ -25,6 +25,7 @@ export function kindColor(kind: string): string {
 const ORCHESTRATOR_KINDS = new Set([
   "session.created",
   "task.status",
+  "activation.returned",
   "job.start",
   "job.end",
 ]);
@@ -55,7 +56,11 @@ export function eventNode(event: ObsEvent): NodeId | null {
 export function matchesNode(event: ObsEvent, node: NodeId): boolean {
   if (node === "mailbox") return event.kind === "mailbox.message";
   if (node === "orchestrator") {
-    return event.kind === "session.created" || event.kind === "task.status";
+    return (
+      event.kind === "session.created" ||
+      event.kind === "task.status" ||
+      event.kind === "activation.returned"
+    );
   }
   if (node === "job") return event.kind.startsWith("job.");
   return event.actor === node;
@@ -88,6 +93,11 @@ export function summarize(event: ObsEvent): Summary {
       return {
         title: `statut ${payload.from ?? "?"} → ${payload.to ?? "?"}`,
         detail: payload.note || null,
+      };
+    case "activation.returned":
+      return {
+        title: "retour à l'orchestrateur",
+        detail: `agent ${payload.agent ?? "?"} · tâche ${payload.status ?? "?"}`,
       };
     case "activation.start": {
       const bits = [`${payload.messages ?? 0} message(s)`];

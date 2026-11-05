@@ -62,6 +62,14 @@ function describeBrowserExpression(expression: string): string | null {
     return `Remplir le champ « ${match[1]} » avec « ${truncate(match[2], 80)} »`;
   }
 
+  match = expr.match(/^scroll\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+  if (match) {
+    return `Faire défiler à (${match[1]}, ${match[2]}) de ${match[3]} px`;
+  }
+
+  match = expr.match(/^for\s+\w+\s+in\s+range\((\d+)\)\s*:/);
+  if (match) return `Répéter ${match[1]} fois :`;
+
   match = expr.match(/^press_key\(\s*["']([^"']+)["']/);
   if (match) return `Appuyer sur la touche ${match[1]}`;
 
@@ -107,6 +115,7 @@ function describeBrowserExpression(expression: string): string | null {
 export function describeBrowserCode(code: string): string[] {
   const steps: string[] = [];
   for (const raw of code.split("\n")) {
+    const indent = (raw.match(/^\s*/)?.[0] ?? "").length;
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
 
@@ -115,7 +124,7 @@ export function describeBrowserCode(code: string): string[] {
     const described =
       describeBrowserExpression(expression) ??
       (printed ? `Afficher : ${truncate(expression, 100)}` : `Exécuter : ${truncate(line, 100)}`);
-    if (described) steps.push(described);
+    if (described) steps.push(indent > 0 ? `↳ ${described}` : described);
   }
   return steps;
 }
@@ -136,6 +145,22 @@ export function describeTool(name: string, args: unknown): ToolDescription {
   const code = object && typeof object.code === "string" ? object.code : null;
   if (code) {
     return { steps: describeBrowserCode(code), code };
+  }
+
+  // The event store clips long arguments: when the JSON is truncated, salvage
+  // the "code" string so the browser steps are still translated.
+  if (typeof args === "string") {
+    const truncated = args.match(/"code"\s*:\s*"([\s\S]*)/);
+    if (truncated) {
+      const code = truncated[1]
+        .replace(/"\s*}\s*$/, "")
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "")
+        .replace(/\\t/g, "\t")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
+      return { steps: describeBrowserCode(code), code };
+    }
   }
 
   const steps: string[] = [];
