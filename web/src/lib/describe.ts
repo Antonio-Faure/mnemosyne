@@ -346,9 +346,6 @@ export function toolText(value: unknown): string {
         .filter((text): text is string => Boolean(text));
       if (texts.length) return texts.join("\n");
     }
-    if (parsed && typeof parsed === "object" && "text" in parsed) {
-      return String((parsed as { text: unknown }).text);
-    }
   } catch {
     // clipped harness envelope: keep the (possibly truncated) text field
     const match = raw.match(/"text"\s*:\s*"([\s\S]*)/);

@@ -6,7 +6,12 @@ import { Canvas } from "./components/Canvas";
 import { Header } from "./components/Header";
 import { ReplayBar } from "./components/ReplayBar";
 import { Sidebar } from "./components/Sidebar";import { useSessionStream } from "./hooks/useSessionStream";
-import { fetchSessionEvents, fetchSessions, sessionIsLive } from "./lib/api";
+import {
+  fetchSessionEvents,
+  fetchSessions,
+  orderEvents,
+  sessionIsLive,
+} from "./lib/api";
 import { eventNode, isRenderable, type NodeId } from "./lib/events";
 import type { ObsEvent, Session } from "./lib/types";
 
@@ -95,7 +100,7 @@ export default function App() {
     setEvents((previous) =>
       previous.some((item) => item.id === event.id)
         ? previous
-        : [...previous, event],
+        : orderEvents([...previous, event]),
     );
     if (
       ["task.status", "job.start", "job.end", "session.created"].includes(

@@ -67,7 +67,9 @@ déroule la timeline interne de la session sélectionnée.
   complet (« valeur brute »). Cliquer un nœud épingle une étape ; « suivre »
   revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
-  direct le curseur suit (badge LIVE) ; un scrub passe en replay.
+  direct le curseur suit (badge LIVE) ; un scrub passe en replay. À
+  l'intérieur d'une même seconde, l'ordre logique est rétabli (**fin
+  d'activation → statut → retour**), y compris pour les sessions historiques.
 
 
 ## Comment ça marche
