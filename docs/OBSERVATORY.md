@@ -39,8 +39,10 @@ déroule la timeline interne de la session sélectionnée.
   cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
   Navigateur, Codeur, Mailbox, Job). Les événements sont rendus comme un
   **transcript lisible** : bloc *Mission* (objectif complet), messages
-  *Navigateur/Codeur* (markdown), cartes *Outil* (arguments) et *Résultat*
-  (sortie), *Message* mailbox, *Fin d'activation* (tours, durée, bilan). Chaque
+  *Navigateur/Codeur* (markdown), cartes *Outil* (arguments rendus en champs
+  structurés — code, url… — jamais en JSON brut) et *Résultat* (sortie),
+  *Message* mailbox, *Fin d'activation* (tours, durée, bilan). Les tours sans
+  texte et l'appel `finish` (redondant avec le bilan) sont masqués. Chaque
   bloc est dépliable pour le JSON brut et l'horodatage complet. Cliquer un nœud
   épingle une étape ; « suivre » revient au mode auto.
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
