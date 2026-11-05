@@ -125,26 +125,12 @@ export default function App() {
     }
   });
 
+  // The mouse wheel is the speed control: 1× = real time. It is scoped to the
+  // speed badge so scrolling the transcript/sessions and the canvas zoom keep
+  // their native behavior.
   useEffect(() => {
     if (following && events.length) setCursor(events.length - 1);
   }, [events.length, following]);
-
-  // The mouse wheel is the speed control: 1× = real time. Panels keep their
-  // native scroll (transcript, session list); everywhere else the wheel sets
-  // the simulated-time multiplier.
-  useEffect(() => {
-    const onWheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("aside, input, select, textarea, [data-wheel-scroll]")) {
-        return;
-      }
-      event.preventDefault();
-      setSpeed((current) => stepSpeed(current, event.deltaY < 0));
-    };
-    window.addEventListener("wheel", onWheel, { passive: false });
-    return () => window.removeEventListener("wheel", onWheel);
-  }, []);
 
   useEffect(() => {
     if (!playing || !events.length) return;
@@ -270,11 +256,12 @@ export default function App() {
         )}
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
-            <div className={`absolute inset-0 ${stepOpen ? "pr-[404px]" : ""}`}>
+            <div className={`absolute inset-0 ${stepOpen ? "pr-[452px]" : ""}`}>
               <Canvas
                 session={selected}
                 visible={visible}
                 onFocus={setPinnedNode}
+                panelOpen={stepOpen}
               />
             </div>
             {stepOpen && (
@@ -302,6 +289,9 @@ export default function App() {
               setFollowing(false);
               setPlaying((value) => !value);
             }}
+            onSpeed={(faster) =>
+              setSpeed((current) => stepSpeed(current, faster))
+            }
             onLive={goLive}
             onReplay={replay}
           />

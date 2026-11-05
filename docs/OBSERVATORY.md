@@ -40,6 +40,9 @@ déroule la timeline interne de la session sélectionnée.
   agent), fin d'activation (agent → orchestrateur, bille remontante), statuts
   (selon `pending→running` / statut final). La mailbox n'allume que les
   segments réellement traversés. Pas de panneau LLM flottant sur le canvas.
+  Le graphe est **cadré automatiquement** (ouverture, repli du panneau,
+  redimensionnement) pour qu'aucun nœud ni lien ne reste hors champ ; les
+  tailles de nœuds et les handles ont un fallback avant mesure DOM.
 - **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
   (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
   cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
@@ -66,11 +69,11 @@ déroule la timeline interne de la session sélectionnée.
   sans doublons. Chaque bloc est dépliable pour le JSON brut et l'horodatage
   complet (« valeur brute »). Cliquer un nœud épingle une étape ; « suivre »
   revient au mode auto.
-- **Bas** : replay — lecture/pause, pas à pas, scrubbing. La **molette règle
-  la vitesse** (0,25× → 32×) ; **1× = temps réel**, les délais entre étapes
-  sont calculés depuis leurs horodatages (les événements simultanés gardent
-  une frame de 30 ms). Au-dessus du panneau d'étape ou de la liste des
-  sessions, la molette garde son scroll natif. En
+- **Bas** : replay — lecture/pause, pas à pas, scrubbing. La **molette sur le
+  badge de vitesse** règle la vitesse (0,25× → 32×) ; ailleurs elle garde son
+  usage natif (scroll des panneaux, zoom/pan du canvas). **1× = temps réel**,
+  les délais entre étapes sont calculés depuis leurs horodatages (les
+  événements simultanés gardent une frame de 30 ms). En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay. À
   l'intérieur d'une même seconde, l'ordre logique est rétabli (**fin
   d'activation → statut → retour**), y compris pour les sessions historiques.

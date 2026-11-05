@@ -1,10 +1,14 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background,
   Controls,
+  Position,
   ReactFlow,
+  getViewportForBounds,
   type Edge,
+  type NodeHandle,
   type NodeTypes,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import {
   Briefcase,
@@ -27,6 +31,8 @@ interface Props {
   session: Session | null;
   visible: ObsEvent[];
   onFocus: (node: NodeId | null) => void;
+  /** triggers a re-fit when the floating panel opens/closes */
+  panelOpen: boolean;
 }
 
 const COLORS = {
@@ -38,10 +44,83 @@ const COLORS = {
   job: "#34d399",
 };
 
-export function Canvas({ session, visible, onFocus }: Props) {
+/** Give React Flow a size before its ResizeObserver fires: otherwise nodes
+ *  (and their edges) stay `visibility:hidden` until measured — or forever when
+ *  the observer misses them (background tab, panel resize). */
+const NODE_WIDTH = 196;
+const NODE_HEIGHT = 68;
+
+/** Bounding box of the fixed graph layout (used to frame it without waiting
+ *  for React Flow's DOM measurements). */
+const GRAPH_BOUNDS = {
+  x: 80,
+  y: -120,
+  width: 720 + NODE_WIDTH - 80,
+  height: 400 + NODE_HEIGHT + 120,
+};
+
+/** Handle fallback so edges exist before (or without) DOM measurement. */
+const NODE_HANDLES: NodeHandle[] = [
+  { id: "t", type: "target", position: Position.Top, x: NODE_WIDTH / 2, y: 0 },
+  { id: "l", type: "target", position: Position.Left, x: 0, y: NODE_HEIGHT / 2 },
+  { id: "r", type: "target", position: Position.Right, x: NODE_WIDTH, y: NODE_HEIGHT / 2 },
+  { id: "b", type: "source", position: Position.Bottom, x: NODE_WIDTH / 2, y: NODE_HEIGHT },
+  { id: "sl", type: "source", position: Position.Left, x: 0, y: NODE_HEIGHT / 2 },
+  { id: "sr", type: "source", position: Position.Right, x: NODE_WIDTH, y: NODE_HEIGHT / 2 },
+];
+
+export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
   const state = useMemo(() => computeState(visible), [visible]);
   const isJob = session?.family === "job";
   const isAgency = session?.type === "agency";
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<ReactFlowInstance<AgentNodeType, Edge> | null>(null);
+
+  const fitGraph = useCallback(() => {
+    const instance = flowRef.current;
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!instance || !rect) return;
+    // The wrapper is already narrowed by the step panel (pr-[452px]).
+    instance.setViewport(
+      getViewportForBounds(
+        GRAPH_BOUNDS,
+        Math.max(160, rect.width),
+        Math.max(160, rect.height),
+        0.3,
+        1.5,
+        0.2,
+      ),
+    );
+  }, []);
+
+  useEffect(() => {
+    const element = wrapperRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => {
+      fitGraph();
+    });
+    observer.observe(element);
+    const timer = window.setTimeout(fitGraph, 50);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [fitGraph]);
+
+  // Panel toggle / window resize: do not rely on ResizeObserver alone (it is
+  // throttled in background tabs and sometimes misses the change).
+  useEffect(() => {
+    const timer = window.setTimeout(fitGraph, 80);
+    return () => window.clearTimeout(timer);
+  }, [fitGraph, panelOpen]);
+
+  useEffect(() => {
+    const onResize = () => {
+      window.setTimeout(fitGraph, 80);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [fitGraph]);
 
   const nodes = useMemo<AgentNodeType[]>(() => {
     const last = state.lastNode;
@@ -51,6 +130,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       {
         id: "agency",
         type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
         position: { x: 400, y: -120 },
         data: {
           label: "Agency",
@@ -65,6 +147,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       {
         id: "orchestrator",
         type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
         position: { x: 400, y: 0 },
         data: {
           label: "Orchestrateur",
@@ -78,6 +163,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       {
         id: "browser",
         type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
         position: { x: 80, y: 190 },
         data: {
           label: "Navigateur",
@@ -93,6 +181,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       {
         id: "mailbox",
         type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
         position: { x: 400, y: 200 },
         data: {
           label: "Mailbox",
@@ -107,6 +198,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       {
         id: "coder",
         type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
         position: { x: 720, y: 190 },
         data: {
           label: "Codeur",
@@ -124,6 +218,9 @@ export function Canvas({ session, visible, onFocus }: Props) {
       list.push({
         id: "job",
         type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
         position: { x: 80, y: 400 },
         data: {
           label: `Job · ${session?.type ?? ""}`,
@@ -242,20 +339,22 @@ export function Canvas({ session, visible, onFocus }: Props) {
   ]);
 
   return (
-    <div className="relative h-full w-full">
+    <div ref={wrapperRef} className="relative h-full w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.24 }}
+        onInit={(instance) => {
+          flowRef.current = instance;
+          fitGraph();
+        }}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
-        panOnScroll={false}
-        zoomOnScroll={false}
-        minZoom={0.45}
+        panOnScroll
+        zoomOnScroll
+        minZoom={0.3}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node) => {

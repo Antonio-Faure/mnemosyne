@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Mouse,
   Pause,
@@ -17,6 +18,7 @@ interface Props {
   following: boolean;
   onSeek: (index: number) => void;
   onToggle: () => void;
+  onSpeed: (faster: boolean) => void;
   onLive: () => void;
   onReplay: () => void;
 }
@@ -37,10 +39,30 @@ export function ReplayBar({
   following,
   onSeek,
   onToggle,
+  onSpeed,
   onLive,
   onReplay,
 }: Props) {
   const hasEvents = total > 0;
+  const speedRef = useRef<HTMLSpanElement>(null);
+  const onSpeedRef = useRef(onSpeed);
+  onSpeedRef.current = onSpeed;
+
+  // Native listener: React's wheel handler is passive, and we need to stop the
+  // page/replay scroll while the pointer is on the speed badge.
+  useEffect(() => {
+    const element = speedRef.current;
+    if (!element) return;
+    const handler = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || event.deltaY === 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onSpeedRef.current(event.deltaY < 0);
+    };
+    element.addEventListener("wheel", handler, { passive: false });
+    return () => element.removeEventListener("wheel", handler);
+  }, []);
+
   return (
     <div className="flex items-center gap-3 border-t border-ink-700 bg-ink-850 px-4 py-2.5">
       <button
@@ -80,8 +102,9 @@ export function ReplayBar({
       </div>
 
       <span
-        title="Molette : régler la vitesse — 1× = temps réel (délais des horodatages)"
-        className="flex h-7 items-center gap-1 rounded-md border border-ink-600 bg-ink-800 px-2 font-mono text-[11px] text-slate-300"
+        ref={speedRef}
+        title="Molette sur ce badge : régler la vitesse — 1× = temps réel (délais des horodatages)"
+        className="flex h-7 cursor-ns-resize items-center gap-1 rounded-md border border-ink-600 bg-ink-800 px-2 font-mono text-[11px] text-slate-300"
       >
         <Mouse size={12} className="text-slate-500" />
         {formatSpeed(speed)}
