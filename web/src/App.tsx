@@ -214,7 +214,6 @@ export default function App() {
             onIncludeSilent={setIncludeSilent}
             family={family}
             onFamily={setFamily}
-            onCollapse={() => setSessionsOpen(false)}
           />
         )}
         <main className="relative flex min-w-0 flex-1 flex-col">
@@ -233,10 +232,9 @@ export default function App() {
                 cursor={cursor}
                 step={step}
                 pinned={pinnedNode !== null}
-                loading={eventsQuery.isPending}
+                loading={Boolean(selectedId) && eventsQuery.isPending}
                 onFollow={() => setPinnedNode(null)}
                 onSeek={seek}
-                onCollapse={() => setStepOpen(false)}
               />
             )}
           </div>

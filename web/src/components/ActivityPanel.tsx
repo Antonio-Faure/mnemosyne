@@ -28,7 +28,6 @@ interface Props {
   loading?: boolean;
   onFollow: () => void;
   onSeek: (index: number) => void;
-  onCollapse: () => void;
 }
 
 const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> = {
@@ -48,7 +47,6 @@ export function ActivityPanel({
   loading = false,
   onFollow,
   onSeek,
-  onCollapse,
 }: Props) {
   const meta = STEPS[step];
   const Icon = meta.icon;
@@ -99,29 +97,29 @@ export function ActivityPanel({
             </div>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            <span className="font-mono text-[10px] text-slate-500">
-              {loading ? "…" : `${filtered.length} ev.`}
+            <span className="text-[10px] text-slate-500">
+              {loading
+                ? "chargement…"
+                : session
+                  ? `${filtered.length} événement${filtered.length > 1 ? "s" : ""}`
+                  : "—"}
             </span>
             {pinned ? (
               <button
                 onClick={onFollow}
                 className="rounded-md bg-sky-500/15 px-2 py-1 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/40 transition hover:bg-sky-500/25"
-                title="Suivre l'étape de la timeline"
+                title="Revenir au suivi automatique de la timeline"
               >
                 suivre
               </button>
             ) : (
-              <span className="rounded-md bg-ink-700 px-2 py-1 text-[10px] text-slate-400">
-                auto
+              <span
+                className="rounded-md bg-ink-700 px-2 py-1 text-[10px] text-slate-400"
+                title="Le panneau suit automatiquement l'étape en cours. Cliquez un nœud du canvas pour épingler une étape."
+              >
+                suivi auto
               </span>
             )}
-            <button
-              onClick={onCollapse}
-              className="rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
-              title="Replier le panneau"
-            >
-              <ChevronRight size={14} />
-            </button>
           </div>
         </div>
         {session && (
@@ -212,7 +210,9 @@ export function ActivityPanel({
           <div className="p-3 text-[12px] text-slate-500">
             {loading
               ? "chargement de la session…"
-              : "Aucun événement pour cette étape."}
+              : session
+                ? "Aucun événement pour cette étape."
+                : "Aucune session sélectionnée."}
           </div>
         )}
       </div>

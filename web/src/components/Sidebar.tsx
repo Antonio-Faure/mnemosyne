@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import {
   CheckCircle2,
-  ChevronLeft,
   CircleDashed,
   Loader2,
   PauseCircle,
@@ -26,7 +25,6 @@ interface Props {
   onIncludeSilent: (value: boolean) => void;
   family: "all" | "task" | "job";
   onFamily: (family: "all" | "task" | "job") => void;
-  onCollapse: () => void;
 }
 
 function StatusIcon({ status }: { status: string }) {
@@ -59,7 +57,6 @@ export function Sidebar({
   onIncludeSilent,
   family,
   onFamily,
-  onCollapse,
 }: Props) {
   const groups = useMemo(() => {
     const map = new Map<string, Session[]>();
@@ -82,13 +79,6 @@ export function Sidebar({
           <span className="ml-auto font-mono text-[10px] text-slate-500">
             {sessions.length}
           </span>
-          <button
-            onClick={onCollapse}
-            className="rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
-            title="Replier les sessions"
-          >
-            <ChevronLeft size={14} />
-          </button>
         </div>
         <div className="flex gap-1">
           {FAMILIES.map((item) => (
