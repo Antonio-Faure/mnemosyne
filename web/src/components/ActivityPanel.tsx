@@ -21,6 +21,7 @@ import remarkGfm from "remark-gfm";
 import type { ObsEvent, Session } from "../lib/types";
 import { kindColor, matchesNode, type NodeId } from "../lib/events";
 import { formatTime, fullTimestamp } from "../lib/format";
+import { describeResult, describeTool, parseJson, toolText } from "../lib/describe";
 
 interface Props {
   session: Session | null;
@@ -76,17 +77,6 @@ function isRenderable(event: ObsEvent): boolean {
     return false;
   }
   return true;
-}
-
-function parseJson(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  const text = value.trim();
-  if (!text.startsWith("{") && !text.startsWith("[")) return undefined;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
 }
 
 function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
@@ -156,6 +146,51 @@ function ArgsView({ args }: { args: unknown }) {
   );
 }
 
+/** Tool call translated into human actions, with the raw code on demand. */
+function ToolArgs({ name, args }: { name?: string; args: unknown }) {
+  const described = useMemo(
+    () => describeTool(String(name ?? ""), args),
+    [name, args],
+  );
+  const [showCode, setShowCode] = useState(false);
+
+  if (!described.steps.length) {
+    return <ArgsView args={args} />;
+  }
+
+  return (
+    <div className="rounded-md bg-ink-900/70 p-2">
+      <ul className="space-y-1">
+        {described.steps.map((step, index) => (
+          <li
+            key={index}
+            className="flex gap-1.5 text-[11.5px] leading-snug text-slate-200"
+          >
+            <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-sky-400" />
+            <span>{step}</span>
+          </li>
+        ))}
+      </ul>
+      {described.code && (
+        <div className="mt-1.5">
+          <button
+            onClick={() => setShowCode((value) => !value)}
+            className="flex items-center gap-1 text-[10px] text-slate-500 transition hover:text-slate-300"
+          >
+            {showCode ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            code source
+          </button>
+          {showCode && (
+            <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-950/70 p-2 font-mono text-[10.5px] leading-relaxed text-slate-400">
+              {described.code}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Tool output: structured JSON when it parses, otherwise a readable block.
  * JSON-ish payloads (e.g. a Python dict repr) stay collapsed by default. */
 function ResultView({ text }: { text: string }) {
@@ -197,27 +232,6 @@ function ResultView({ text }: { text: string }) {
       {text || "(sortie vide)"}
     </pre>
   );
-}
-
-/** Tool outputs are often `[{"type":"text","text":"…"}]`: show the text only. */
-function toolText(value: unknown): string {
-  const raw = String(value ?? "");
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      const texts = parsed
-        .map((part) =>
-          part && typeof part === "object" && "text" in part
-            ? String((part as { text: unknown }).text)
-            : null,
-        )
-        .filter((text): text is string => Boolean(text));
-      if (texts.length) return texts.join("\n");
-    }
-  } catch {
-    // plain text: keep it as-is
-  }
-  return raw;
 }
 
 function Markdown({ text }: { text: string }) {
@@ -503,7 +517,7 @@ export function ActivityPanel({
                     icon={Wrench}
                     color="#c084fc"
                   >
-                    <ArgsView args={payload.args} />
+                    <ToolArgs name={payload.name} args={payload.args} />
                   </Block>
                 </div>
               );
@@ -513,6 +527,7 @@ export function ActivityPanel({
                 ? (payload.artifacts as { name?: string; url: string }[])
                 : [];
               const text = toolText(payload.preview);
+              const described = describeResult(payload.preview);
               return (
                 <div
                   key={event.id}
@@ -545,7 +560,36 @@ export function ActivityPanel({
                         ))}
                       </div>
                     )}
-                    {(!artifacts.length || (text && text !== "(no output)")) && (
+                    {described.kind === "page" && (
+                      <div className="rounded-md bg-ink-900/70 p-2 text-[11.5px] leading-snug text-slate-200">
+                        <span className="text-slate-500">Page</span> «{" "}
+                        {described.page?.title || "sans titre"} »
+                        {described.page?.url && (
+                          <>
+                            <span className="mx-1 text-slate-600">·</span>
+                            <a
+                              href={described.page.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="break-all text-sky-300 underline"
+                            >
+                              {described.page.url.replace(/^https?:\/\//, "")}
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {described.kind === "error" && (
+                      <div className="rounded-md bg-rose-500/10 p-2 text-[11px] text-rose-300">
+                        {described.error}
+                      </div>
+                    )}
+                    {described.kind === "empty" && !artifacts.length && (
+                      <div className="text-[11px] italic text-slate-500">
+                        Aucune sortie
+                      </div>
+                    )}
+                    {(described.kind === "json" || described.kind === "text") && (
                       <ResultView text={text} />
                     )}
                   </Block>
