@@ -122,10 +122,9 @@ agents:
   force_vision: false
   # Zen refuse >30 images/requête : on ne garde que les N plus récentes
   max_request_images: 12
-  # Suspendus le 5/11/2026 tant que la clé OpenCode Go n'est pas renseignée :
-  # sans elle, chaque warmup échoue en 401 et crée une tâche « failed ».
-  warmup_per_day_min: 0
-  warmup_per_day_max: 0
+  # 1-2 séances/jour (clé OpenCode Go renseignée le 5/11/2026).
+  warmup_per_day_min: 1
+  warmup_per_day_max: 2
   warmup_window_start: 8
   warmup_window_end: 23
   warmup_session_min: 6

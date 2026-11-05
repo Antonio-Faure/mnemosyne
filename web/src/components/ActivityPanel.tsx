@@ -28,6 +28,7 @@ interface Props {
   loading?: boolean;
   onFollow: () => void;
   onSeek: (index: number) => void;
+  onCollapse: () => void;
 }
 
 const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> = {
@@ -47,6 +48,7 @@ export function ActivityPanel({
   loading = false,
   onFollow,
   onSeek,
+  onCollapse,
 }: Props) {
   const meta = STEPS[step];
   const Icon = meta.icon;
@@ -79,7 +81,7 @@ export function ActivityPanel({
   };
 
   return (
-    <aside className="flex min-h-0 w-[400px] shrink-0 flex-col border-l border-ink-700 bg-ink-850">
+    <aside className="absolute bottom-4 right-4 top-4 z-20 flex w-[388px] flex-col overflow-hidden rounded-xl border border-ink-600 bg-ink-850/95 shadow-2xl backdrop-blur">
       <div className="border-b border-ink-700 p-3">
         <div className="flex items-center gap-2">
           <span
@@ -113,6 +115,13 @@ export function ActivityPanel({
                 auto
               </span>
             )}
+            <button
+              onClick={onCollapse}
+              className="rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
+              title="Replier le panneau"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
         {session && (

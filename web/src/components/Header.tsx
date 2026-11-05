@@ -1,4 +1,11 @@
-import { ChevronLeft, ChevronRight, RotateCcw, Waypoints } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  PanelLeft,
+  PanelRight,
+  RotateCcw,
+  Waypoints,
+} from "lucide-react";
 
 import type { Session } from "../lib/types";
 import { durationLabel, sessionColor, sessionTypeLabel } from "../lib/format";
@@ -8,6 +15,10 @@ interface Props {
   live: boolean;
   canPrev: boolean;
   canNext: boolean;
+  sessionsOpen: boolean;
+  stepOpen: boolean;
+  onToggleSessions: () => void;
+  onToggleStep: () => void;
   onPrev: () => void;
   onNext: () => void;
   onReplay: () => void;
@@ -21,12 +32,43 @@ export function Header({
   live,
   canPrev,
   canNext,
+  sessionsOpen,
+  stepOpen,
+  onToggleSessions,
+  onToggleStep,
   onPrev,
   onNext,
   onReplay,
 }: Props) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-ink-700 bg-ink-850 px-4">
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onToggleSessions}
+          className={`grid h-8 w-8 place-items-center rounded-lg border transition ${
+            sessionsOpen
+              ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+              : "border-ink-600 bg-ink-800 text-slate-400 hover:text-slate-200"
+          }`}
+          title={sessionsOpen ? "Replier les sessions" : "Afficher les sessions"}
+        >
+          <PanelLeft size={15} />
+        </button>
+        <button
+          onClick={onToggleStep}
+          className={`grid h-8 w-8 place-items-center rounded-lg border transition ${
+            stepOpen
+              ? "border-sky-500/40 bg-sky-500/10 text-sky-300"
+              : "border-ink-600 bg-ink-800 text-slate-400 hover:text-slate-200"
+          }`}
+          title={stepOpen ? "Replier l'étape en cours" : "Afficher l'étape en cours"}
+        >
+          <PanelRight size={15} />
+        </button>
+      </div>
+
+      <div className="h-6 w-px bg-ink-700" />
+
       <div className="flex items-center gap-2">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-500/10 text-sky-400">
           <Waypoints size={16} />

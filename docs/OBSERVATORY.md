@@ -25,19 +25,22 @@ déroule la timeline interne de la session sélectionnée.
 
 ## L'écran
 
-- **Gauche** : sessions groupées par jour, colorées par type. Deux warmups
-  distincts : **`système`** (run du job planificateur, gris — aucun LLM) et
+- **Gauche** : sessions groupées par jour, colorées par type, **repliables**
+  (bouton de l'en-tête ou chevron, état mémorisé). Deux warmups distincts :
+  **`système`** (run du job planificateur, gris — aucun LLM) et
   **`navigateur`** (la tâche d'agent postée par ce job, turquoise — compte
   Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
 - **Centre** : canvas type Make — Orchestrateur, Navigateur, Mailbox, Codeur
   (+ nœud Job pour les sessions système). **Le LLM n'est pas un nœud** : ses
   appels/tokens/outils flottent en haut à droite du canvas (ils appartiennent
   au navigateur ou au codeur en cours).
-- **Droite** : **uniquement l'étape en cours** (pas d'onglets) : le panneau
-  suit l'événement de la timeline (Orchestrateur, Navigateur, Codeur, Mailbox,
-  Job). Cliquer un nœud épingle une étape ; « suivre » revient au mode auto.
-  Chaque événement est dépliable : horodatage complet, kind, acteur et payload
-  JSON (outils, résultats, tokens, durées, erreurs…).
+- **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
+  (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
+  cours** (pas d'onglets) : il suit l'événement de la timeline (Orchestrateur,
+  Navigateur, Codeur, Mailbox, Job). Cliquer un nœud épingle une étape ;
+  « suivre » revient au mode auto. Chaque événement est dépliable : horodatage
+  complet, kind, acteur et payload JSON (outils, résultats, tokens, durées,
+  erreurs…).
 - **Bas** : replay — lecture/pause, pas à pas, vitesse 0,5 → 4×, scrubbing. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay.
 

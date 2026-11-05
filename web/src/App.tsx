@@ -5,8 +5,7 @@ import { ActivityPanel } from "./components/ActivityPanel";
 import { Canvas } from "./components/Canvas";
 import { Header } from "./components/Header";
 import { ReplayBar } from "./components/ReplayBar";
-import { Sidebar } from "./components/Sidebar";
-import { useSessionStream } from "./hooks/useSessionStream";
+import { Sidebar } from "./components/Sidebar";import { useSessionStream } from "./hooks/useSessionStream";
 import { fetchSessionEvents, fetchSessions, sessionIsLive } from "./lib/api";
 import { eventNode, type NodeId } from "./lib/events";
 import type { ObsEvent, Session } from "./lib/types";
@@ -22,6 +21,19 @@ export default function App() {
   const [speed, setSpeed] = useState(1);
   const [pinnedNode, setPinnedNode] = useState<NodeId | null>(null);
   const [streamAfter, setStreamAfter] = useState(0);
+  const [sessionsOpen, setSessionsOpen] = useState(
+    () => localStorage.getItem("obs.sessionsOpen") !== "0",
+  );
+  const [stepOpen, setStepOpen] = useState(
+    () => localStorage.getItem("obs.stepOpen") !== "0",
+  );
+
+  useEffect(() => {
+    localStorage.setItem("obs.sessionsOpen", sessionsOpen ? "1" : "0");
+  }, [sessionsOpen]);
+  useEffect(() => {
+    localStorage.setItem("obs.stepOpen", stepOpen ? "1" : "0");
+  }, [stepOpen]);
 
   const sessionsQuery = useQuery({
     queryKey: ["sessions", includeSilent, family],
@@ -171,6 +183,10 @@ export default function App() {
         live={live}
         canPrev={Boolean(older)}
         canNext={Boolean(newer)}
+        sessionsOpen={sessionsOpen}
+        stepOpen={stepOpen}
+        onToggleSessions={() => setSessionsOpen((value) => !value)}
+        onToggleStep={() => setStepOpen((value) => !value)}
         onPrev={() => {
           if (older) {
             setSelectedId(older.id);
@@ -186,25 +202,43 @@ export default function App() {
         onReplay={replay}
       />
       <div className="flex min-h-0 flex-1">
-        <Sidebar
-          sessions={sessions}
-          selectedId={selectedId}
-          onSelect={(id) => {
-            setSelectedId(id);
-            setPlaying(false);
-          }}
-          includeSilent={includeSilent}
-          onIncludeSilent={setIncludeSilent}
-          family={family}
-          onFamily={setFamily}
-        />
-        <main className="flex min-w-0 flex-1 flex-col">
+        {sessionsOpen && (
+          <Sidebar
+            sessions={sessions}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setPlaying(false);
+            }}
+            includeSilent={includeSilent}
+            onIncludeSilent={setIncludeSilent}
+            family={family}
+            onFamily={setFamily}
+            onCollapse={() => setSessionsOpen(false)}
+          />
+        )}
+        <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
-            <Canvas
-              session={selected}
-              visible={visible}
-              onFocus={setPinnedNode}
-            />
+            <div className={`absolute inset-0 ${stepOpen ? "pr-[404px]" : ""}`}>
+              <Canvas
+                session={selected}
+                visible={visible}
+                onFocus={setPinnedNode}
+              />
+            </div>
+            {stepOpen && (
+              <ActivityPanel
+                session={selected}
+                events={events}
+                cursor={cursor}
+                step={step}
+                pinned={pinnedNode !== null}
+                loading={eventsQuery.isPending}
+                onFollow={() => setPinnedNode(null)}
+                onSeek={seek}
+                onCollapse={() => setStepOpen(false)}
+              />
+            )}
           </div>
           <ReplayBar
             total={events.length}
@@ -223,16 +257,6 @@ export default function App() {
             onReplay={replay}
           />
         </main>
-        <ActivityPanel
-          session={selected}
-          events={events}
-          cursor={cursor}
-          step={step}
-          pinned={pinnedNode !== null}
-          loading={eventsQuery.isPending}
-          onFollow={() => setPinnedNode(null)}
-          onSeek={seek}
-        />
       </div>
     </div>
   );
