@@ -246,7 +246,7 @@ export function findValue(text: string): ParsedValue | null {
     if (ch !== "{" && ch !== "[") continue;
     const prefix = trimmed.slice(0, index).trim();
     // Do not mistake an item of a clipped list/dict for the result itself.
-    if (/[\[{,(:]$/.test(prefix)) continue;
+    if (/[\[{,]$/.test(prefix)) continue;
     const parsed = readLoosePrefix(trimmed.slice(index));
     if (!parsed) continue;
     return {
