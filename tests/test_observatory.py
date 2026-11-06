@@ -156,6 +156,44 @@ async def test_scheduler_titles_the_job_session_with_activity(config, monkeypatc
         await heartbeat.aclose()
 
 
+@pytest.mark.parametrize("kind", ["agency", "warmup"])
+@pytest.mark.asyncio
+async def test_task_wrapper_job_sessions_stay_silent(config, monkeypatch, kind):
+    """Agency/warmup job runs are wrappers: the task session has the real trace."""
+    from mnemosyne.heartbeat import scheduler as sch
+    from mnemosyne.heartbeat.jobs import HANDLERS
+    from mnemosyne.models import Job
+
+    async def handler(ctx, job):
+        return {"interval_s": 999999, "_activity": f"{kind} wrapper"}
+
+    monkeypatch.setitem(HANDLERS, kind, handler)
+    heartbeat = sch.Heartbeat(config)
+    try:
+        job_id = heartbeat.engine.db.enqueue(
+            Job(
+                kind=kind,
+                payload={"interval_s": 999999},
+                run_at="2000-01-01T00:00:00+00:00",
+            )
+        )
+        claimed = heartbeat.engine.db.claim_due_jobs("2100-01-01T00:00:00+00:00", 5)
+        job = next(j for j in claimed if j.id == job_id)
+        await heartbeat._run_job(job)
+
+        session = heartbeat.engine.db.get_session(f"job:{job_id}")
+        assert session["notable"] == 0
+        assert session["title"] == f"{kind} wrapper"
+        visible = {s["id"] for s in heartbeat.engine.db.list_sessions()}
+        assert f"job:{job_id}" not in visible
+        everything = {
+            s["id"] for s in heartbeat.engine.db.list_sessions(include_silent=True)
+        }
+        assert f"job:{job_id}" in everything
+    finally:
+        await heartbeat.aclose()
+
+
 def test_backfill_creates_sessions_for_past_tasks(config):
     db = Database(config.db_file())
     task_id = db.enqueue_task("browser", "old warmup", payload={"kind": "warmup"})

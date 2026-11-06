@@ -1048,13 +1048,16 @@ class Database:
         activity: str | None = None,
         error: str | None = None,
         extra: dict | None = None,
+        notable: bool | None = None,
     ) -> None:
+        """Close a job run. ``notable`` forces silence for wrapper jobs (agency,
+        warmup) whose real trace lives in the task session."""
         session_id = f"job:{job_id}"
         self.update_session(
             session_id,
             status=status,
             ended_at=utcnow_iso(),
-            notable=bool(activity),
+            notable=bool(activity) if notable is None else notable,
             title=activity or None,
         )
         payload = {"status": status, "activity": activity, "error": (error or "")[:400] or None}

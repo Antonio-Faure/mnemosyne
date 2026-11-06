@@ -28,6 +28,10 @@ WATCHDOG_INTERVAL_S = 300  # invariants check, inside the service (no side proce
 AGENCY_INTERVAL_S = 120  # check the bi-agent mailbox every 2 minutes (idle = free)
 OPERATOR_INTERVAL_S = 30  # poll the operator bots (answers wake parked tasks)
 
+#: Job runs whose real trace is the task session: keep them out of the sidebar
+#: by default (visible with "inclure les runs silencieux").
+SILENT_JOB_KINDS = frozenset({"agency", "warmup"})
+
 
 class Heartbeat:
     def __init__(self, config: Config, engine: Engine | None = None):
@@ -283,6 +287,7 @@ class Heartbeat:
             job.id,
             status="done",
             activity=activity,
+            notable=job.kind not in SILENT_JOB_KINDS,
             extra={
                 "duration_s": round(time.monotonic() - started, 1),
                 "updates": updates or {},

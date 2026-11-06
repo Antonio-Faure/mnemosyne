@@ -23,6 +23,11 @@ Les sessions sont **des points de navigation sur la timeline globale** : elles
 se suivent chronologiquement (boutons « Précédente / Suivante »), et le replay
 déroule la timeline interne de la session sélectionnée.
 
+Les runs **`agency`** et **`warmup`** du planificateur sont des **wrappers** :
+leur trace réelle est la session `task` (activation, outils, transcript). Ils
+restent donc **silencieux par défaut** (visibles via « inclure les runs
+silencieux ») : la sidebar montre une session par vraie mission, pas trois.
+
 ## L'écran
 
 - **Gauche** : sessions groupées par jour, colorées par type, **repliables**
