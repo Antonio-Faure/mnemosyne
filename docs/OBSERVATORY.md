@@ -76,10 +76,11 @@ déroule la timeline interne de la session sélectionnée.
 - **Bas** : replay — lecture/pause, pas à pas, scrubbing. La **molette sur le
   badge de vitesse** règle la vitesse (0,25× → 32×) ; ailleurs elle garde son
   usage natif (scroll des panneaux, zoom/pan du canvas). **1× = temps réel**,
-  les délais entre étapes sont calculés depuis leurs horodatages (les
-  événements simultanés gardent une frame de 30 ms). Le **délai de file**
-  (`session.created` → premier statut) est compressé à **250 ms** : c'est
-  l'attente dans la file, pas le temps de travail. En
+  les délais entre étapes sont calculés depuis leurs horodatages. **Chaque
+  étape reste affichée au moins 1 s** : ce plancher s'applique même à 32× et
+  même si l'écart réel est plus court (il prime sur le multiplicateur). Le
+  **délai de file** (`session.created` → premier statut) est ramené à **1 s** :
+  c'est l'attente dans la file, pas le temps de travail. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay. À
   l'intérieur d'une même seconde, l'ordre logique est rétabli (**fin
   d'activation → statut → retour**), y compris pour les sessions historiques.
