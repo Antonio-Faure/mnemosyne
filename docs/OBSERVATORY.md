@@ -77,7 +77,9 @@ déroule la timeline interne de la session sélectionnée.
   badge de vitesse** règle la vitesse (0,25× → 32×) ; ailleurs elle garde son
   usage natif (scroll des panneaux, zoom/pan du canvas). **1× = temps réel**,
   les délais entre étapes sont calculés depuis leurs horodatages (les
-  événements simultanés gardent une frame de 30 ms). En
+  événements simultanés gardent une frame de 30 ms). Le **délai de file**
+  (`session.created` → premier statut) est compressé à **250 ms** : c'est
+  l'attente dans la file, pas le temps de travail. En
   direct le curseur suit (badge LIVE) ; un scrub passe en replay. À
   l'intérieur d'une même seconde, l'ordre logique est rétabli (**fin
   d'activation → statut → retour**), y compris pour les sessions historiques.

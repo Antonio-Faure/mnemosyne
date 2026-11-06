@@ -18,6 +18,9 @@ import type { ObsEvent, Session } from "./lib/types";
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32] as const;
 /** Same-timestamp events still get a visible frame. */
 const MIN_STEP_MS = 30;
+/** Queue latency (enqueue → first activation) is not mission time: keep the
+ *  Agency step visible for a blink instead of replaying a 46 s wait. */
+const QUEUE_STEP_MS = 250;
 
 function stepSpeed(current: number, faster: boolean): number {
   const index = SPEEDS.findIndex((value) => value >= current - 1e-6);
@@ -145,8 +148,12 @@ export default function App() {
     const delta = Number.isFinite(from) && Number.isFinite(to)
       ? Math.max(0, to - from)
       : 1000;
-    // 1× replays the real gap between two events; the wheel scales it.
-    const delay = Math.max(MIN_STEP_MS, delta / speed);
+    // 1× replays the real gap between two events; the wheel scales it. The
+    // initial enqueue wait is compressed: it is queue latency, not work.
+    const delay =
+      current?.kind === "session.created"
+        ? QUEUE_STEP_MS
+        : Math.max(MIN_STEP_MS, delta / speed);
     const timer = window.setTimeout(
       () => setCursor((current) => Math.min(current + 1, events.length - 1)),
       delay,
