@@ -72,7 +72,7 @@ se relancent plus au démarrage (`disabled`).
 ## Ce qui continue de tourner
 
 - **Warmups** : **réactivés le 5/11/2026** (clé OpenCode Go en place) —
-  1-2 séances/jour sur le modèle éco `mimo-v2.6-flash`, lecture seule, aucune
+  1-2 séances/jour sur `deepseek-v4.1-flash`, lecture seule, aucune
   inscription. Pour les suspendre : `warmup_per_day_min: 0` **et**
   `warmup_per_day_max: 0`, puis redémarrer le service.
 - **Harvest / verify / journal / watchdog** : HTTP + base de données,

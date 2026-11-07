@@ -20,8 +20,8 @@ Baseline (journal, sessions récentes) :
 | warmup 12:41 | 34 | 477 k | 93,2 % | 7 k |
 | warmup 15:13 (gmail) | 34 | 398 k | 94,9 % | 6 k |
 
-Depuis, `agents.warmup_model: mimo-v2.6-flash` baisse déjà la facture, mais la
-structure reste la même (contexte rejoué à chaque pas).
+Depuis, `agents.warmup_model: deepseek-v4.1-flash` aligne aussi le warmup sur
+le modèle principal ; la structure reste la même (contexte rejoué à chaque pas).
 
 ## 2. Ce qu'est jev-ultrafast
 
