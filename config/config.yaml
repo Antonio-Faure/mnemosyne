@@ -23,10 +23,10 @@ heartbeat:
   stale_lock_s: 600     # les jobs vivants renouvellent leur verrou (60 s) ; un runner mort est repris après 10 min
 
 harvest:
-  # Moissonnage des métadonnées (un job par source). L'ancien rythme 30 min
-  # × 34 sources faisait ~1 600 runs/jour, presque tous vides. Maintenant :
-  # 4 passages/source/jour maximum, et retour à 1/jour après un passage vide.
-  enabled: true
+  # Moissonnage des métadonnées (un job par source). Désactivé sur décision
+  # opérateur : plus aucun job harvest n'est planifié. Les commandes manuelles
+  # `mnemosyne search` / `harvest` restent disponibles.
+  enabled: false
   interval_s: 21600        # 6 h — source qui a produit des assets
   empty_interval_s: 86400  # 24 h — dernier passage vide
   no_seed_interval_s: 604800  # source sans seed : parquée 7 jours
