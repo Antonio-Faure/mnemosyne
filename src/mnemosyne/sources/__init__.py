@@ -14,6 +14,7 @@ from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
 from mnemosyne.sources.mai_saint_etienne import MAISaintEtienneConnector
+from mnemosyne.sources.met import MetConnector
 from mnemosyne.sources.openverse import OpenverseConnector
 from mnemosyne.sources.pop import PopConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
@@ -34,6 +35,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "dpla": DplaConnector,
     "smithsonian": SmithsonianConnector,
     "mai_saint_etienne": MAISaintEtienneConnector,
+    "met": MetConnector,
     "pop": PopConnector,
 }
 

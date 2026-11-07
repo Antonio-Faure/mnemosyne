@@ -1,0 +1,29 @@
+id: met
+name: Metropolitan Museum of Art — Open Access
+institution: The Metropolitan Museum of Art, New York
+country: US
+protocol: rest
+base_url: https://collectionapi.metmuseum.org/public/collection/v1
+auth: none
+license: CC0-1.0
+rights: "Met Open Access — images du domaine public sous CC0 1.0 Universal ; vérifier la mention de droits par notice (isPublicDomain)."
+rate_limit_per_s: 1.0
+priority: 35
+tags: [museum, united-states, keyless, cc0, public-domain, industrial-history]
+seeds:
+  - "steam engine"
+  - "factory"
+  - "industrial revolution"
+  - "locomotive"
+  - "steel mill"
+  - "coal mine"
+notes: >-
+  API Open Access du Met (REST, sans clé). La recherche se fait sur
+  GET /public/collection/v1.1/search?q=<query>&hasImages=true — l'ancien
+  /public/collection/v1/search a été retiré le 2026-10-01 et renvoie HTTP 410
+  Gone. La réponse est {"total": ..., "objectIDs": [...]}. Le détail d'un objet
+  est GET /public/collection/v1/objects/<id>. Le connecteur ne conserve que les
+  notices avec isPublicDomain == true ET un primaryImage non vide, afin de
+  garantir des images du domaine public sous CC0. Les images ne sont jamais
+  téléchargées : seules les URLs (primaryImage / primaryImageSmall) sont
+  stockées. rate_limit_per_s: 1.0 — les objets sont résolus un par un.

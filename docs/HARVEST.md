@@ -25,13 +25,20 @@ seed). Résultat : ~1 600 runs/jour, des milliers de lignes `job:…` en base, e
 seulement **518 assets uniques** au total. Ce n'était pas un bug de collecte,
 mais un **rythme hérité d'une époque à une seule source**, multiplié par 34.
 
-## Nouveau rythme adaptatif
+## Statut actuel : désactivé
+
+Décision opérateur du 7/11/2026 : **plus aucun harvest automatique**.
+`harvest.enabled: false` dans `config/config.yaml`, les jobs et sessions
+existants ont été supprimés (les assets déjà collectés sont conservés). Le code
+reste en place pour un retour éventuel ou un usage manuel.
+
+## Ancien rythme adaptatif (conservé pour mémoire)
 
 Réglable dans `config/config.yaml` :
 
 ```yaml
 harvest:
-  enabled: true
+  enabled: false          # désactivé sur décision opérateur
   interval_s: 21600        # 6 h  — source productive
   empty_interval_s: 86400  # 24 h — dernier passage vide
   no_seed_interval_s: 604800  # 7 j — source sans seed
