@@ -20,7 +20,6 @@ from mnemosyne.util import cleanup_orphan_tmp, utcnow_iso
 
 log = get_logger("heartbeat")
 
-HARVEST_INTERVAL_S = 1800
 VERIFY_INTERVAL_S = 21600
 WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
@@ -73,10 +72,18 @@ class Heartbeat:
                     Job(kind="verify", payload={"source_id": d.id, "interval_s": VERIFY_INTERVAL_S},
                         priority=10)
                 )
-            if not self.engine.db.has_open_job("harvest", d.id):
+            if (
+                self.config.harvest.enabled
+                and d.seeds
+                and not self.engine.db.has_open_job("harvest", d.id)
+            ):
                 self.engine.db.enqueue(
                     Job(kind="harvest",
-                        payload={"source_id": d.id, "interval_s": HARVEST_INTERVAL_S, "limit": 20},
+                        payload={
+                            "source_id": d.id,
+                            "interval_s": self.config.harvest.interval_s,
+                            "limit": 20,
+                        },
                         priority=50)
                 )
             # Providers that need access are onboarded by the browser agent, and

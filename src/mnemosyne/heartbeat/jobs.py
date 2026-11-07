@@ -81,10 +81,15 @@ async def handle_verify(ctx: JobContext, job: Job) -> dict | None:
 
 @handler("harvest")
 async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
+    harvest = ctx.config.harvest
+    if not harvest.enabled:
+        # paused: one job per source stays parked without calling the provider
+        return {"interval_s": harvest.no_seed_interval_s}
     source_id = job.payload["source_id"]
     descriptor = ctx.engine.catalog.get(source_id)
     if not descriptor or not descriptor.seeds:
-        return None
+        # nothing to rotate: park instead of replaying an empty run forever
+        return {"interval_s": harvest.no_seed_interval_s}
     index = int(job.payload.get("seed_index", 0))
     seed = descriptor.seeds[index % len(descriptor.seeds)]
     saved = await ctx.engine.harvest(source_id, seed, limit=int(job.payload.get("limit", 20)))
@@ -94,9 +99,11 @@ async def handle_harvest(ctx: JobContext, job: Job) -> dict | None:
         return {
             "seed_index": index + 1,
             "_activity": f"harvest {source_id} « {seed} » → {saved} nouveaux",
+            # productive source: keep the 6 h cadence
+            "interval_s": harvest.interval_s,
         }
-    # an empty harvest is a silent run: hidden from the sidebar by default
-    return {"seed_index": index + 1}
+    # an empty harvest backs off to once a day: no point hammering a provider
+    return {"seed_index": index + 1, "interval_s": harvest.empty_interval_s}
 
 
 @handler("warmup")
