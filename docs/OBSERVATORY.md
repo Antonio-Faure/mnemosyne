@@ -33,11 +33,11 @@ restent aussi silencieux ; seuls les runs qui produisent quelque chose
 
 ## L'écran
 
-- **Gauche** : sessions groupées par jour, colorées par type, **repliables**
-  (bouton de l'en-tête ou chevron, état mémorisé). Deux warmups distincts :
-  **`système`** (run du job planificateur, gris — aucun LLM) et
-  **`navigateur`** (la tâche d'agent postée par ce job, turquoise — compte
-  Gmail/navigation, coût LLM). Badges `système` / `navigateur` / `codeur`.
+- **Gauche** : sessions groupées par jour, colorées par type, **dockées à
+  partir de 980 px** et en **tiroir** en dessous. Lignes compactes : titre sur
+  deux lignes, heure · durée · événements, état. Filtres Tout / Tâches /
+  Système, et bascule des runs silencieux. Les wrappers `agency`/`warmup` et
+  les jobs vides restent silencieux.
 - **Centre** : canvas type Make — **Agency** (le moteur de la file, toujours
   affiché au-dessus, et **étape d'ouverture** : c'est lui qui met la mission
   en file), Orchestrateur (le superviseur), Navigateur, Mailbox,
@@ -54,10 +54,10 @@ restent aussi silencieux ; seuls les runs qui produisent quelque chose
   Le graphe est **cadré automatiquement** (ouverture, repli du panneau,
   redimensionnement) pour qu'aucun nœud ni lien ne reste hors champ ; les
   tailles de nœuds et les handles ont un fallback avant mesure DOM.
-- **Droite** : panneau **flottant** au-dessus du canvas et **repliable**
-  (bouton de l'en-tête, état mémorisé). Il montre **uniquement l'étape en
-  cours** (pas d'onglets) : il suit l'événement de la timeline (Agency,
-  Orchestrateur, Navigateur, Codeur, Mailbox, Job). **Un seul bloc est actif**
+- **Droite** : panneau de l'étape **docké/flottant à partir de 1500 px**,
+  **tiroir** en dessous (le canvas garde toute sa largeur). Il montre
+  **uniquement l'étape en cours** (pas d'onglets) : il suit l'événement de la
+  timeline (Agency, Orchestrateur, Navigateur, Codeur, Mailbox, Job). **Un seul bloc est actif**
   (contour tournant) : celui de l'événement courant. Les événements sont rendus
   comme un **transcript lisible** : bloc *Session ouverte / mission en file*
   (titre de la mission), bloc *Mission* (objectif complet), messages

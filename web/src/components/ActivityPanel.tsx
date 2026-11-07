@@ -14,6 +14,7 @@ import {
   Network,
   Sparkles,
   Wrench,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -40,6 +41,10 @@ interface Props {
   step: NodeId;
   pinned: boolean;
   loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+  overlay?: boolean;
+  onClose?: () => void;
   onFollow: () => void;
   onSeek: (index: number) => void;
 }
@@ -72,7 +77,7 @@ function pretty(value: unknown): string {
 }
 
 function Meta({ children }: { children: ReactNode }) {
-  return <div className="text-[10px] text-slate-500">{children}</div>;
+  return <div className="text-[10px] text-slate-400">{children}</div>;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -151,14 +156,14 @@ function ObjectRow({ item }: { item: Record<string, unknown> }) {
         <span
           key={key}
           title={inlineValue(value)}
-          className="max-w-full truncate font-mono text-[9.5px] text-slate-400"
+          className="max-w-full truncate font-mono text-[10px] text-slate-400"
         >
-          <span className="text-slate-500">{fieldLabel(key)}</span>{" "}
+          <span className="text-slate-400">{fieldLabel(key)}</span>{" "}
           {inlineValue(value)}
         </span>
       ))}
       {Object.keys(item).filter((key) => key !== labelKey).length > rest.length && (
-        <span className="text-[9px] text-slate-500">
+        <span className="text-[9px] text-slate-400">
           +{Object.keys(item).filter((key) => key !== labelKey).length - rest.length}
         </span>
       )}
@@ -169,7 +174,7 @@ function ObjectRow({ item }: { item: Record<string, unknown> }) {
 /** Structured value: labelled fields, link URLs, chips for simple lists. */
 function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   if (value === null || value === undefined) {
-    return <span className="text-slate-500">—</span>;
+    return <span className="text-slate-400">—</span>;
   }
   if (typeof value === "string") {
     if (URL_RE.test(value)) {
@@ -216,7 +221,7 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
             </span>
           ))}
           {value.length > shown.length && (
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               +{value.length - shown.length} autres
             </span>
           )}
@@ -236,7 +241,7 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
             <ObjectRow key={index} item={item} />
           ))}
           {value.length > rows.length && (
-            <div className="text-[10px] text-slate-500">
+            <div className="text-[10px] text-slate-400">
               +{value.length - rows.length} autres
             </div>
           )}
@@ -252,7 +257,7 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
           </li>
         ))}
         {value.length > shown.length && (
-          <li className="text-[10px] text-slate-500">
+          <li className="text-[10px] text-slate-400">
             +{value.length - shown.length} autres
           </li>
         )}
@@ -261,12 +266,12 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   }
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>);
-    if (!entries.length) return <span className="text-slate-500">(vide)</span>;
+    if (!entries.length) return <span className="text-slate-400">(vide)</span>;
     return (
       <div className={depth ? "ml-2 space-y-1 border-l border-ink-600 pl-2" : "space-y-1"}>
         {entries.map(([key, item]) => (
           <div key={key}>
-            <div className="text-[9px] uppercase tracking-wider text-slate-500">
+            <div className="text-[9px] uppercase tracking-wider text-slate-400">
               {fieldLabel(key)}
             </div>
             <div className="mt-0.5">
@@ -315,7 +320,7 @@ function PageCard({ page }: { page: PageInfo }) {
         </div>
       )}
       <div>
-        <span className="text-slate-500">Page</span> « {page.title || "sans titre"} »
+        <span className="text-slate-400">Page</span> « {page.title || "sans titre"} »
       </div>
       {page.url && (
         <a
@@ -332,7 +337,7 @@ function PageCard({ page }: { page: PageInfo }) {
           {metrics.map((metric) => (
             <span
               key={metric}
-              className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[9.5px] text-slate-400"
+              className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-400"
             >
               {metric}
             </span>
@@ -383,7 +388,7 @@ function ToolArgs({ name, args }: { name?: string; args: unknown }) {
         {described.steps.map((step, index) => (
           <li
             key={index}
-            className="flex gap-1.5 text-[11.5px] leading-snug text-slate-200"
+            className="flex gap-1.5 text-[12px] leading-snug text-slate-200"
           >
             <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-sky-400" />
             <span>{step}</span>
@@ -394,7 +399,7 @@ function ToolArgs({ name, args }: { name?: string; args: unknown }) {
         <div className="mt-1.5">
           <button
             onClick={() => setShowCode((value) => !value)}
-            className="flex items-center gap-1 text-[10px] text-slate-500 transition hover:text-slate-300"
+            className="flex items-center gap-1 text-[10px] text-slate-400 transition hover:text-slate-300"
           >
             {showCode ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
             code source
@@ -443,7 +448,7 @@ function ResultView({ text }: { text: string }) {
         )}
         <button
           onClick={() => setOpen((value) => !value)}
-          className="mt-1.5 flex items-center gap-1 text-[9.5px] text-slate-500 transition hover:text-slate-300"
+          className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400 transition hover:text-slate-300"
         >
           {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
           valeur brute
@@ -463,7 +468,7 @@ function ResultView({ text }: { text: string }) {
       <div className="rounded-md bg-ink-900/70 p-2">
         <JsonValue value={salvaged.items} />
         {salvaged.truncated && (
-          <div className="mt-1 text-[9.5px] italic text-slate-500">
+          <div className="mt-1 text-[10px] italic text-slate-400">
             liste tronquée par l'aperçu
           </div>
         )}
@@ -479,14 +484,14 @@ function ResultView({ text }: { text: string }) {
         >
           {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
           <span className="font-mono uppercase tracking-wider">sortie structurée</span>
-          <span className="ml-auto text-slate-500">{text.length} car.</span>
+          <span className="ml-auto text-slate-400">{text.length} car.</span>
         </button>
         {open ? (
           <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words font-mono text-[10.5px] leading-relaxed text-slate-300">
             {text}
           </pre>
         ) : (
-          <div className="mt-1 truncate font-mono text-[10px] text-slate-500">
+          <div className="mt-1 truncate font-mono text-[10px] text-slate-400">
             {text.slice(0, 140)}
           </div>
         )}
@@ -542,28 +547,29 @@ function Block({
           onSeek();
         }
       }}
-      className={`relative block w-full cursor-pointer overflow-hidden rounded-lg border px-2.5 py-2 text-left transition ${
+      className={`relative block w-full cursor-pointer rounded-lg px-3 py-2.5 text-left transition ${
         current
-          ? "obs-live border-sky-500/50 bg-sky-500/[0.07]"
-          : "border-transparent hover:border-ink-600 hover:bg-ink-800"
+          ? "obs-live border border-sky-500/30 bg-sky-500/[0.06]"
+          : "border border-transparent hover:bg-ink-800/60"
       }`}
       style={
         current
           ? ({ "--obs-color": color, "--obs-inset": "0px" } as CSSProperties)
           : undefined
       }
+      aria-current={current ? "step" : undefined}
     >
       <span
-        className="absolute left-0 top-0 h-full w-[2px]"
+        className="absolute -left-[20px] top-[13px] h-2 w-2 rounded-full ring-2 ring-ink-850"
         style={{ background: color }}
       />
       <div className="flex items-center gap-1.5">
-        <span className="font-mono text-[9.5px] text-slate-500">
+        <span className="font-mono text-[10px] tabular-nums text-slate-400">
           {formatTime(event.ts)}
         </span>
         <Icon size={11} style={{ color }} />
         <span
-          className="truncate text-[9.5px] font-semibold uppercase tracking-wider"
+          className="truncate text-[10px] font-semibold uppercase tracking-[0.1em]"
           style={{ color }}
         >
           {label}
@@ -573,18 +579,19 @@ function Block({
             clickEvent.stopPropagation();
             onToggle();
           }}
-          className="ml-auto rounded p-0.5 text-slate-500 transition hover:bg-ink-700 hover:text-slate-200"
+          className="ml-auto rounded p-0.5 text-slate-600 transition hover:bg-ink-700 hover:text-slate-200"
           title={open ? "Masquer les détails" : "Détails complets (JSON, horodatage)"}
+          aria-label={open ? "Masquer les détails" : "Afficher les détails"}
         >
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
       </div>
 
-      <div className="mt-1 space-y-1">{children}</div>
+      <div className="mt-1.5 space-y-1">{children}</div>
 
       {open && (
         <div className="mt-1.5 rounded-md border border-ink-600 bg-ink-900/80 p-2">
-          <div className="mb-1 font-mono text-[9.5px] text-slate-500">
+          <div className="mb-1 font-mono text-[10px] text-slate-400">
             {fullTimestamp(event.ts)} · {event.kind} · #{event.id}
           </div>
           <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-slate-300">
@@ -612,6 +619,10 @@ export function ActivityPanel({
   step,
   pinned,
   loading = false,
+  error = false,
+  onRetry,
+  overlay = false,
+  onClose,
   onFollow,
   onSeek,
 }: Props) {
@@ -658,58 +669,83 @@ export function ActivityPanel({
   };
 
   return (
-    <aside className="absolute bottom-4 right-4 top-4 z-20 flex w-[420px] flex-col overflow-hidden rounded-xl border border-ink-600 bg-ink-850/95 shadow-2xl backdrop-blur">
-      <div className="border-b border-ink-700 p-3">
-        <div className="flex items-center gap-2">
+    <aside
+      className={`${
+        overlay
+          ? "fixed bottom-3 right-3 top-[68px] z-40 w-[min(500px,calc(100vw-24px))] rounded-xl shadow-2xl"
+          : "absolute bottom-4 right-4 top-4 z-20 w-[440px]"
+      } flex flex-col overflow-hidden border border-ink-600/90 bg-ink-850/95 backdrop-blur-md`}
+      aria-label="Étape en cours"
+    >
+      <div className="shrink-0 border-b border-ink-700/80 px-4 py-3">
+        <div className="flex items-center gap-2.5">
           <span
-            className="grid h-6 w-6 place-items-center rounded-md"
-            style={{ background: `${meta.color}1f`, color: meta.color }}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg ring-1 ring-inset"
+            style={{
+              background: `${meta.color}14`,
+              color: meta.color,
+              boxShadow: `inset 0 0 0 1px ${meta.color}24`,
+            }}
           >
-            <Icon size={13} />
+            <Icon size={14} strokeWidth={1.9} />
           </span>
           <div className="min-w-0">
-            <div className="text-[9px] uppercase tracking-[0.20em] text-slate-500">
-              étape en cours
+            <div className="text-[9px] font-medium uppercase tracking-[0.14em] text-slate-400">
+              Étape en cours
             </div>
-            <div className="text-[12.5px] font-semibold text-slate-100">
+            <div className="mt-0.5 truncate text-[14px] font-semibold tracking-tight text-slate-100">
               {stepLabel}
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5">
-            <span className="text-[10px] text-slate-500">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <span className="font-mono text-[10px] tabular-nums text-slate-400">
               {loading
-                ? "chargement…"
+                ? "…"
                 : session
-                  ? `${filtered.length} événement${filtered.length > 1 ? "s" : ""}`
+                  ? `${filtered.length} év.`
                   : "—"}
             </span>
             {pinned ? (
               <button
                 onClick={onFollow}
-                className="rounded-md bg-sky-500/15 px-2 py-1 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/40 transition hover:bg-sky-500/25"
+                className="rounded-md bg-sky-500/15 px-2 py-1 text-[10px] font-medium text-sky-300 ring-1 ring-inset ring-sky-500/30 transition hover:bg-sky-500/25"
                 title="Revenir au suivi automatique de la timeline"
               >
                 suivre
               </button>
             ) : (
               <span
-                className="rounded-md bg-ink-700 px-2 py-1 text-[10px] text-slate-400"
+                className="rounded-md bg-ink-700/70 px-2 py-1 text-[10px] text-slate-400"
                 title="Le panneau suit automatiquement l'étape en cours. Cliquez un nœud du canvas pour épingler une étape."
               >
                 suivi auto
               </span>
             )}
+            {overlay && (
+              <button
+                onClick={onClose}
+                className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-ink-800 hover:text-slate-200"
+                title="Fermer l'étape"
+                aria-label="Fermer l'étape en cours"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
         {session && (
-          <div className="mt-2 truncate font-mono text-[9.5px] text-slate-500">
-            {session.id} · {session.title}
+          <div className="mt-2 truncate font-mono text-[10px] text-slate-400">
+            {session.id}
+            <span className="mx-1.5 text-slate-700">·</span>
+            <span className="font-sans text-slate-400">{session.title}</span>
           </div>
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
-        {filtered.map((event) => {
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {filtered.length > 0 && (
+          <div className="relative space-y-1 border-l border-ink-700/70 pl-4">
+            {filtered.map((event) => {
           const index = indices.get(event.id) ?? 0;
           const payload = event.payload ?? {};
           const current = event.id === currentId;
@@ -732,7 +768,7 @@ export function ActivityPanel({
                   ref={current ? currentRef : undefined}
                 >
                   <Block {...common} label="Mission" icon={Flag} color="#22d3ee">
-                    <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-slate-200">
+                    <p className="whitespace-pre-wrap break-words text-[12.5px] leading-[1.65] text-slate-200/95">
                       {String(payload.objective ?? "—")}
                     </p>
                     <Meta>
@@ -758,7 +794,7 @@ export function ActivityPanel({
                     {payload.text ? (
                       <Markdown text={String(payload.text)} />
                     ) : (
-                      <p className="text-[11.5px] italic text-slate-500">
+                      <p className="text-[11.5px] italic text-slate-400">
                         (pas de texte — l'agent appelle un outil)
                       </p>
                     )}
@@ -851,7 +887,7 @@ export function ActivityPanel({
                       </div>
                     )}
                     {described.kind === "empty" && !artifacts.length && (
-                      <div className="text-[11px] italic text-slate-500">
+                      <div className="text-[11px] italic text-slate-400">
                         Aucune sortie
                       </div>
                     )}
@@ -875,7 +911,7 @@ export function ActivityPanel({
                     icon={MessageSquare}
                     color="#fbbf24"
                   >
-                    <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-slate-200">
+                    <p className="whitespace-pre-wrap break-words text-[12.5px] leading-[1.65] text-slate-200/95">
                       {String(payload.body || payload.preview || "—")}
                     </p>
                   </Block>
@@ -937,7 +973,7 @@ export function ActivityPanel({
                     color="#60a5fa"
                   >
                     {payload.note && (
-                      <p className="whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-slate-300">
+                      <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-slate-300">
                         {String(payload.note)}
                       </p>
                     )}
@@ -1028,13 +1064,37 @@ export function ActivityPanel({
               );
           }
         })}
+          </div>
+        )}
         {!filtered.length && (
-          <div className="p-3 text-[12px] text-slate-500">
-            {loading
-              ? "chargement de la session…"
-              : session
-                ? "Aucun événement pour cette étape."
-                : "Aucune session sélectionnée."}
+          <div className="flex h-full min-h-[200px] flex-col items-center justify-center px-6 text-center">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-ink-800 text-slate-600 ring-1 ring-inset ring-ink-700">
+              <Icon size={18} />
+            </span>
+            <p className="mt-3 text-[12px] font-medium text-slate-300">
+              {loading
+                ? "Chargement de la session…"
+                : error
+                  ? "Timeline indisponible"
+                  : session
+                    ? "Aucun événement pour cette étape"
+                    : "Aucune session sélectionnée"}
+            </p>
+            <p className="mt-1 max-w-[28ch] text-[10.5px] leading-relaxed text-slate-400">
+              {error
+                ? "La lecture des événements a échoué."
+                : session
+                  ? "La timeline de cette étape est vide pour l'instant."
+                  : "Choisissez une session dans la liste pour dérouler son replay."}
+            </p>
+            {error && onRetry && (
+              <button
+                onClick={onRetry}
+                className="mt-3 rounded-md border border-ink-600 bg-ink-800 px-2.5 py-1 text-[10.5px] text-slate-300 transition hover:border-sky-500/40 hover:text-sky-200"
+              >
+                Réessayer
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -50,6 +50,17 @@ export function formatTime(iso: string | null | undefined): string {
   });
 }
 
+/** HH:MM — for dense navigation rows. */
+export function formatClock(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function fullTimestamp(iso: string | null | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);

@@ -5,7 +5,9 @@ import { ActivityPanel } from "./components/ActivityPanel";
 import { Canvas } from "./components/Canvas";
 import { Header } from "./components/Header";
 import { ReplayBar } from "./components/ReplayBar";
-import { Sidebar } from "./components/Sidebar";import { useSessionStream } from "./hooks/useSessionStream";
+import { Sidebar } from "./components/Sidebar";
+import { useSessionStream } from "./hooks/useSessionStream";
+import { useViewport } from "./hooks/useViewport";
 import {
   fetchSessionEvents,
   fetchSessions,
@@ -13,6 +15,7 @@ import {
   sessionIsLive,
 } from "./lib/api";
 import { eventNode, isRenderable, type NodeId } from "./lib/events";
+import { formatTime } from "./lib/format";
 import type { ObsEvent, Session } from "./lib/types";
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32] as const;
@@ -31,6 +34,7 @@ function stepSpeed(current: number, faster: boolean): number {
 }
 
 export default function App() {
+  const { isWide, isMedium } = useViewport();
   const [includeSilent, setIncludeSilent] = useState(false);
   const [family, setFamily] = useState<"all" | "task" | "job">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -41,19 +45,28 @@ export default function App() {
   const [speed, setSpeed] = useState(1);
   const [pinnedNode, setPinnedNode] = useState<NodeId | null>(null);
   const [streamAfter, setStreamAfter] = useState(0);
-  const [sessionsOpen, setSessionsOpen] = useState(
-    () => localStorage.getItem("obs.sessionsOpen") !== "0",
-  );
-  const [stepOpen, setStepOpen] = useState(
-    () => localStorage.getItem("obs.stepOpen") !== "0",
-  );
+  const [sessionsOpen, setSessionsOpen] = useState(() => {
+    const stored = localStorage.getItem("obs.v2.sessionsOpen");
+    return stored === null ? window.innerWidth >= 980 : stored === "1";
+  });
+  const [stepOpen, setStepOpen] = useState(() => {
+    const stored = localStorage.getItem("obs.v2.stepOpen");
+    return stored === null ? window.innerWidth >= 1500 : stored === "1";
+  });
 
   useEffect(() => {
-    localStorage.setItem("obs.sessionsOpen", sessionsOpen ? "1" : "0");
+    localStorage.setItem("obs.v2.sessionsOpen", sessionsOpen ? "1" : "0");
   }, [sessionsOpen]);
   useEffect(() => {
-    localStorage.setItem("obs.stepOpen", stepOpen ? "1" : "0");
+    localStorage.setItem("obs.v2.stepOpen", stepOpen ? "1" : "0");
   }, [stepOpen]);
+
+  // Crossing a breakpoint folds the zone that no longer fits; it never
+  // re-opens by itself (the header buttons do that).
+  useEffect(() => {
+    if (!isWide) setStepOpen(false);
+    if (!isMedium) setSessionsOpen(false);
+  }, [isWide, isMedium]);
 
   const sessionsQuery = useQuery({
     queryKey: ["sessions", includeSilent, family],
@@ -218,6 +231,28 @@ export default function App() {
   const step: NodeId =
     pinnedNode ??
     (currentEvent ? eventNode(currentEvent) ?? "orchestrator" : "orchestrator");
+  const timeLabel = currentEvent ? formatTime(currentEvent.ts) : null;
+
+  const toggleSessions = () => {
+    setSessionsOpen((open) => {
+      const next = !open;
+      if (next && !isMedium) setStepOpen(false);
+      return next;
+    });
+  };
+  const toggleStep = () => {
+    setStepOpen((open) => {
+      const next = !open;
+      if (next && !isMedium) setSessionsOpen(false);
+      return next;
+    });
+  };
+  const closeOverlays = () => {
+    if (!isMedium) setSessionsOpen(false);
+    if (!isWide) setStepOpen(false);
+  };
+  const showBackdrop =
+    (!isMedium && sessionsOpen) || (!isWide && stepOpen);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-ink-900 text-slate-200">
@@ -228,8 +263,8 @@ export default function App() {
         canNext={Boolean(newer)}
         sessionsOpen={sessionsOpen}
         stepOpen={stepOpen}
-        onToggleSessions={() => setSessionsOpen((value) => !value)}
-        onToggleStep={() => setStepOpen((value) => !value)}
+        onToggleSessions={toggleSessions}
+        onToggleStep={toggleStep}
         onPrev={() => {
           if (older) {
             setSelectedId(older.id);
@@ -243,8 +278,17 @@ export default function App() {
           }
         }}
         onReplay={replay}
+        loading={sessionsQuery.isPending}
       />
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        {showBackdrop && (
+          <button
+            type="button"
+            aria-label="Fermer le panneau"
+            onClick={closeOverlays}
+            className="fixed inset-x-0 bottom-0 top-14 z-30 bg-ink-950/50 backdrop-blur-[1px]"
+          />
+        )}
         {sessionsOpen && (
           <Sidebar
             sessions={sessions}
@@ -252,22 +296,33 @@ export default function App() {
             onSelect={(id) => {
               setSelectedId(id);
               setPlaying(false);
+              if (!isMedium) setSessionsOpen(false);
             }}
             includeSilent={includeSilent}
             onIncludeSilent={setIncludeSilent}
             family={family}
             onFamily={setFamily}
             hiddenCount={sessionsQuery.data?.silent_count ?? 0}
+            loading={sessionsQuery.isPending}
+            error={sessionsQuery.isError}
+            onRetry={() => void sessionsQuery.refetch()}
+            overlay={!isMedium}
+            onClose={() => setSessionsOpen(false)}
           />
         )}
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
-            <div className={`absolute inset-0 ${stepOpen ? "pr-[452px]" : ""}`}>
+            <div
+              className={`absolute inset-0 ${
+                stepOpen && isWide ? "pr-[472px]" : ""
+              }`}
+            >
               <Canvas
                 session={selected}
                 visible={visible}
                 onFocus={setPinnedNode}
-                panelOpen={stepOpen}
+                panelOpen={stepOpen && isWide}
+                sidebarOpen={sessionsOpen && isMedium}
               />
             </div>
             {stepOpen && (
@@ -278,6 +333,10 @@ export default function App() {
                 step={step}
                 pinned={pinnedNode !== null}
                 loading={Boolean(selectedId) && eventsQuery.isPending}
+                error={eventsQuery.isError}
+                onRetry={() => void eventsQuery.refetch()}
+                overlay={!isWide}
+                onClose={() => setStepOpen(false)}
                 onFollow={() => setPinnedNode(null)}
                 onSeek={seek}
               />
@@ -288,6 +347,7 @@ export default function App() {
             cursor={cursor}
             playing={playing}
             speed={speed}
+            timeLabel={timeLabel}
             live={live}
             following={following}
             onSeek={seek}

@@ -14,8 +14,41 @@ body,
 
 body {
   margin: 0;
-  background: #0b0f14;
+  background: #080c11;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #38bdf866;
+  color: #f8fafc;
+}
+
+:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+@keyframes obs-spin {
+  to {
+    --obs-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 * {
@@ -68,12 +101,6 @@ body {
   initial-value: 0deg;
 }
 
-@keyframes obs-spin {
-  to {
-    --obs-angle: 360deg;
-  }
-}
-
 .obs-live {
   position: relative;
 }
@@ -106,10 +133,11 @@ body {
 
 /* Assistant markdown, sized for the activity transcript. */
 .md {
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 12.5px;
+  line-height: 1.65;
   color: #dbe3ee;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .md > :first-child {

@@ -33,6 +33,8 @@ interface Props {
   onFocus: (node: NodeId | null) => void;
   /** triggers a re-fit when the floating panel opens/closes */
   panelOpen: boolean;
+  /** triggers a re-fit when the docked sessions rail opens/closes */
+  sidebarOpen: boolean;
 }
 
 const COLORS = {
@@ -47,8 +49,8 @@ const COLORS = {
 /** Give React Flow a size before its ResizeObserver fires: otherwise nodes
  *  (and their edges) stay `visibility:hidden` until measured — or forever when
  *  the observer misses them (background tab, panel resize). */
-const NODE_WIDTH = 196;
-const NODE_HEIGHT = 68;
+const NODE_WIDTH = 204;
+const NODE_HEIGHT = 72;
 
 /** Bounding box of the fixed graph layout (used to frame it without waiting
  *  for React Flow's DOM measurements). */
@@ -69,7 +71,7 @@ const NODE_HANDLES: NodeHandle[] = [
   { id: "sr", type: "source", position: Position.Right, x: NODE_WIDTH, y: NODE_HEIGHT / 2 },
 ];
 
-export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
+export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Props) {
   const state = useMemo(() => computeState(visible), [visible]);
   const isJob = session?.family === "job";
   const isAgency = session?.type === "agency";
@@ -112,7 +114,7 @@ export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
   useEffect(() => {
     const timer = window.setTimeout(fitGraph, 80);
     return () => window.clearTimeout(timer);
-  }, [fitGraph, panelOpen]);
+  }, [fitGraph, panelOpen, sidebarOpen]);
 
   useEffect(() => {
     const onResize = () => {
@@ -191,7 +193,7 @@ export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
         position: { x: 400, y: 200 },
         data: {
           label: "Mailbox",
-          subtitle: "messages entre agents",
+          subtitle: "messages",
           color: COLORS.mailbox,
           icon: Inbox,
           active: last === "mailbox",
@@ -369,9 +371,9 @@ export function Canvas({ session, visible, onFocus, panelOpen }: Props) {
           onFocus(node.id as NodeId);
         }}
         onPaneClick={() => onFocus(null)}
-        className="bg-ink-900"
+        className="bg-[#080c11]"
       >
-        <Background color="#1b2534" gap={24} size={1} />
+        <Background color="#16202d" gap={26} size={1} />
         <Controls
           showInteractive={false}
           className="!rounded-lg !border !border-ink-600 !bg-ink-800 [&_button]:!border-ink-600 [&_button]:!bg-ink-800 [&_button]:!text-slate-300"

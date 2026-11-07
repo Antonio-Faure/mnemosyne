@@ -25,16 +25,16 @@ export function AgentNode({ data }: NodeProps<AgentNodeType>) {
     <motion.div
       animate={data.pulse ? { scale: [1, 1.03, 1] } : { scale: 1 }}
       transition={{ duration: 0.45 }}
-      className={`w-[196px] rounded-xl border px-3 py-2.5 ${
-        data.muted ? "opacity-45" : "opacity-100"
+      className={`w-[204px] rounded-xl border px-3.5 py-3 ${
+        data.muted ? "opacity-55" : "opacity-100"
       } ${lit ? "obs-live" : ""}`}
       style={
         {
           borderColor: lit ? data.color : "#243045",
-          background: "rgba(14, 20, 27, 0.94)",
+          background: "rgba(12, 18, 26, 0.96)",
           boxShadow: lit
-            ? `0 0 0 1px ${data.color}55, 0 0 26px ${data.color}2e`
-            : "0 8px 24px rgba(0, 0, 0, 0.25)",
+            ? `0 0 0 1px ${data.color}55, 0 12px 30px rgba(0, 0, 0, 0.38)`
+            : "0 10px 28px rgba(0, 0, 0, 0.28)",
           "--obs-color": data.color,
         } as CSSProperties
       }
@@ -54,11 +54,11 @@ export function AgentNode({ data }: NodeProps<AgentNodeType>) {
           <Icon size={15} />
         </span>
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-semibold text-slate-100">
+          <div className="truncate text-[13.5px] font-semibold tracking-tight text-slate-100">
             {data.label}
           </div>
           {data.subtitle && (
-            <div className="truncate text-[10.5px] text-slate-400">{data.subtitle}</div>
+            <div className="mt-0.5 truncate text-[10.5px] text-slate-400">{data.subtitle}</div>
           )}
         </div>
         {data.badge && (
