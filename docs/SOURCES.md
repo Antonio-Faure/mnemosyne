@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **45**
-- Sources actives : **34**
+- Sources déclarées : **46**
+- Sources actives : **35**
 - Sources désactivées : **11**
-## Sources actives (34)
+## Sources actives (35)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -31,6 +31,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | bsb_collection | Bavarian State Library — digital collections (IIIF) | Bayerische Staatsbibliothek, München | DE | iiif | none | varies | Bayerische Staatsbibliothek — vérifier par notice (domaine public pour une grande partie) ; Collection IIIF « top » (iiif/presentation/v2/collection/top) |
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
 | colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries | US | iiif | none | varies | University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright) ; manifeste unique par notice (pas de Collection IIIF) |
+| cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Européana), vérifier `rights` et le fournisseur |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
@@ -76,8 +77,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 ## Raccourcis licence
 
-- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `kmska`, `llgc`, `ndl`,
-  `rijksmuseum`, `smk`, `smithsonian` (plus `wikidata` pour les données).
+- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `cooper_hewitt`, `kmska`,
+  `llgc`, `ndl`, `rijksmuseum`, `smk`, `smithsonian` (plus `wikidata` pour les
+  données).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`
   — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
   vues restent « non affichables » par notice et sont ignorées.

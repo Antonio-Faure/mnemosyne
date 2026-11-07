@@ -1,0 +1,31 @@
+id: cooper_hewitt
+name: Cooper Hewitt, Smithsonian Design Museum — Collections
+institution: Cooper Hewitt, Smithsonian Design Museum
+country: US
+protocol: rest
+base_url: https://api.cooperhewitt.org/
+auth: none
+license: CC0-1.0
+rights: >-
+  Cooper Hewitt / Smithsonian Open Access — objects and media whose media-level
+  flag multimedia[].cc0 is true are released under CC0 1.0 Universal (public
+  domain). Only CC0 media are harvested; the object-level legal.cc0 is not the
+  licence flag, the media-level cc0 is.
+rate_limit_per_s: 0.5
+priority: 50
+tags: [museum, united-states, keyless, cc0, design, smithsonian, graphql]
+seeds:
+  - "steam engine"
+  - "industrial design"
+  - "factory machinery"
+  - "steam locomotive"
+  - "textile design"
+notes: >-
+  Public GraphQL API (no key, no account). GET https://api.cooperhewitt.org/?query=<url-encoded>
+  returns JSON (Accept: application/json). Query object(general: "<q>", hasImages: true,
+  size: <n, max 250>, page: <p>) { id summary date maker { id summary } legal identifier
+  department classification multimedia }. summary/date/legal/identifier/department/
+  classification/multimedia are JSON scalars (returned complete); maker is [Agent] and
+  needs subfields. Keep only media with multimedia[].cc0 == true and a non-empty url
+  (original.url, else large.url; thumbnail preview.url). Pagination via size/page (max 250).
+  Anonymous rate limit ~1 req/s and ~30/min (HTTP 429 + Retry-After, handled by HttpClient).
