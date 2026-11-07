@@ -287,7 +287,9 @@ class Heartbeat:
             job.id,
             status="done",
             activity=activity,
-            notable=job.kind not in SILENT_JOB_KINDS,
+            # wrappers always silent; other jobs keep the activity rule
+            # (no activity = silent run, never a sidebar entry)
+            notable=False if job.kind in SILENT_JOB_KINDS else None,
             extra={
                 "duration_s": round(time.monotonic() - started, 1),
                 "updates": updates or {},

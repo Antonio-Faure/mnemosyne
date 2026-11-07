@@ -194,6 +194,38 @@ async def test_task_wrapper_job_sessions_stay_silent(config, monkeypatch, kind):
         await heartbeat.aclose()
 
 
+@pytest.mark.asyncio
+async def test_empty_mechanical_job_stays_silent(config, monkeypatch):
+    """A harvest with no new asset is a silent run (no `_activity`)."""
+    from mnemosyne.heartbeat import scheduler as sch
+    from mnemosyne.heartbeat.jobs import HANDLERS
+    from mnemosyne.models import Job
+
+    async def handler(ctx, job):
+        return {"seed_index": 42}
+
+    monkeypatch.setitem(HANDLERS, "harvest", handler)
+    heartbeat = sch.Heartbeat(config)
+    try:
+        job_id = heartbeat.engine.db.enqueue(
+            Job(
+                kind="harvest",
+                payload={"source_id": "x", "seed_index": 1},
+                run_at="2000-01-01T00:00:00+00:00",
+            )
+        )
+        claimed = heartbeat.engine.db.claim_due_jobs("2100-01-01T00:00:00+00:00", 5)
+        job = next(j for j in claimed if j.id == job_id)
+        await heartbeat._run_job(job)
+
+        session = heartbeat.engine.db.get_session(f"job:{job_id}")
+        assert session["notable"] == 0
+        visible = {s["id"] for s in heartbeat.engine.db.list_sessions()}
+        assert f"job:{job_id}" not in visible
+    finally:
+        await heartbeat.aclose()
+
+
 def test_backfill_creates_sessions_for_past_tasks(config):
     db = Database(config.db_file())
     task_id = db.enqueue_task("browser", "old warmup", payload={"kind": "warmup"})
