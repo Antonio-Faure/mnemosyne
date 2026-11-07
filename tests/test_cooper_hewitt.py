@@ -252,7 +252,8 @@ async def test_pagination_walks_pages_until_limit():
                     "multimedia": [_media("m2", cc0=False)],
                 },
             ]
-        }
+        },
+        "extensions": {"pagination": {"number_of_pages": 2, "current_page": 0}},
     }
     # page 2: two cc0 objects -> 2 assets, reaching the limit
     page2 = {
@@ -281,8 +282,8 @@ async def test_pagination_walks_pages_until_limit():
     assert len(assets) == 2
     assert {a.source_asset_id for a in assets} == {"m3", "m4"}
     assert len(http.calls) == 2
-    assert "page: 1" in http.calls[0][1]["params"]["query"]
-    assert "page: 2" in http.calls[1][1]["params"]["query"]
+    assert "page: 0" in http.calls[0][1]["params"]["query"]
+    assert "page: 1" in http.calls[1][1]["params"]["query"]
 
 
 async def test_query_string_is_escaped():

@@ -99,12 +99,17 @@ class CooperHewittConnector(Connector):
             return []
 
         q = _gql_string(str(query).strip())
-        page_size = max(1, min(limit, MAX_PAGE_SIZE))
+        # A search returns many objects without CC0 media; fetching only `limit`
+        # objects can yield zero assets after filtering. Ask for a wider page
+        # (still polite: one request) and cap the normalized assets at `limit`.
+        page_size = max(1, min(max(limit, 10), MAX_PAGE_SIZE))
         max_pages = max(1, int(filters.get("max_pages", DEFAULT_MAX_PAGES)))
 
         assets: list[Asset] = []
-        page = 1
-        while len(assets) < limit and page <= max_pages:
+        # The public API is 0-indexed despite the docs example showing "page: 1"
+        # for the first rows: page 0 returns the first page (page 1 is empty).
+        page = 0
+        while len(assets) < limit and page < max_pages:
             gql = (
                 f'{{ object(general: "{q}", hasImages: true, size: {page_size}, '
                 f"page: {page}) {{ {_OBJECT_FIELDS} }} }}"
@@ -120,8 +125,14 @@ class CooperHewittConnector(Connector):
                     assets.extend(self._object_to_assets(obj))
                 if len(assets) >= limit:
                     break
-            # a short page means the result set is exhausted
-            if len(objects) < page_size:
+            pagination = (data.get("extensions") or {}).get("pagination") or {}
+            total_pages = pagination.get("number_of_pages")
+            if total_pages is not None:
+                # the API exposes a real page count: stop at the last page
+                if page + 1 >= int(total_pages):
+                    break
+            elif len(objects) < page_size:
+                # no metadata: a short page means the result set is exhausted
                 break
             page += 1
 
