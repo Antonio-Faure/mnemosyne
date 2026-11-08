@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **57**
-- Sources actives : **46**
+- Sources déclarées : **58**
+- Sources actives : **47**
 - Sources désactivées : **11**
-## Sources actives (46)
+## Sources actives (47)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -54,6 +54,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | nb_no | National Library of Norway — Nasjonalbiblioteket | National Library of Norway | NO | rest | none | PDM-1.0 | Bibliothèque nationale de Norvège — API REST publique sans clé (api.nb.no/catalog/v1/items) ; ne garder que les notices `accessInfo.isPublicDomain == true` et `accessInfo.isDigital == true` (viewability ≠ « NONE ») ; images via manifeste IIIF (première page des livres multi-pages), vignette `thumbnail` si présente ; pagination 0-based (`page`, `size` ≤ 100, `totalPages`) ; aucun scraping HTML, aucune image téléchargée |
 | ndl | National Diet Library Digital Collections (IIIF) | National Diet Library (国立国会図書館), Tokyo | JP | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | 国立国会図書館 National Diet Library, JAPAN — Public Domain Mark (PDM) ; manifeste unique par notice (pas de Collection IIIF) |
 | nga | National Gallery of Art (Washington, DC) | National Gallery of Art | US | iiif | none | varies | National Gallery of Art — Open Access (images du domaine public libres, y compris usage commercial ; métadonnées CC0) ; vérifier les droits par notice ; manifeste unique par objet (pas de Collection IIIF) |
+| north_dakota | North Dakota Digital Horizons | North Dakota State Library / NDSU Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | North Dakota State Library / NDSU Libraries — API CONTENTdm publique sans clé (digitalhorizonsonline.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », « Copyright held by the University Archives. », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
 | princeton_art_museum | Princeton University Art Museum (IIIF) | Princeton University Art Museum, Princeton, NJ | US | iiif | none | varies | Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
@@ -90,9 +91,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 - **Domaine public / CC0** : `atlanta`, `artic`, `bsb`, `byu`, `cleveland`, `cooper_hewitt`,
   `digital_commonwealth`, `kmska`, `llgc`, `met`, `nasa`,
-  `nb_no`, `ndl`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
+  `nb_no`, `ndl`, `north_dakota`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
   `wikidata` pour les données ; `nasa` = domaine public US, pas CC0 ; `atlanta`,
-  `byu`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
+  `byu`, `north_dakota`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
   notice).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
   `eol`, `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1
