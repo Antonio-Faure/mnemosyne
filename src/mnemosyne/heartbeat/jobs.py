@@ -277,7 +277,34 @@ async def handle_resolver(ctx: JobContext, job: Job) -> dict | None:
     if ran:
         log.info("resolver background ran: %s", ran.get("task_id"))
         return {"_activity": f"résolveur — tâche #{ran.get('task_id')}"}
-    return None
+    if not ctx.config.resolver.auto_feed:
+        return None
+    return _feed_resolver(ctx)
+
+
+def _feed_resolver(ctx: JobContext) -> dict | None:
+    """Idle resolver: queue the next corpus sentence nobody has processed yet.
+
+    The loop is permanent on its own: without this, a human had to run
+    `resolve enqueue` after every verdict.
+    """
+    from mnemosyne.db import Database
+    from mnemosyne.resolver.queue import enqueue_sentence
+
+    db = Database(ctx.config.db_file())
+    try:
+        entry = db.next_corpus_sentence()
+        if entry is None:
+            return None
+        segment_id = str(entry.get("id") or "")
+        task_id, reason = enqueue_sentence(db, segment_id)
+    finally:
+        db.close()
+    if not task_id:
+        log.debug("resolver feeder skipped %s: %s", segment_id, reason)
+        return None
+    log.info("resolver feeder queued task #%s for %s", task_id, segment_id)
+    return {"_activity": f"résolveur : phrase suivante #{task_id} en file"}
 
 
 @handler("telegram")

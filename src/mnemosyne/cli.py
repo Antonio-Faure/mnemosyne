@@ -294,56 +294,18 @@ def _cmd_resolve_ingest(args: argparse.Namespace) -> int:
 
 def _cmd_resolve_enqueue(args: argparse.Namespace) -> int:
     from mnemosyne.db import Database
+    from mnemosyne.resolver.queue import enqueue_sentence
 
     cfg = get_config()
     db = Database(cfg.db_file())
     try:
-        existing = db.open_resolver_task(args.segment_id)
-        if existing is not None:
-            print(f"phrase déjà en cours : tâche resolver #{existing}")
-            return 0
-        label = db.get_resolver_golden(args.segment_id)
-        corpus = None
-        if label is not None:
-            text = (label.get("segment") or {}).get("text") or ""
-            claim = label.get("claim") or {}
-            video = label.get("video") or {}
-            source = "golden"
-        else:
-            corpus = db.get_resolver_corpus(args.segment_id)
-            if corpus is None:
-                print(f"segment inconnu (ni golden, ni corpus) : {args.segment_id}")
-                return 1
-            text = corpus.get("text") or ""
-            claim = corpus.get("claim") or {}
-            video = corpus.get("video") or {}
-            source = "corpus"
-        objective = (
-            "Phrase historique à illustrer par le résolveur adversarial.\n"
-            f"Segment : {args.segment_id}\n"
-            f"Phrase : {text}\n"
-        )
-        if video.get("title") or video.get("url"):
-            objective += (
-                f"Vidéo : {video.get('title') or video.get('id') or ''}"
-                + (f" — {video['url']}" if video.get("url") else "")
-                + "\n"
-            )
-        if claim:
-            objective += f"Claim : {claim}\n"
-        objective += (
-            "Cherche dans la meta API, fais valider le candidat par l'opérateur, "
-            "et demande au biagent les sources manquantes si nécessaire."
-        )
-        payload = {"kind": "resolver", "segment_id": args.segment_id, "source": source}
-        if label is not None:
-            payload["label"] = label
-        if corpus is not None:
-            payload["corpus"] = corpus
-        task_id = db.enqueue_task("resolver", objective, payload=payload)
+        task_id, reason = enqueue_sentence(db, args.segment_id)
     finally:
         db.close()
-    print(f"tâche resolver #{task_id} en file pour {args.segment_id} ({source})")
+    if task_id is None:
+        print(f"{args.segment_id} : {reason}")
+        return 0 if "déjà en cours" in reason else 1
+    print(f"tâche resolver #{task_id} en file pour {args.segment_id} ({reason})")
     return 0
 
 

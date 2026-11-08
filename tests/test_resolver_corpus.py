@@ -156,3 +156,52 @@ def test_transcript_timestamps_given_as_strings_become_seconds(tmp_path):
     entry = load_corpus(path)[0]
     assert entry["start_s"] == 10.2
     assert entry["end_s"] == 13.3
+
+
+def test_feeder_skips_sentences_that_already_have_a_task(config):
+    from mnemosyne.resolver.queue import enqueue_sentence
+
+    db = Database(config.db_file())
+    try:
+        db.upsert_resolver_corpus(
+            [
+                {"id": "yt_a_1", "text": "The first sentence about Belgium in 1914."},
+                {"id": "yt_a_2", "text": "The second sentence about the same campaign."},
+            ]
+        )
+        assert db.next_corpus_sentence()["id"] == "yt_a_1"
+        task_id, source = enqueue_sentence(db, "yt_a_1")
+        assert task_id is not None and source == "corpus"
+        # the sentence just queued is no longer "next"
+        assert db.next_corpus_sentence()["id"] == "yt_a_2"
+        # a second attempt on the same sentence is refused
+        again, reason = enqueue_sentence(db, "yt_a_1")
+        assert again is None and "déjà en cours" in reason
+    finally:
+        db.close()
+
+
+def test_enqueue_prefers_the_golden_label_over_the_corpus(config):
+    from mnemosyne.resolver.queue import enqueue_sentence
+
+    db = Database(config.db_file())
+    try:
+        db.upsert_resolver_corpus(
+            [{"id": "yt_b_1", "text": "Corpus wording of the sentence."}]
+        )
+        db.upsert_resolver_golden(
+            [
+                {
+                    "id": "yt_b_1",
+                    "video": {"id": "b", "url": "https://youtu.be/b"},
+                    "segment": {"start_s": 0, "end_s": 3, "text": "Golden wording."},
+                    "gold": {"status": "no_match", "images": []},
+                }
+            ]
+        )
+        task_id, source = enqueue_sentence(db, "yt_b_1")
+        assert task_id is not None and source == "golden"
+        task = db.get_task(task_id)
+        assert task is not None and "Golden wording." in task["objective"]
+    finally:
+        db.close()
