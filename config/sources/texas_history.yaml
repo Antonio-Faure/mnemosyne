@@ -1,0 +1,49 @@
+id: texas_history
+name: The Portal to Texas History (UNT)
+institution: University of North Texas Libraries
+country: US
+protocol: iiif
+base_url: https://texashistory.unt.edu
+auth: none
+license: >-
+  Domaine public ou licence Creative Commons selon l'item (champ `rights` /
+  `rights.license` du manifeste IIIF) ; conditions générales :
+  https://texashistory.unt.edu/terms-of-use/
+rights: >-
+  Citation de l'institution partenaire et du Portal to Texas History (attribution
+  fournie par chaque manifeste). Politique « pas de scraping » : la recherche
+  HTML est protégée par un anti-bot Altcha.
+rate_limit_per_s: 1.0
+priority: 60
+tags: [portal-texas-history, unt, texas, us, oil-industry, petroleum, permian-basin, iiif, keyless]
+seeds:
+  - metapth50185
+  - metapth50186
+  - metapth50192
+  - metapth50193
+  - metapth50194
+  - metapth50195
+  - metapth50196
+  - metapth50197
+  - metapth50198
+  - metapth50199
+notes: >-
+  Le Portal to Texas History (UNT Libraries) agrège des documents numérisés du
+  Texas : journaux, livres, cartes et fonds photographiques, dont ceux du Permian
+  Basin Petroleum Museum (industrie pétrolière, Odessa / bassin permien). La
+  recherche par mot-clé est protégée par un défi anti-bot « Altcha »
+  (proof-of-work servi même pour `format=json`) ; la politique « pas de scraping »
+  interdit de le contourner, et l'OAI-PMH (clé libre, ouvert) n'offre pas de
+  recherche par mot-clé. Le connecteur s'appuie donc sur une liste curatée de
+  `seeds` (ARK) résolue via le chemin programmatique IIIF Presentation v2
+  (un manifeste par ARK : https://texashistory.unt.edu/ark:/67531/{ark}/manifest/).
+  Les images portent un service IIIF Image API v2 level2 ; les champs `rights` /
+  `rights.license` du manifeste donnent la licence. Voir
+  `src/mnemosyne/sources/texas_history.py`.
+extra:
+  ark_naan: "67531"
+  manifest_pattern: "https://texashistory.unt.edu/ark:/67531/{ark}/manifest/"
+  notice_pattern: "https://texashistory.unt.edu/ark:/67531/{ark}/"
+  attribution: The Portal to Texas History (UNT Libraries)
+  image_size: "!1200,1200"
+  thumbnail_size: "!400,400"

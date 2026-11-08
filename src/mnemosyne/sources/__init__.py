@@ -27,6 +27,7 @@ from mnemosyne.sources.nb_no import NbNoConnector
 from mnemosyne.sources.openverse import OpenverseConnector
 from mnemosyne.sources.pop import PopConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
+from mnemosyne.sources.texas_history import TexasHistoryConnector
 from mnemosyne.sources.wikidata import WikidataConnector
 from mnemosyne.sources.wikimedia import WikimediaConnector
 from mnemosyne.sources.wikimedia_commons_photos import WikimediaCommonsPhotosConnector
@@ -57,6 +58,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "openverse": OpenverseConnector,
     "scdl": ContentDmConnector,
     "smithsonian": SmithsonianConnector,
+    "texas_history": TexasHistoryConnector,
     "teva": ContentDmConnector,
     "mai_saint_etienne": MAISaintEtienneConnector,
     "met": MetConnector,
