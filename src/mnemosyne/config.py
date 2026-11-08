@@ -41,21 +41,6 @@ class HeartbeatConfig(BaseModel):
     stale_lock_s: int = 600
 
 
-class HarvestConfig(BaseModel):
-    """Metadata harvest cadence.
-
-    The old fixed 30-minute cadence was multiplied by every source (34 enabled
-    sources ≈ 1,600 job runs/day, almost all empty). Now a source is harvested
-    at most every `interval_s`; after an empty pass it backs off to
-    `empty_interval_s`. A source without seeds is parked (no connector call).
-    """
-
-    enabled: bool = True
-    interval_s: int = 6 * 3600  # at most 4 passes/source/day
-    empty_interval_s: int = 24 * 3600  # empty pass → once a day
-    no_seed_interval_s: int = 7 * 86400  # seedless source → parked
-
-
 class WarmupPhase(BaseModel):
     until_day: int | None = None
     outbound_per_day: int = 0
@@ -310,7 +295,6 @@ class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
-    harvest: HarvestConfig = Field(default_factory=HarvestConfig)
     reputation: ReputationConfig = Field(default_factory=ReputationConfig)
     llm: LlmConfig = Field(default_factory=LlmConfig)
     identity: IdentityConfig = Field(default_factory=IdentityConfig)

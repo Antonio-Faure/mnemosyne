@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from mnemosyne.models import Asset, Job, JobState, SourceState
+from mnemosyne.models import Job, JobState, SourceState
 from mnemosyne.util import ensure_dir, utcnow_iso
 
 #: Identifies THIS process incarnation in leases and job claims. Docker gives
@@ -39,15 +39,6 @@ CREATE TABLE IF NOT EXISTS sources (
     last_error    TEXT,
     updated_at    TEXT NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS assets (
-    id              TEXT PRIMARY KEY,
-    source_id       TEXT NOT NULL,
-    source_asset_id TEXT NOT NULL,
-    data            TEXT NOT NULL,
-    created_at      TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_assets_source ON assets(source_id);
 
 CREATE TABLE IF NOT EXISTS jobs (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -428,52 +419,6 @@ class Database:
         with self._lock:
             rows = self._conn.execute("SELECT id FROM sources ORDER BY id").fetchall()
         return [s for sid in (r["id"] for r in rows) if (s := self.get_source(sid))]
-
-    # ── assets ───────────────────────────────────────────────────────────
-    def save_assets(self, assets: list[Asset]) -> int:
-        """Insert the assets, returning the number of *new* rows.
-
-        ``ON CONFLICT(id) DO NOTHING`` skips known assets, so the return value
-        must count the real insertions (callers use it to flag a source as
-        CONNECTED): ``len(assets)`` would report fresh assets on every re-run.
-        """
-        if not assets:
-            return 0
-        inserted = 0
-        with self._lock:
-            for asset in assets:
-                cursor = self._conn.execute(
-                    """INSERT INTO assets (id, source_id, source_asset_id, data, created_at)
-                       VALUES (?, ?, ?, ?, ?)
-                       ON CONFLICT(id) DO NOTHING""",
-                    (
-                        asset.id,
-                        asset.source_id,
-                        asset.source_asset_id,
-                        asset.model_dump_json(),
-                        utcnow_iso(),
-                    ),
-                )
-                inserted += cursor.rowcount
-            self._conn.commit()
-        return inserted
-
-    def get_asset(self, asset_id: str) -> Asset | None:
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT data FROM assets WHERE id = ?", (asset_id,)
-            ).fetchone()
-        return Asset.model_validate_json(row["data"]) if row else None
-
-    def count_assets(self, source_id: str | None = None) -> int:
-        with self._lock:
-            if source_id:
-                row = self._conn.execute(
-                    "SELECT COUNT(*) AS n FROM assets WHERE source_id = ?", (source_id,)
-                ).fetchone()
-            else:
-                row = self._conn.execute("SELECT COUNT(*) AS n FROM assets").fetchone()
-        return int(row["n"]) if row else 0
 
     # ── resolver golden dataset ───────────────────────────────────────────
     def upsert_resolver_golden(self, labels: list[Any]) -> int:

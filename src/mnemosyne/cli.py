@@ -721,29 +721,6 @@ def _cmd_search(args: argparse.Namespace) -> int:
     return asyncio.run(run())
 
 
-def _cmd_harvest(args: argparse.Namespace) -> int:
-    cfg = get_config()
-
-    async def run() -> int:
-        engine = Engine(cfg)
-        try:
-            engine.catalog.sync()
-            descriptor = engine.catalog.get(args.source)
-            if descriptor is None:
-                print(f"unknown source: {args.source}")
-                return 1
-            if not descriptor.enabled:
-                print(f"source {args.source} is disabled (enabled: false); refusing to harvest")
-                return 1
-            saved = await engine.harvest(args.source, args.query, limit=args.limit)
-        finally:
-            await engine.aclose()
-        print(f"harvested {saved} new assets from {args.source}")
-        return 0
-
-    return asyncio.run(run())
-
-
 def _cmd_status(args: argparse.Namespace) -> int:
     cfg = get_config()
     engine = Engine(cfg)
@@ -753,16 +730,15 @@ def _cmd_status(args: argparse.Namespace) -> int:
             status = engine.status()
         finally:
             await engine.aclose()
-        print(f"assets total: {status['assets_total']}")
         gov = status["governor"]
         print(
             f"governor: age={gov['account_age_days']}d pressure={gov['pressure']} "
-            f"harvest today={gov['today']['harvest']}/{gov['warmup']['harvest_per_day']}"
+            f"searches today={gov['today'].get('search', 0)}"
         )
         for domain, pressure in (gov.get("pressure_by_domain") or {}).items():
             print(f"  slow domain: {domain} ×{pressure}")
         for s in status["sources"]:
-            print(f"  {s['id']:18} {s['state']:12} assets={s['asset_count']}")
+            print(f"  {s['id']:18} {s['state']}")
         return 0
 
     return asyncio.run(run())
@@ -837,12 +813,6 @@ def build_parser() -> argparse.ArgumentParser:
     psearch.add_argument("--source", action="append", default=None, help="restrict to a source id")
     psearch.add_argument("--limit", type=int, default=20)
     psearch.set_defaults(func=_cmd_search)
-
-    ph = sub.add_parser("harvest", help="fetch and store assets from one provider")
-    ph.add_argument("--source", required=True)
-    ph.add_argument("--query", required=True)
-    ph.add_argument("--limit", type=int, default=20)
-    ph.set_defaults(func=_cmd_harvest)
 
     pst = sub.add_parser("status", help="catalog + governor status")
     pst.set_defaults(func=_cmd_status)
