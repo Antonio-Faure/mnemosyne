@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **58**
-- Sources actives : **47**
+- Sources déclarées : **59**
+- Sources actives : **48**
 - Sources désactivées : **11**
-## Sources actives (47)
+## Sources actives (48)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -37,8 +37,8 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Européana), vérifier `rights` et le fournisseur |
 | digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les notices explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
 | eol | Encyclopedia of Life | Encyclopedia of Life | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | Encyclopedia of Life — API REST publique sans clé (eol.org/api) ; recherche `/search/1.0.json` (page 1-based, itemsPerPage 50, borné par `totalResults`) puis détail `/pages/1.0/<id>.json` (`taxonConcept.dataObjects[]`) ; une image qualifiée = un Asset ; conserver seulement les dataObjects `image/*` dont `license` est CC0 1.0 ou CC BY 3.0/4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`) ; page détail récupérée seulement tant que la limite n'est pas atteinte (`max_pages` défaut 3) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
-| europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
-| gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
+| europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Europeana — Search API v2 (api.europeana.eu/record/v2/search.json) ; clé API requise (`EUROPEANA_API_KEY`) ; images via `edmIsShownBy`, vignettes via `edmPreview` ; droits par notice (domaine public / CC / droits réservés) |
+| gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | Gallica (BnF) — SRU renvoie des notices Dublin Core ; images exposées via IIIF ; vérifier les droits par notice (domaine public / sous licence) |
 | gbif | GBIF — Global Biodiversity Information Facility | GBIF | INTL | rest | none | varies (CC0-1.0 / CC-BY-4.0) | GBIF — API REST publique sans clé (api.gbif.org/v1/occurrence/search, mediaType=StillImage) ; une occurrence peut produire plusieurs Assets (un par média) ; conserver seulement les médias dont `media[].license` est CC0 1.0 ou CC BY 4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`/`creator`) ; pagination par offset (limit ≤ 300, `count`, `endOfRecords`) ; aucun téléchargement (URLs seulement) |
 | hammer | Hammer Museum — Online Collections (IIIF) | Hammer Museum, University of California, Los Angeles (UCLA) | US | iiif | none | varies | Hammer Museum (UCLA) — droits par notice (CC0 / domaine public ou « In Copyright », rightsstatements.org) ; manifeste unique par objet (pas de Collection IIIF) |
 | harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
@@ -57,6 +57,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | north_dakota | North Dakota Digital Horizons | North Dakota State Library / NDSU Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | North Dakota State Library / NDSU Libraries — API CONTENTdm publique sans clé (digitalhorizonsonline.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », « Copyright held by the University Archives. », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
+| penn_state | Penn State Digital Collections | Pennsylvania State University Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Pennsylvania State University Libraries — API CONTENTdm publique sans clé (digital.libraries.psu.edu/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
 | princeton_art_museum | Princeton University Art Museum (IIIF) | Princeton University Art Museum, Princeton, NJ | US | iiif | none | varies | Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | rit | RIT Digital Collections (RIT Libraries) | Rochester Institute of Technology Libraries, Rochester, NY | US | iiif | none | varies | RIT Libraries — vérifier la mention de droits par notice (Cary Graphic Arts Collection et autres fonds) ; manifeste unique par objet (pas de Collection IIIF) |
 | rijksmuseum | Rijksmuseum (IIIF via Europeana) | Rijksmuseum, Amsterdam | NL | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Rijksmuseum SK-A-3262 |
@@ -91,9 +92,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 - **Domaine public / CC0** : `atlanta`, `artic`, `bsb`, `byu`, `cleveland`, `cooper_hewitt`,
   `digital_commonwealth`, `kmska`, `llgc`, `met`, `nasa`,
-  `nb_no`, `ndl`, `north_dakota`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
+  `nb_no`, `ndl`, `north_dakota`, `penn_state`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
   `wikidata` pour les données ; `nasa` = domaine public US, pas CC0 ; `atlanta`,
-  `byu`, `north_dakota`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
+  `byu`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
   notice).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
   `eol`, `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1

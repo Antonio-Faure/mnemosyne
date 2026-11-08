@@ -1,0 +1,29 @@
+id: penn_state
+name: Penn State Digital Collections
+institution: Pennsylvania State University Libraries
+country: US
+protocol: rest
+base_url: https://digital.libraries.psu.edu
+auth: none
+license: "PDM-1.0 / CC0-1.0 / CC-BY-4.0"
+rights: "Droits explicites par notice (Public Domain / NoC-US / CC0 / CC BY) ; le connecteur CONTENTdm rejette InC, CNE, droits réservés et restrictions non commerciales."
+rate_limit_per_s: 1.0
+priority: 61
+tags: [university, pennsylvania, keyless, public-domain, contentdm, maps]
+seeds: [map, railroad, steam, photograph, portrait, building, coal, agriculture]
+notes: >-
+  CONTENTdm (Penn State Digital Collections, Pennsylvania State University
+  Libraries) — API JSON officielle sans clé. Recherche cross-collection : GET
+  {base}/digital/api/search/searchterm/<query url-encodé>?maxRecords=10&start=<offset>
+  (10 items par page ; pagination par `start`, arrêt sur limite / totalResults /
+  page vide ; max_pages défaut 3). Détail d'un item : GET
+  {base}/digital/api/singleitem/collection/<alias>/id/<id> pour lire
+  contentType/imageUri et la liste `fields`. Filtre image : ne garder que
+  contentType `image/*` avec imageUri non vide (http(s) absolu ou chemin « / »).
+  Filtre droits explicite par notice sur les champs rights/copyright (accepte
+  « Public Domain » / NoC-US / CC0 / CC BY ; rejette « In Copyright », InC, CNE,
+  droits réservés et restrictions non commerciales CC BY-NC/ND). Images via IIIF
+  https://<base>/iiif/2/<alias>:<id>/full/!1200,1200/0/default.jpg (image) et
+  /full/!400,400/0/ (vignette). page_url via itemLink, comme les autres
+  CONTENTdm. Aucune image téléchargée, aucun scraping HTML, pas de clé, rate
+  limit poli 1.0 req/s.

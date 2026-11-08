@@ -54,6 +54,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "nasa": NasaConnector,
     "nb_no": NbNoConnector,
     "north_dakota": ContentDmConnector,
+    "penn_state": ContentDmConnector,
     "pop": PopConnector,
 }
 
