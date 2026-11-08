@@ -7,6 +7,7 @@ from mnemosyne.http import HttpClient
 from mnemosyne.models import Protocol, SourceDescriptor
 from mnemosyne.sources.anmt import AnmtConnector
 from mnemosyne.sources.cleveland import ClevelandConnector
+from mnemosyne.sources.contentdm import ContentDmConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
 from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
 from mnemosyne.sources.dpla import DplaConnector
@@ -30,6 +31,7 @@ from mnemosyne.sources.wikimedia import WikimediaConnector
 #: exact connector per source id
 CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
+    "byu": ContentDmConnector,
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,
@@ -40,10 +42,13 @@ CONNECTORS: dict[str, type[Connector]] = {
     "gbif": GbifConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
+    "indiana_memory": ContentDmConnector,
     "internet_archive": InternetArchiveConnector,
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
+    "scdl": ContentDmConnector,
     "smithsonian": SmithsonianConnector,
+    "teva": ContentDmConnector,
     "mai_saint_etienne": MAISaintEtienneConnector,
     "met": MetConnector,
     "nasa": NasaConnector,
