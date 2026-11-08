@@ -1,5 +1,8 @@
 # Roadmap — recherche sémantique sur les images d'archives
 
+> Voir aussi [`RESOLVER-ADVERSARIAL.md`](RESOLVER-ADVERSARIAL.md) : la couche
+> de vérification phrase → image, avec abstention et golden dataset.
+
 ## Vision
 
 Passer de « agréger des centaines de fournisseurs » à « trouver l'image

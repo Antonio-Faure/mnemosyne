@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Antonio-Faure/mnemosyne/schemas/golden_sentence.schema.json",
+  "title": "mnemosyne golden sentence label",
+  "description": "One labeled sentence from a history YouTube transcript, with acceptable archive images and hard negatives.",
+  "type": "object",
+  "required": ["id", "video", "segment", "gold"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable id, e.g. yt_<video_id>_<sentence_index>"
+    },
+    "video": {
+      "type": "object",
+      "required": ["id", "url"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "channel": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "published_at": { "type": "string" }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": ["start_s", "end_s", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "start_s": { "type": "number", "minimum": 0 },
+        "end_s": { "type": "number", "minimum": 0 },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "when": { "type": "string" },
+        "where": { "type": "string" },
+        "who": { "type": "array", "items": { "type": "string" } },
+        "event": { "type": "string" },
+        "visual_intent": { "type": "string" }
+      }
+    },
+    "gold": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["match", "partial", "no_match", "ambiguous"]
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url", "why"],
+            "additionalProperties": true,
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "source_id": { "type": "string" },
+              "source_asset_id": { "type": "string" },
+              "why": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "hard_negatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url", "why_wrong"],
+            "additionalProperties": true,
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "source_id": { "type": "string" },
+              "source_asset_id": { "type": "string" },
+              "why_wrong": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "match" } } },
+          "then": { "required": ["images"], "properties": { "images": { "minItems": 1 } } }
+        }
+      ]
+    },
+    "notes": { "type": "string" },
+    "annotator": { "type": "string" }
+  }
+}
