@@ -1,0 +1,55 @@
+id: musee_petrole_pechelbronn
+name: Musée français du pétrole — Merkwiller-Pechelbronn (photothèque)
+institution: Musée français du pétrole (Merkwiller-Pechelbronn)
+country: FR
+protocol: rest
+base_url: https://www.musee-du-petrole.com/
+auth: none
+license: "Inconnue — en attente d'autorisation écrite"
+rights: >-
+  Droits non établis. La photothèque d'époque (puits, derricks, installations et
+  torchères du champ pétrolifère de Pechelbronn) est diffusée via un portail
+  WebMuseo sans licence de réutilisation explicite. Aucun accès programmatique
+  n'est publié et aucun consentement écrit de scraping n'a été obtenu : la
+  source reste DÉSACTIVÉE. Toute réutilisation suppose une autorisation écrite
+  (licence + mention de crédit exacte) — voir extra.authorization_request.
+rate_limit_per_s: 0.5
+priority: 60
+enabled: false
+tags: [france, industrial-heritage, petroleum, phototheque, webmuseo, pending-authorization]
+seeds:
+  - pétrole
+  - puits de pétrole
+  - derrick
+  - torchère
+  - Pechelbronn
+notes: >-
+  Musée français du pétrole (Merkwiller-Pechelbronn, Bas-Rhin). Sa photothèque
+  d'époque documente le champ pétrolifère (puits, derricks, installations,
+  torchères) et illustre le thème « pétrole français oublié » (phrase
+  yt_la_france_a_du_petrole_mais_elle_la_oublie_20260925_106 : cimentation,
+  torchère, puits perdu). Portail WebMuseo sans API publique documentée ; le
+  scraping HTML est interdit sans consentement écrit (AGENTS.md). Source
+  désactivée tant que l'autorisation écrite (expéditeur + date), une licence
+  réutilisable (CC BY / CC BY-SA 4.0 / domaine public) et la mention de crédit
+  exacte ne sont pas obtenues.
+extra:
+  portal: https://www.musee-du-petrole.com/
+  collection_platform: WebMuseo
+  programmatic_access: none
+  access_method: none-established
+  scraping_consent: null
+  authorization_status: pending
+  authorization_request: >-
+    Demande envoyée le 2026-11-08 via formulaire web du musée (accusé reçu) +
+    e-mail Parc Vosges du Nord ; adresses officielles du musée hors service
+    (wanadoo 550 ; musees-vosges-nord.org domaine en erreur). En attente de
+    réponse écrite.
+  required_for_activation:
+    - "autorisation écrite (expéditeur + date)"
+    - "licence réutilisable (CC BY / CC BY-SA 4.0 / domaine public)"
+    - "mention de crédit exacte"
+  dead_contacts:
+    - "museedupetrole@wanadoo.fr (550 5.1.1 destinataire invalide)"
+    - "musee.petrole@musees-vosges-nord.org (domaine en erreur)"
+  live_relay: contact@parc-vosges-nord.fr

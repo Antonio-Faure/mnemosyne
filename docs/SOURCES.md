@@ -19,9 +19,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **65**
+- Sources déclarées : **66**
 - Sources actives : **53**
-- Sources désactivées : **12**
+- Sources désactivées : **13**
 ## Sources actives (53)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
@@ -77,7 +77,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 | yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | INTL | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
-## Sources désactivées (12)
+## Sources désactivées (13)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
@@ -88,6 +88,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | loc_wwi_photos | Library of Congress — World War I photographs (Prints & Photographs) | Library of Congress | US | rest | varies | API JSON `?fo=json` officielle mais **403 Akamai** depuis l'IP d'exécution (2026-11-08) ; connecteur prêt, activation dès que l'accès est rétabli (même cas que Gallica/NGA) |
 | mai_saint_etienne | Musée d'Art et d'Industrie de Saint-Étienne | Musée d'Art et d'Industrie de Saint-Étienne (Pôle muséal) | FR | rest | © Musée d'Art et d'Industrie de Saint-Étienne | Mention globale réservant l'usage commercial des images (autorisation requise) — non commercial |
 | musee_orsay | Musée d'Orsay — Collections (IIIF) | Établissement public des musées d'Orsay et de l'Orangerie (EPMO) | FR | iiif | Droits réservés — © EPMO | Mentions légales EPMO : reproduction/représentation interdite sans autorisation expresse (droits réservés) — à confirmer par la politique du projet |
+| musee_petrole_pechelbronn | Musée français du pétrole — Merkwiller-Pechelbronn (photothèque) | Musée français du pétrole (Merkwiller-Pechelbronn) | FR | rest | Inconnue — en attente d'autorisation écrite | Autorisation écrite en attente (formulaire web du musée + e-mail Parc Vosges du Nord, 2026-11-08 ; adresses officielles du musée hors service) ; aucun accès programmatique, aucun scraping sans consentement écrit — voir `extra.authorization_request` |
 | musei_vaticani | Musei Vaticani — Catalogo Online | Musei Vaticani (Musei e Gallerie Pontificie) | VA | iiif | varies | Droits à confirmer par la politique du projet avant activation |
 | pop | POP — Plateforme ouverte du patrimoine | Ministère de la Culture (France) | FR | iiif | Licence Ouverte 2.0 (métadonnées) | Images par notice majoritairement restrictives (DIFF/DIFFU) — ne pas republier ; métadonnées réutilisables |
 | vam | Victoria and Albert Museum | Victoria and Albert Museum, London | GB | iiif | varies | V&A Terms and Conditions (restrictif) |
@@ -121,6 +122,13 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
   Ouverte 2.0 (etalab) ; images soumises à autorisation par notice (DIFF/DIFFU),
   donc la source est désactivée pour ne pas republier d'images restreintes.
+- **Autorisation en attente (droits non établis)** : `musee_petrole_pechelbronn` —
+  la photothèque du Musée français du pétrole (Merkwiller-Pechelbronn) ne propose
+  aucun accès programmatique documenté et n'a concédé aucune licence de
+  réutilisation ; autorisation écrite, licence et mention de crédit restent à
+  établir (demande du 2026-11-08 via formulaire web du musée + Parc Vosges du
+  Nord, adresses officielles du musée hors service ; voir
+  `extra.authorization_request`). Source désactivée, aucun scraping.
 
 Cette table est maintenue en accord avec les descripteurs : voir
 `tests/test_sources_inventory.py`.
@@ -129,8 +137,8 @@ Cette table est maintenue en accord avec les descripteurs : voir
 
 Constat issu de la tâche resolver #148 (`catalog_search` sur tout le catalogue),
 ensuite reproduit/vérifié via `fetch_url` le **2026-11-08** (tâche #149). Aucune
-source n'est activée ni désactivée ici : les compteurs ci-dessus (65 / 54 / 11)
-restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
+source n'est activée ni désactivée ici : les compteurs de l'en-tête (déclarées /
+actives / désactivées) restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
 **actifs** mais leur état est documenté (`notes:` des descripteurs + ce tableau).
 
 | source | URL testée | code/erreur avant | diagnostic | correctif / test | statut final |
