@@ -26,26 +26,38 @@ notes: >-
   filtrage image côté client car `mime_type` n'est pas filtré côté serveur ;
   titres dérivés des noms de fichiers, caption/alt/description VIDES, pas de
   photographe ni de date d'origine ni de champ droits).
-  DÉSACTIVÉE : surface « tous droits réservés » (musee-du-petrole.com mentions
-  légales « © Musée du Pétrole » ; portail WebMuseo du Parc naturel régional des
-  Vosges du Nord : reproduction/représentation interdite). Aucune réutilisation
-  libre ni ré-hébergement sans autorisation écrite du musée ; le portail
-  catalogue inventorié WebMuseo (`/app/collection/*`) renvoie HTTP 403 (mur
-  anti-bot) et n'expose PAS d'OAI-PMH. Connecteur + tests prêts : l'activation
-  est un changement d'une ligne (`enabled: true` + licence CC/DP) dès réception
-  de l'autorisation. Prise de contact du 2026-11-08 : e-mail à
-  museedupetrole@wanadoo.fr = HTTP/SMTP 550 « destinataire invalide » ; copie à
-  musee.petrole@musees-vosges-nord.org = domaine mail cassé ; seul
-  contact@parc-vosges-nord.fr a été délivré (relance 18:10) ; formulaire de
-  contact du musée soumis avec accusé de réception. Aucune réponse à ce jour —
-  aucune adresse morte ne doit être réutilisée.
+  BLOCAGE DROITS / DÉSACTIVÉE : surface « tous droits réservés »
+  (musee-du-petrole.com mentions légales « © Musée du Pétrole » ; portail
+  WebMuseo du Parc naturel régional des Vosges du Nord : reproduction/
+  représentation interdite). Aucune licence libre, aucune réutilisation ni
+  ré-hébergement sans autorisation écrite du musée. Le portail catalogue
+  inventorié WebMuseo (`/app/collection/*`) renvoie HTTP 403 (mur anti-bot) et
+  n'expose PAS d'OAI-PMH. La source reste DÉSACTIVÉE tant que (a) le musée — qui
+  est FERMÉ — n'a pas rouvert et (b) aucune autorisation écrite + licence de
+  réutilisation (CC BY / CC BY-SA 4.0 ou domaine public) n'a été accordée ;
+  connecteur + tests prêts. État au 2026-11-08 : décision opérateur
+  (20:30) = attendre la réouverture du musée, maintenir la source désactivée ;
+  le suivi du contact est pris en charge par la tâche #197 (message corrigé,
+  adresse vivante du Parc, signature anonyme, demande de rendez-vous) ; cette
+  tâche n'envoie AUCUN e-mail et ne réutilise AUCUNE adresse morte. Historique
+  des tentatives : e-mail museedupetrole@wanadoo.fr = HTTP/SMTP 550
+  « destinataire invalide » (MORT) ; musee.petrole@musees-vosges-nord.org =
+  domaine mail cassé (MORT) ; seul contact@parc-vosges-nord.fr a été délivré.
+  Activation = changement d'une ligne (`enabled: true` + licence CC/DP) dès
+  réception de l'autorisation.
 extra:
   media_endpoint: /media
   per_page_max: 100
+  # Blocage droits documenté ; aucune relance e-mail depuis cette tâche.
   authorization_request:
     sender: archivist.mnemosyne@gmail.com
     to: museedupetrole@wanadoo.fr
     cc: [musee.petrole@musees-vosges-nord.org, contact@parc-vosges-nord.fr]
     sent: "2026-11-08"
-    status: pending
+    status: deferred
+    museum_open: false
+    follow_up_task: 197
+    session_email_policy: none
+    dead_addresses: [museedupetrole@wanadoo.fr, musee.petrole@musees-vosges-nord.org]
+    live_contact: contact@parc-vosges-nord.fr
   hero_media_ids: [1436, 4285, 1092, 4380, 4125]
