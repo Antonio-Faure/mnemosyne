@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **50**
-- Sources actives : **39**
+- Sources déclarées : **51**
+- Sources actives : **40**
 - Sources désactivées : **11**
-## Sources actives (39)
+## Sources actives (40)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -36,6 +36,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les notices explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
+| gbif | GBIF — Global Biodiversity Information Facility | GBIF | INTL | rest | none | varies (CC0-1.0 / CC-BY-4.0) | GBIF — API REST publique sans clé (api.gbif.org/v1/occurrence/search, mediaType=StillImage) ; une occurrence peut produire plusieurs Assets (un par média) ; conserver seulement les médias dont `media[].license` est CC0 1.0 ou CC BY 4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`/`creator`) ; pagination par offset (limit ≤ 300, `count`, `endOfRecords`) ; aucun téléchargement (URLs seulement) |
 | hammer | Hammer Museum — Online Collections (IIIF) | Hammer Museum, University of California, Los Angeles (UCLA) | US | iiif | none | varies | Hammer Museum (UCLA) — droits par notice (CC0 / domaine public ou « In Copyright », rightsstatements.org) ; manifeste unique par objet (pas de Collection IIIF) |
 | harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | inaturalist | iNaturalist — Observations | iNaturalist (California Academy of Sciences / National Geographic Society) | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | iNaturalist — API REST publique sans clé (api.inaturalist.org/v1/observations) ; une photo qualifiée = un Asset ; conserver seulement les photos dont le `license_code` au niveau photo est cc0 ou cc-by (revérifié côté connecteur) ; attribution par photo (`photo.attribution`) ; image principale = `square.jpg`→`large.jpg`, vignette = `square.jpg` ; pagination 1-based (`per_page` ≤ 200, `total_results`) ; aucun téléchargement (URLs seulement) |
@@ -61,7 +62,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
-| yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | US | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
+| yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | INTL | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
 ## Sources désactivées (11)
 
@@ -86,10 +87,12 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   `smk`, `smithsonian` (plus `wikidata` pour les données ; `nasa` = domaine public
   US, pas CC0).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
-  `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1 du code du
-  patrimoine) ; certaines vues restent « non affichables » par notice et sont
-  ignorées. `inaturalist` : uniquement les photos sous CC0 ou CC BY (licence
-  vérifiée au niveau de chaque photo), attribution par photo.
+  `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1 du code
+  du patrimoine) ; certaines vues restent « non affichables » par notice et sont
+  ignorées. `gbif` : uniquement les médias sous CC0 1.0 ou CC BY 4.0 (licence
+  vérifiée au niveau de chaque média `media[].license`), attribution par média.
+  `inaturalist` : uniquement les photos sous CC0 ou CC BY (licence vérifiée au
+  niveau de chaque photo), attribution par photo.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,

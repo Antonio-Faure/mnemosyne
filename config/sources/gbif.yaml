@@ -1,0 +1,22 @@
+id: gbif
+name: GBIF — Global Biodiversity Information Facility
+institution: GBIF
+country: INTL
+protocol: rest
+base_url: https://api.gbif.org/v1
+auth: none
+license: "varies (CC0-1.0 / CC-BY-4.0)"
+rights: "Médias conservés uniquement si media[].license est CC0 1.0 ou CC BY 4.0 ; attribution stockée par média (creator/rightsHolder)."
+rate_limit_per_s: 1.0
+priority: 55
+tags: [biodiversity, natural-history, science, keyless, cc0, cc-by, international]
+seeds:
+  - "monarch butterfly"
+  - "orchid"
+  - "fern"
+  - "mushroom"
+  - "bird"
+  - "beetle"
+  - "coral"
+  - "fossil"
+notes: "API REST publique sans clé : GET /occurrence/search (q, mediaType=StillImage, limit, offset). Le paramètre `license` de l'API filtre la licence de l'OCCURRENCE, pas du média : revérifier media[].license côté connecteur (ne garder que CC0 1.0 / CC BY 4.0, http ou https, avec ou sans www ; ignorer None, CC BY-NC, CC BY-SA). Pagination par offset (limit ≤ 300, count, endOfRecords) ; une occurrence peut produire plusieurs Assets (un par média qualifié) ; page_url = https://www.gbif.org/occurrence/<key> ; aucun téléchargement (URLs seulement)."

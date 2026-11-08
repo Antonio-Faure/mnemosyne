@@ -12,6 +12,7 @@ from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
 from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
+from mnemosyne.sources.gbif import GbifConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.inaturalist import INaturalistConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
@@ -31,6 +32,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "cooper_hewitt": CooperHewittConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,
     "gallica": GallicaConnector,
+    "gbif": GbifConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
     "internet_archive": InternetArchiveConnector,
