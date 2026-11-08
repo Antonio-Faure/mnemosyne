@@ -2,6 +2,16 @@
 
 Autonomous heartbeat agent that aggregates historical image archive providers into one unified API.
 
+# Opérateur humain
+
+L'opérateur n'est **pas un valideur de routine**. Il n'est sollicité que pour :
+un doute réel sur la marche à suivre, un humain qui demande un contact humain,
+une décision de politique (licence, argent, éthique, données personnelles,
+accès non public), ou un blocage humain (captcha, vérification d'identité).
+Jamais pour envoyer un e-mail conforme, créer une tâche, ouvrir une PR, lancer
+un test ou faire valider une action de routine. Détail :
+`docs/OPERATEUR-TELEGRAM.md`.
+
 # Priorities
 
 - Clarity · Precision · Low verbosity

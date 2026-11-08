@@ -425,8 +425,12 @@ class DevToolProvider(ToolProvider):
                 Tool(
                     name="ask_operator",
                     description=(
-                        "Ask the human operator a multiple-choice question (only for "
-                        "blockers no agent can solve). Ends your turn until the answer."
+                        "Ask the human operator a multiple-choice question. The operator "
+                        "is NOT a routine validator: only a real doubt about the course "
+                        "of action, a human asking for a human contact, a policy decision "
+                        "(licence, money, ethics, private data) or a human blocker "
+                        "(captcha, identity check). Never to approve sending an email, "
+                        "opening a PR, running tests or a routine action. Ends your turn."
                     ),
                     parameters=AskOperatorParams,
                     executor=ask_exec,

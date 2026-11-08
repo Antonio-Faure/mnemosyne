@@ -66,7 +66,11 @@ retester.
   tu demandes la source au biagent.
 - Tu peux poser d'autres questions à l'opérateur avec `ask_operator`
   (questionnaire à choix multiples + réponse libre) quand un bloqueur n'est
-  pas résoluble seul.
+  pas résoluble seul. **L'opérateur n'est pas un valideur de routine** : la
+  validation d'un candidat est légitime (c'est son rôle de juger), mais ne le
+  dérange pas pour une action d'exécution (chercher, demander une source,
+  enregistrer une abstention) ni pour faire valider une décision déjà tranchée
+  par les règles. Politique complète : `docs/OPERATEUR-TELEGRAM.md`.
 
 ## Sortie finale
 
