@@ -28,6 +28,7 @@ from mnemosyne.browser.stirrup_client import build_agent_client
 from mnemosyne.config import Config
 from mnemosyne.db import Database
 from mnemosyne.engine import Engine
+from mnemosyne.http import domain_of
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.operator.models import AskOperatorParams
@@ -146,6 +147,17 @@ class ResolverToolProvider(ToolProvider):
         payload = self._payload()
         return payload.get("segment_id") or payload.get("id")
 
+    def _known_sources(self) -> dict[str, object]:
+        """The catalogue as the resolver must see it before asking for a source.
+
+        Reads the descriptor files (not the synced registry): a source added by
+        the biagent is known immediately, even before the next `catalog.sync()`.
+        """
+        from mnemosyne.catalog import Catalog
+
+        catalog = Catalog(self.config.sources_path, self.db)
+        return {descriptor.id: descriptor for descriptor in catalog.load_descriptors()}
+
     def _tools(self):
         async def catalog_search_exec(p: CatalogSearchParams):
             engine = Engine(self.config)
@@ -176,6 +188,28 @@ class ResolverToolProvider(ToolProvider):
         async def request_source_exec(p: RequestSourceParams):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
+            known = self._known_sources()
+            if p.source_id in known:
+                descriptor = known[p.source_id]
+                state = "activée" if descriptor.enabled else "désactivée"
+                return _fail(
+                    f"la source {p.source_id} est déjà au catalogue ({state}). "
+                    "Interroge-la avec catalog_search(source_ids=[...]) au lieu de "
+                    "la redemander ; si elle ne renvoie rien, c'est un trou de "
+                    "couverture interne, pas une source manquante."
+                )
+            host = domain_of(p.api_url) if p.api_url else ""
+            same_host = [
+                descriptor
+                for descriptor in known.values()
+                if host and domain_of(descriptor.base_url) == host
+            ]
+            if same_host:
+                return _fail(
+                    f"cet hôte ({host}) est déjà couvert par la source "
+                    f"{same_host[0].id} : utilise catalog_search(source_ids="
+                    f"['{same_host[0].id}'])."
+                )
             segment_id = self._segment_id()
             objective = (
                 "Source demandée par le résolveur adversarial"
