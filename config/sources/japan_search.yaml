@@ -1,0 +1,22 @@
+id: japan_search
+name: Japan Search — ジャパンサーチ
+institution: Japan Search (National Diet Library)
+country: JP
+protocol: rest
+base_url: https://jpsearch.go.jp/api
+auth: none
+license: "PDM-1.0 / CC0-1.0 / CC-BY-4.0"
+rights: "Filtre f-rights=+pdm/+cc0/+ccby, f-contents=image, f-caccess=internet ; vérifier par notice."
+rate_limit_per_s: 1.0
+priority: 50
+tags: [japan, aggregator, keyless, public-domain, cc0, cc-by, images]
+seeds:
+  - "蒸気機関"
+  - "鉄道"
+  - "工場"
+  - "浮世絵"
+  - "地図"
+  - "写真"
+  - "建築"
+  - "自然"
+notes: "Agrégateur national japonais — API REST publique sans clé (jpsearch.go.jp/api/item/search/jps-cross). Filtres : f-contents=image, f-caccess=internet, et f-rights répété (+pdm, +cc0, +ccby — le préfixe + active un OR). Pagination from/size (size clamp 100, from = offset). Mapping licences : pdm → PDM-1.0, cc0 → CC0-1.0, ccby → CC-BY-4.0. Images via contentsUrl[0] sinon thumbnailUrl[0] — aucune image téléchargée."
