@@ -25,6 +25,7 @@ from mnemosyne.sources.met import MetConnector
 from mnemosyne.sources.nasa import NasaConnector
 from mnemosyne.sources.nb_no import NbNoConnector
 from mnemosyne.sources.openverse import OpenverseConnector
+from mnemosyne.sources.pechelbronn_petrole import PechelbronnPetroleConnector
 from mnemosyne.sources.pop import PopConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
 from mnemosyne.sources.wikidata import WikidataConnector
@@ -55,6 +56,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "loc_wwi_photos": LocWwiPhotosConnector,
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
+    "pechelbronn_petrole": PechelbronnPetroleConnector,
     "scdl": ContentDmConnector,
     "smithsonian": SmithsonianConnector,
     "teva": ContentDmConnector,

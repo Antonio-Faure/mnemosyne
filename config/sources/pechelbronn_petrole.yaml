@@ -1,0 +1,53 @@
+id: pechelbronn_petrole
+name: "Musée français du pétrole — fonds Pechelbronn"
+institution: "Musée français du pétrole / Association des Amis du Musée"
+country: FR
+protocol: rest
+base_url: "https://www.musee-du-petrole.com"
+auth: none
+license: "In Copyright — droits réservés, aucune licence ouverte publiée"
+rights: "in_copyright"
+rate_limit_per_s: 0.5
+priority: 15
+tags: [france, museum, petroleum, pechelbronn, historical, wordpress, keyless]
+seeds:
+  - "pétrole France"
+  - "Pechelbronn forage"
+  - "raffinerie Alsace pétrole"
+  - "carte postale pétrole"
+  - "derrick puits sonde"
+notes: >-
+  Musée français du pétrole — fonds photographique historique de Pechelbronn
+  (berceau du pétrole français, forage dès 1813, exploitation jusqu'en 1970).
+  Accès 100 % programmatique via l'API REST « media » de WordPress
+  (`/wp-json/wp/v2/media`), JSON ouvert, sans auth, aucun scraping HTML. Le
+  domaine de la tâche (`musee-petrole.com`) est NXDOMAIN : la base live est
+  `www.musee-du-petrole.com` (note le « -du- »). L'ancien catalogue
+  `musee-petrole.webmuseo.com` est mort (SSL). La médiathèque est un mélange
+  (logos, bandeaux, photos récentes + fonds historique ≈96–160 items sans
+  taxonomie) : le connecteur cure le fonds historique par heuristique
+  titres+slugs (codes PECH_*, cotes NNNN.0.NNN, CollectionMFDP, vocabulaire de
+  période). Particularités de production gérées : WAF renvoie HTTP 410 (page
+  HTML) sur rafale → backoff exponentiel 2/4/8 s sur 410/429/503 ; noms de
+  fichiers en Latin-1 (« â » = %E2, pas %C3%A2) → fallback `latin1_url` ;
+  quelques uploads morts (404) → repli sur `media_details.sizes`. Aucune
+  licence ouverte publiée : catalogué en FINDER, `rights=in_copyright`, crédit
+  obligatoire « © Musée français du pétrole / Association des Amis du Musée ».
+  Autorisation de réutilisation (au-delà des vignettes) : contacter
+  museedupetrole@wanadoo.fr (cc musee.petrole@musees-vosges-nord.org).
+extra:
+  media_endpoint: "https://www.musee-du-petrole.com/wp-json/wp/v2/media"
+  media_type: image
+  per_page: 100
+  orderby: id
+  order: asc
+  max_pages: 20
+  fields: "id,date,slug,title,source_url,link,media_details,alt_text,caption,description,post,mime_type"
+  request_delay_s: 2.0
+  retry_status: [410, 429, 503]
+  backoff_base_s: 2.0
+  max_retries: 3
+  url_encode_fallback: latin1
+  credit: "© Musée français du pétrole / Association des Amis du Musée"
+  contact: "musedupetrole@wanadoo.fr"
+  historical_regex: '(?i)pech[ _-]?\d|\d{4}\.\d+\.\d+|collection\s*mfdp|pechelbronn|merkwiller|antar|sauer|schlumberger|hepting|raffiner|refin|forage|derrick|puits|sonde|treuil|carottage|sondage|drill|carte[\s-]*postale|\bcpa\b|aquarelle|photograph|gravure|lithograph|2ww|guerre|mitoi|\b1[89]\d{2}\b|\b19[0-6]\d\b'

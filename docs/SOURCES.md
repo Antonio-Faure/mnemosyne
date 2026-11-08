@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **65**
-- Sources actives : **53**
+- Sources déclarées : **66**
+- Sources actives : **54**
 - Sources désactivées : **12**
-## Sources actives (53)
+## Sources actives (54)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -61,6 +61,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | north_dakota | North Dakota Digital Horizons | North Dakota State Library / NDSU Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | North Dakota State Library / NDSU Libraries — API CONTENTdm publique sans clé (digitalhorizonsonline.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », « Copyright held by the University Archives. », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement (CC0, CC BY, CC BY-SA ; exclut NC/ND) ; API REST publique sans clé (api.openverse.org/v1/images) ; ne conserver que les licences ouvertes ; pagination `page`/`page_size` |
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
+| pechelbronn_petrole | Musée français du pétrole — fonds Pechelbronn | Musée français du pétrole / Association des Amis du Musée | FR | rest | none | In Copyright — droits réservés, aucune licence ouverte publiée | Musée français du pétrole — fonds photographique historique de Pechelbronn (berceau du pétrole français, forage dès 1813, exploitation jusqu'en 1970) ; accès 100 % programmatique via l'API REST « media » de WordPress (`/wp-json/wp/v2/media`), JSON ouvert, sans auth, aucun scraping HTML ; le domaine de la tâche `musee-petrole.com` est NXDOMAIN → base live `www.musee-du-petrole.com` (note le « -du- ») ; médiathèque en mélange, fonds historique (≈96–160 items sans taxonomie) curé par heuristique titres+slugs (codes PECH_*, cotes NNNN.0.NNN, CollectionMFDP, vocabulaire de période) ; WAF renvoie HTTP 410 (page HTML) sur rafale → backoff exponentiel 2/4/8 s sur 410/429/503 ; noms de fichiers Latin-1 (« â » = %E2, pas %C3%A2) → fallback `latin1_url` ; uploads morts (404) → repli `media_details.sizes` ; aucune licence ouverte publiée → catalogué en FINDER, `rights=in_copyright`, crédit obligatoire « © Musée français du pétrole / Association des Amis du Musée » ; autorisation de réutilisation (au-delà des vignettes) : museedupetrole@wanadoo.fr |
 | penn_state | Penn State Digital Collections | Pennsylvania State University Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Pennsylvania State University Libraries — API CONTENTdm publique sans clé (digital.libraries.psu.edu/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
 | princeton_art_museum | Princeton University Art Museum (IIIF) | Princeton University Art Museum, Princeton, NJ | US | iiif | none | varies | Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | rit | RIT Digital Collections (RIT Libraries) | Rochester Institute of Technology Libraries, Rochester, NY | US | iiif | none | varies | RIT Libraries — vérifier la mention de droits par notice (Cary Graphic Arts Collection et autres fonds) ; manifeste unique par objet (pas de Collection IIIF) |
@@ -117,7 +118,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
-  `wellcome`.
+  `wellcome` ; `pechelbronn_petrole` (© Musée du pétrole — *In Copyright*,
+  actif en mode *finder*, crédit obligatoire, pas de republication au-delà des
+  vignettes).
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
   Ouverte 2.0 (etalab) ; images soumises à autorisation par notice (DIFF/DIFFU),
   donc la source est désactivée pour ne pas republier d'images restreintes.
@@ -129,7 +132,7 @@ Cette table est maintenue en accord avec les descripteurs : voir
 
 Constat issu de la tâche resolver #148 (`catalog_search` sur tout le catalogue),
 ensuite reproduit/vérifié via `fetch_url` le **2026-11-08** (tâche #149). Aucune
-source n'est activée ni désactivée ici : les compteurs ci-dessus (65 / 54 / 11)
+source n'est activée ni désactivée ici : les compteurs ci-dessus (66 / 54 / 12)
 restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
 **actifs** mais leur état est documenté (`notes:` des descripteurs + ce tableau).
 
