@@ -1,0 +1,37 @@
+id: gallica_bnf
+name: Gallica (BnF) — presse & photographie
+institution: Bibliothèque nationale de France
+country: FR
+protocol: sru
+base_url: https://gallica.bnf.fr/SRU
+auth: none
+license: varies
+rights: "BnF — vérifier par notice (domaine public / sous licence)"
+rate_limit_per_s: 0.5
+priority: 10
+tags: [national-library, france, press, photography, iiif, keyless]
+seeds:
+  - "pétrole Pechelbronn"
+  - "puits de pétrole"
+  - "raffinerie de pétrole"
+  - "exploration pétrolière Landes"
+  - "Le Petit Journal"
+  - "L'Illustration"
+  - "photographie industrie 1900"
+notes: >-
+  Variante « presse & photographie » de la source Gallica (BnF), ajoutée à la
+  demande du résolveur adversarial (phrase #159 « La France a du pétrole mais
+  elle l'oublie ») : photographies et gravures de presse françaises historiques
+  (Pechelbronn, raffineries, exploration, gisements du Bassin parisien / Landes ;
+  Le Petit Journal, L'Illustration) en domaine public, pour une B-roll d'archive
+  datée. Même accès 100 % programmatique que `gallica` — API officielle SRU
+  (Dublin Core) + images IIIF, aucun scraping HTML. Spécialise `gallica` en
+  remontant `dc:type`/`dc:subject` dans `Asset.tags` (filtrage image) et en
+  marquant la provenance (`extra.connector = gallica-bnf`). Statut réseau
+  constaté le 2026-11-25 : `https://gallica.bnf.fr/*` renvoie HTTP 403 (page WAF
+  Cloudflare « Sorry, you have been blocked ») depuis cette IP — blocage
+  IP/ASN infrastructurel, PAS un bug de chemin/requête ; le connecteur SRU/IIIF
+  est correct (identique à `gallica`, voir docs/SOURCES.md « Sources dégradées »).
+extra:
+  variant_of: gallica
+  focus: press-photography

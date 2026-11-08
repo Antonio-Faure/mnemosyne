@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **64**
-- Sources actives : **53**
+- Sources déclarées : **65**
+- Sources actives : **54**
 - Sources désactivées : **11**
-## Sources actives (53)
+## Sources actives (54)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -40,6 +40,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | eol | Encyclopedia of Life | Encyclopedia of Life | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | Encyclopedia of Life — API REST publique sans clé (eol.org/api) ; recherche `/search/1.0.json` (page 1-based, itemsPerPage 50, borné par `totalResults`) puis détail `/pages/1.0/<id>.json` (`taxonConcept.dataObjects[]`) ; une image qualifiée = un Asset ; conserver seulement les dataObjects `image/*` dont `license` est CC0 1.0 ou CC BY 3.0/4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`) ; page détail récupérée seulement tant que la limite n'est pas atteinte (`max_pages` défaut 3) ; 5xx/429 transitoires tolérés (correctif 2026-11-08) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Europeana — Search API v2 (api.europeana.eu/record/v2/search.json) ; clé API requise (`EUROPEANA_API_KEY`) ; images via `edmIsShownBy`, vignettes via `edmPreview` ; droits par notice (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | Gallica (BnF) — SRU renvoie des notices Dublin Core ; images exposées via IIIF ; vérifier les droits par notice (domaine public / sous licence) ; **indisponible depuis cette IP (Cloudflare/WAF 403, 2026-11-08)** — voir « Sources dégradées » ci-dessous |
+| gallica_bnf | Gallica (BnF) — presse & photographie | Bibliothèque nationale de France | FR | sru | none | varies | Gallica (BnF) — variante presse & photographie (SRU + IIIF) demandée par le résolveur (#159, pétrole français : Pechelbronn, raffineries, Landes ; Le Petit Journal, L'Illustration) ; remonte `dc:type`/`dc:subject` en tags ; **indisponible depuis cette IP (Cloudflare/WAF 403, 2026-11-25)** — voir « Sources dégradées » ci-dessous |
 | gbif | GBIF — Global Biodiversity Information Facility | GBIF | INTL | rest | none | varies (CC0-1.0 / CC-BY-4.0) | GBIF — API REST publique sans clé (api.gbif.org/v1/occurrence/search, mediaType=StillImage) ; une occurrence peut produire plusieurs Assets (un par média) ; conserver seulement les médias dont `media[].license` est CC0 1.0 ou CC BY 4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`/`creator`) ; pagination par offset (limit ≤ 300, `count`, `endOfRecords`) ; aucun téléchargement (URLs seulement) |
 | hammer | Hammer Museum — Online Collections (IIIF) | Hammer Museum, University of California, Los Angeles (UCLA) | US | iiif | none | varies | Hammer Museum (UCLA) — droits par notice (CC0 / domaine public ou « In Copyright », rightsstatements.org) ; manifeste unique par objet (pas de Collection IIIF) |
 | harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
@@ -109,7 +110,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   (licence vérifiée au niveau de chaque média `media[].license`), attribution par
   média. `inaturalist` : uniquement les photos sous CC0 ou CC BY 4.0.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
-  `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
+  `colenda`, `dpla`, `europeana`, `gallica`, `gallica_bnf`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
   `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
   `wikimedia_commons_photos`, `yale`, `yale_lux` — la licence est décidée au
@@ -128,7 +129,7 @@ Cette table est maintenue en accord avec les descripteurs : voir
 
 Constat issu de la tâche resolver #148 (`catalog_search` sur tout le catalogue),
 ensuite reproduit/vérifié via `fetch_url` le **2026-11-08** (tâche #149). Aucune
-source n'est activée ni désactivée ici : les compteurs ci-dessus (64 / 53 / 11)
+source n'est activée ni désactivée ici : les compteurs ci-dessus (65 / 54 / 11)
 restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
 **actifs** mais leur état est documenté (`notes:` des descripteurs + ce tableau).
 
@@ -138,6 +139,7 @@ restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
 | met | `https://collectionapi.metmuseum.org/public/collection/v1/objects/294856` | HTTP 404 | id d'objet absent/retiré : le 404 remontait comme erreur de source et dégradait tout le Met | `met.py` : 404 sur un objet = ignoré proprement (`continue`) ; 401/403/5xx re-levés (non masqués) ; tests `test_met.py` | **corrigé** (404 objet toléré hors ligne) |
 | eol | `https://eol.org/api/search/1.0.json` | HTTP 520 (Cloudflare, transitoire) | 5xx transitoire du CDN ; `520` n'est pas dans les statuts retentés par le client HTTP | `eol.py` : les 5xx/429 transitoires (dont 520–527) sont tolérés (result set abandonné, pas d'erreur de source) ; 4xx (droits/accès) non masqués ; test `test_eol_transient.py` | **vérifié transitoire** (revérifié à 200 le 2026-11-08) + tolérance ajoutée |
 | gallica | `https://gallica.bnf.fr/SRU` et `https://gallica.bnf.fr/services/engine/search/sru` | HTTP 403 (page WAF Cloudflare « Sorry, you have been blocked », ~5665 o) | blocage **IP/ASN (infrastructurel)**, identique avec User-Agent navigateur ; pas un bug de chemin/requête — le connecteur SRU/IIIF est correct | aucun changement de code au hasard (par consigne) ; diagnostic tracé (`notes:` descripteur) | **indisponible depuis cette IP (Cloudflare)** — code OK |
+| gallica_bnf | `https://gallica.bnf.fr/SRU` | HTTP 403 (page WAF Cloudflare) | même blocage **IP/ASN** que `gallica` (variante presse & photographie du même hôte) ; connecteur SRU/IIIF correct | aucun changement de code au hasard ; diagnostic tracé (`notes:` descripteur) | **indisponible depuis cette IP (Cloudflare)** — code OK |
 | nga | `https://www.nga.gov/api/v1/iiif/presentation/manifest.json?cultObj:id=395` | HTTP 403 (WAF www.nga.gov) | blocage **IP/ASN** de même famille ; le connecteur frappe bien l'API IIIF officielle (aucun scraping HTML) | aucun changement de code au hasard ; diagnostic tracé (`notes:` descripteur) | **indisponible depuis cette IP (WAF/Cloudflare)** — code OK |
 
 Notes de diagnostic :
