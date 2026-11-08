@@ -152,3 +152,55 @@ def test_resolver_loop_uses_its_own_runner_and_lease(config, monkeypatch):
         assert db.get_task(task_id)["status"] == "done"
     finally:
         db.close()
+
+
+def test_request_source_refuses_a_source_already_in_the_catalog(config):
+    """Wikimedia is already onboarded: asking for it again must fail loudly."""
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+        result = asyncio.run(
+            by_name["request_source"].executor(
+                RequestSourceParams(
+                    source_id="gallica",
+                    source_name="Gallica again",
+                    reason="1914 photos",
+                    api_url="https://example.invalid/SRU",
+                )
+            )
+        )
+        assert result.success is False
+        assert "déjà au catalogue" in result.content
+        assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_request_source_refuses_a_host_already_covered(config):
+    """A new id on the same host is the same provider: no duplicate onboarding."""
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+        result = asyncio.run(
+            by_name["request_source"].executor(
+                RequestSourceParams(
+                    source_id="gallica_photos_v2",
+                    source_name="Gallica again",
+                    reason="same host",
+                    api_url="https://example.invalid/iiif/search",
+                )
+            )
+        )
+        assert result.success is False
+        assert "déjà couvert" in result.content
+        assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
