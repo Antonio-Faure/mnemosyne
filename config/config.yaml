@@ -98,6 +98,8 @@ resolver:
   model: deepseek-v4.1-flash
   max_turns: 120
   interval_s: 60
+  # remplir la file tout seul avec la phrase suivante du corpus (boucle permanente)
+  auto_feed: true
 
 # Public identity disclosed in every email / contact form (transparency).
 identity:

@@ -290,6 +290,9 @@ class ResolverConfig(BaseModel):
     model: str = "deepseek-v4.1-flash"
     max_turns: int = 120
     interval_s: int = 60
+    #: When the resolver has nothing to do, queue the next corpus sentence so
+    #: the loop never needs a human to keep feeding it.
+    auto_feed: bool = True
 
 
 class Config(BaseModel):

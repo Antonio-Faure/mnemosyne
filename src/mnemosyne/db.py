@@ -690,6 +690,32 @@ class Database:
                 return int(row["id"])
         return None
 
+    def next_corpus_sentence(self) -> dict | None:
+        """First corpus sentence that never got a resolver task (feeder)."""
+        with self._lock:
+            used: set[str] = set()
+            for row in self._conn.execute(
+                "SELECT payload FROM tasks WHERE start_agent = 'resolver'"
+            ):
+                try:
+                    payload = json.loads(row["payload"] or "{}")
+                except ValueError:
+                    continue
+                segment_id = payload.get("segment_id")
+                if segment_id:
+                    used.add(str(segment_id))
+            rows = self._conn.execute(
+                "SELECT segment_id, payload FROM resolver_corpus ORDER BY segment_id"
+            ).fetchall()
+        for row in rows:
+            if row["segment_id"] in used:
+                continue
+            try:
+                return json.loads(row["payload"])
+            except ValueError:
+                continue
+        return None
+
     def record_resolver_result(
         self,
         resolver_task_id: int,
