@@ -28,6 +28,7 @@ from mnemosyne.sources.pop import PopConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
 from mnemosyne.sources.wikidata import WikidataConnector
 from mnemosyne.sources.wikimedia import WikimediaConnector
+from mnemosyne.sources.wikimedia_commons_photos import WikimediaCommonsPhotosConnector
 
 #: exact connector per source id
 CONNECTORS: dict[str, type[Connector]] = {
@@ -47,6 +48,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "hillsborough": ContentDmConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
+    "wikimedia_commons_photos": WikimediaCommonsPhotosConnector,
     "internet_archive": InternetArchiveConnector,
     "japan_search": JapanSearchConnector,
     "inaturalist": INaturalistConnector,
