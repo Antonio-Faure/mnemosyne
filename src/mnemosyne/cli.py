@@ -232,11 +232,16 @@ def _cmd_queue_list(args: argparse.Namespace) -> int:
     db = Database(cfg.db_file())
     tasks = db.list_tasks(status=args.status)
     waiting = {t["id"] for t in tasks if db.task_waiting_on_operator(t["id"])}
+    email_waiting = {t["id"] for t in tasks if db.task_waiting_on_email(t["id"])}
     db.close()
     for task in tasks:
         started = task.get("started_at") or ""
         objective = task["objective"][:80].replace(chr(10), " ")
-        suffix = "  ⏳ attend ta réponse" if task["id"] in waiting else ""
+        suffix = ""
+        if task["id"] in waiting:
+            suffix += "  ⏳ attend ta réponse"
+        if task["id"] in email_waiting:
+            suffix += "  📧 attend un email"
         print(
             f"#{task['id']:<4} {task['status']:<10} départ={task['start_agent']:<7} "
             f"{started[:16]} {objective}{suffix}"
@@ -292,6 +297,7 @@ def _cmd_queue_cancel(args: argparse.Namespace) -> int:
     db.set_task_status(args.task_id, "cancelled", note="annulée par l'opérateur")
     drop_session_cache(cfg, task)
     db.delete_task_messages(args.task_id)
+    db.delete_task_email_waits(args.task_id)
     db.close()
     print(f"tâche #{args.task_id} annulée (boîte et sessions jetées)")
     return 0

@@ -374,6 +374,7 @@ async def _activate_session(
         db.delete_kv(transient_key)
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
+        db.delete_task_email_waits(task_id)
         _settle_discovery(config, db, task, getattr(outcome, "branch", None))
         if journal:
             journal.append(
@@ -385,12 +386,13 @@ async def _activate_session(
                 # then the orchestrator closes the task (logical order)
                 "close_status": "failed", "close_note": error[:NOTE_MAX_CHARS]}
 
-    if mailbox.pending_count(task_id) == 0:
+    if mailbox.pending_count(task_id) == 0 and not db.task_waiting_on_email(task_id):
         status = "done" if finish else "review"
         close_note = finish[:NOTE_MAX_CHARS] or None
         db.delete_kv(f"transient:{task_id}")
         drop_session_cache(config, task)
         db.delete_task_messages(task_id)
+        db.delete_task_email_waits(task_id)
         _settle_discovery(config, db, task, getattr(outcome, "branch", None))
         if journal:
             journal.append(

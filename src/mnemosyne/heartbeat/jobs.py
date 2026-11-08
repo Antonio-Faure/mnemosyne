@@ -273,6 +273,19 @@ async def handle_telegram(ctx: JobContext, job: Job) -> dict | None:
     return {"interval_s": 30}
 
 
+@handler("email_watch")
+async def handle_email_watch(ctx: JobContext, job: Job) -> dict | None:
+    """IMAP watcher: wake tasks parked on a matching email."""
+    from mnemosyne.mailwatch import poll_once
+
+    if not ctx.config.email.enabled:
+        return {"interval_s": 300}
+    handled = await poll_once(ctx.config, ctx.engine.db, _vault_get(ctx))
+    if handled:
+        log.info("email watch: %d attente(s) traitée(s)", handled)
+    return {"interval_s": max(10, ctx.config.email.poll_interval_s)}
+
+
 @handler("discover")
 async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
     """P3: find candidate providers and store the new ones."""

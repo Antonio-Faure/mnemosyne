@@ -110,6 +110,16 @@ class Heartbeat:
             self.engine.db.enqueue(
                 Job(kind="telegram", payload={"interval_s": OPERATOR_INTERVAL_S}, priority=15)
             )
+        if self.config.email.enabled and not self.engine.db.has_open_job("email_watch"):
+            self.engine.db.enqueue(
+                Job(
+                    kind="email_watch",
+                    payload={
+                        "interval_s": max(10, self.config.email.poll_interval_s),
+                    },
+                    priority=25,
+                )
+            )
         if not self.engine.db.has_open_job("journal"):
             self.engine.db.enqueue(
                 Job(kind="journal", payload={"interval_s": JOURNAL_INTERVAL_S}, priority=90)

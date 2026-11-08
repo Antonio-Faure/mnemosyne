@@ -20,7 +20,7 @@ from mnemosyne.dev.git_ops import Git, GitError
 from mnemosyne.dev.guard import DevGuardError, check_readable, check_writable
 from mnemosyne.journal import Journal
 from mnemosyne.notify import Notifier
-from mnemosyne.operator.models import AskOperatorParams
+from mnemosyne.operator.models import AskOperatorParams, WaitForEmailParams
 from mnemosyne.util import atomic_write_text
 
 
@@ -359,6 +359,33 @@ class DevToolProvider(ToolProvider):
                 "tu seras réactivé avec sa réponse."
             )
 
+        async def wait_email_exec(p: WaitForEmailParams):
+            if self.mailbox is None or self.task_id is None:
+                return _fail("aucune tâche ouverte : impossible d'attendre un email")
+            if self.app_config is None:
+                return _fail("veille email indisponible")
+            from mnemosyne.mailwatch import register_email_wait
+
+            try:
+                wait_id = register_email_wait(
+                    self.app_config,
+                    self.mailbox.db,
+                    self.mailbox,
+                    agent="coder",
+                    task_id=self.task_id,
+                    params=p,
+                    vault_get=self.vault_get,
+                )
+            except ValueError as exc:
+                return _fail(str(exc))
+            except Exception as exc:  # noqa: BLE001 - never break the session
+                return _fail(f"attente email non enregistrée : {exc}")
+            return _ok(
+                f"attente email #{wait_id} enregistrée — arrête ton tour. "
+                "La session sera remise dans la file automatiquement quand un "
+                "email correspondant arrivera."
+            )
+
         tools = [
             Tool(name="list_files", description="List files in a directory.",
                  parameters=DirParam, executor=list_exec),
@@ -403,6 +430,18 @@ class DevToolProvider(ToolProvider):
                     ),
                     parameters=AskOperatorParams,
                     executor=ask_exec,
+                )
+            )
+            tools.append(
+                Tool(
+                    name="wait_for_email",
+                    description=(
+                        "Park this task until a matching email arrives (expected sender "
+                        "and/or reply to the message you sent). Ends your turn; the "
+                        "session is re-queued automatically on receipt."
+                    ),
+                    parameters=WaitForEmailParams,
+                    executor=wait_email_exec,
                 )
             )
         return tools

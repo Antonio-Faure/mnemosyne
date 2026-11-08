@@ -141,7 +141,7 @@ async def test_every_browser_tool_goes_through_the_single_watch(config):
     )
     from mnemosyne.agents.mailbox import Mailbox
     from mnemosyne.db import Database
-    from mnemosyne.operator.models import AskOperatorParams
+    from mnemosyne.operator.models import AskOperatorParams, WaitForEmailParams
 
     db = Database(config.db_file())
     provider = BrowserAgentToolProvider(config, Mailbox(db))
@@ -153,6 +153,7 @@ async def test_every_browser_tool_goes_through_the_single_watch(config):
         expected = {
             "browser", "list_helpers", "read_helper", "write_helper",
             "publish_helpers", "remember", "send_message", "ask_operator",
+            "wait_for_email",
         }
         assert set(tools) == expected
         params = {
@@ -166,6 +167,7 @@ async def test_every_browser_tool_goes_through_the_single_watch(config):
             "ask_operator": AskOperatorParams(
                 question="?", options=[{"label": "A"}, {"label": "B"}]
             ),
+            "wait_for_email": WaitForEmailParams(from_address="person@example.org"),
         }
         for name, p in params.items():
             await tools[name].executor(p)

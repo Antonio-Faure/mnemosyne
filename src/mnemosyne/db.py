@@ -125,6 +125,29 @@ CREATE TABLE IF NOT EXISTS operator_asks (
     answered_at   TEXT
 );
 
+-- Agent parked until a matching email arrives (IMAP watcher).
+CREATE TABLE IF NOT EXISTS email_waits (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id           INTEGER NOT NULL,
+    agent             TEXT NOT NULL,
+    from_address      TEXT,
+    subject_contains  TEXT,
+    in_reply_to       TEXT,
+    timeout_s         INTEGER NOT NULL DEFAULT 0,
+    reason            TEXT,
+    marker_message_id INTEGER,
+    status            TEXT NOT NULL DEFAULT 'pending',
+    created_at        TEXT NOT NULL,
+    matched_at        TEXT,
+    matched_uid       TEXT,
+    matched_from      TEXT,
+    matched_subject   TEXT,
+    matched_message_id TEXT,
+    note              TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_email_waits_status
+    ON email_waits(status, task_id);
+
 -- Observatory: the sidebar lists sessions (one queue task OR one job run);
 -- agent activations/handoffs are EVENTS inside a session, never sessions.
 CREATE TABLE IF NOT EXISTS sessions (
@@ -710,8 +733,10 @@ class Database:
         queue; its answer wakes it back into the running set.
         """
         parked = (
-            "EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
+            "(EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
             "AND m.status = 'pending' AND m.recipient = 'operator') "
+            "OR EXISTS (SELECT 1 FROM email_waits w WHERE w.task_id = t.id "
+            "AND w.status = 'pending')) "
             "AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
             "AND m.status = 'pending' AND m.recipient IN ('coder', 'browser'))"
         )
@@ -1181,6 +1206,105 @@ class Database:
                 (task_id,),
             ).fetchone()
         return row is not None
+
+    # ── email waits (agent parked until an IMAP message arrives) ──────────
+    def create_email_wait(
+        self,
+        task_id: int,
+        agent: str,
+        *,
+        from_address: str | None = None,
+        subject_contains: str | None = None,
+        in_reply_to: str | None = None,
+        timeout_s: int = 0,
+        reason: str | None = None,
+        marker_message_id: int | None = None,
+    ) -> int:
+        with self._lock:
+            cur = self._conn.execute(
+                """INSERT INTO email_waits
+                   (task_id, agent, from_address, subject_contains, in_reply_to,
+                    timeout_s, reason, marker_message_id, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
+                (
+                    task_id,
+                    agent,
+                    (from_address or "").strip() or None,
+                    (subject_contains or "").strip() or None,
+                    (in_reply_to or "").strip() or None,
+                    int(timeout_s or 0),
+                    (reason or "").strip() or None,
+                    marker_message_id,
+                    utcnow_iso(),
+                ),
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def pending_email_waits(self) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM email_waits WHERE status = 'pending' "
+                "ORDER BY created_at ASC, id ASC"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def task_email_wait(self, task_id: int) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM email_waits WHERE task_id = ? AND status = 'pending' "
+                "ORDER BY id DESC LIMIT 1",
+                (task_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def task_waiting_on_email(self, task_id: int) -> bool:
+        return self.task_email_wait(task_id) is not None
+
+    def match_email_wait(
+        self,
+        wait_id: int,
+        *,
+        uid: str | None = None,
+        from_address: str | None = None,
+        subject: str | None = None,
+        message_id: str | None = None,
+        note: str | None = None,
+    ) -> None:
+        with self._lock:
+            self._conn.execute(
+                """UPDATE email_waits
+                   SET status = 'matched', matched_at = ?, matched_uid = ?,
+                       matched_from = ?, matched_subject = ?, matched_message_id = ?,
+                       note = ?
+                   WHERE id = ?""",
+                (
+                    utcnow_iso(),
+                    uid,
+                    from_address,
+                    subject,
+                    message_id,
+                    note,
+                    wait_id,
+                ),
+            )
+            self._conn.commit()
+
+    def timeout_email_wait(self, wait_id: int, note: str | None = None) -> None:
+        with self._lock:
+            self._conn.execute(
+                """UPDATE email_waits
+                   SET status = 'timed_out', matched_at = ?, note = ?
+                   WHERE id = ?""",
+                (utcnow_iso(), note, wait_id),
+            )
+            self._conn.commit()
+
+    def delete_task_email_waits(self, task_id: int) -> int:
+        with self._lock:
+            cur = self._conn.execute("DELETE FROM email_waits WHERE task_id = ?", (task_id,))
+            self._conn.commit()
+            return cur.rowcount
 
     # ── per-task temporary mailbox ───────────────────────────────────────
     def post_message(
