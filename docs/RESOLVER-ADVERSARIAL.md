@@ -167,6 +167,20 @@ Règles d'annotation :
 - plusieurs images acceptables sont autorisées ;
 - conserver `video_id` + timestamps pour la traçabilité.
 
+### Import / validation
+
+```bash
+# valider sans écrire
+mnemosyne resolve import-golden data/golden.jsonl --dry-run
+
+# importer (upsert idempotent par segment_id)
+mnemosyne resolve import-golden data/golden.jsonl
+
+# état du dataset importé
+mnemosyne resolve stats
+```
+
+
 ## Panneau adversarial
 
 Chaque candidat passe des lentilles indépendantes :

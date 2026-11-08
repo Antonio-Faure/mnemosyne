@@ -210,6 +210,55 @@ def _cmd_messages(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_resolve_import_golden(args: argparse.Namespace) -> int:
+    from mnemosyne.db import Database
+    from mnemosyne.resolver import GoldenFileError, load_golden
+
+    try:
+        labels = load_golden(args.path)
+    except GoldenFileError as exc:
+        print(f"golden invalide : {exc}")
+        return 1
+
+    counts: dict[str, int] = {}
+    for label in labels:
+        counts[label.gold.status] = counts.get(label.gold.status, 0) + 1
+    summary = ", ".join(f"{status}={n}" for status, n in sorted(counts.items()))
+    print(f"{len(labels)} phrase(s) valide(s) : {summary}")
+
+    if args.dry_run:
+        print("dry-run : rien n'a été écrit")
+        return 0
+
+    cfg = get_config()
+    db = Database(cfg.db_file())
+    try:
+        written = db.upsert_resolver_golden(labels)
+        total = db.resolver_golden_count()
+        stats = db.resolver_golden_stats()
+    finally:
+        db.close()
+    print(f"importées : {written} ; total en base : {total}")
+    print("statuts : " + ", ".join(f"{k}={v}" for k, v in sorted(stats.items())))
+    return 0
+
+
+def _cmd_resolve_stats(args: argparse.Namespace) -> int:
+    from mnemosyne.db import Database
+
+    cfg = get_config()
+    db = Database(cfg.db_file())
+    try:
+        total = db.resolver_golden_count()
+        stats = db.resolver_golden_stats()
+    finally:
+        db.close()
+    print(f"golden dataset : {total} phrase(s)")
+    for status, count in sorted(stats.items()):
+        print(f"  {status:<10} {count}")
+    return 0
+
+
 def _cmd_queue_add(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.agents.supervisor import pick_agent
@@ -801,6 +850,15 @@ def build_parser() -> argparse.ArgumentParser:
     pmsgs.add_argument("--status", default=None, help="filter: pending/running/handled/failed")
     pmsgs.add_argument("--limit", type=int, default=50)
     pmsgs.set_defaults(func=_cmd_messages)
+
+    pres = sub.add_parser("resolve", help="adversarial sentence-to-image resolver")
+    rsub = pres.add_subparsers(dest="resolve_command", required=True)
+    rig = rsub.add_parser("import-golden", help="validate and import a golden JSONL/JSON dataset")
+    rig.add_argument("path", help="golden file (.jsonl or .json array)")
+    rig.add_argument("--dry-run", action="store_true", help="validate only, do not write")
+    rig.set_defaults(func=_cmd_resolve_import_golden)
+    rst = rsub.add_parser("stats", help="show the imported golden dataset")
+    rst.set_defaults(func=_cmd_resolve_stats)
 
     pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")
     pdis.add_argument("--limit", type=int, default=100)
