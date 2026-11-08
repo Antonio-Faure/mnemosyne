@@ -58,6 +58,11 @@ def _as_list(value: Any) -> list[str]:
 
 
 class DplaConnector(Connector):
+    def _items_url(self) -> str:
+        # DPLA v2 search lives under ``/v2/items``; requesting the bare ``/v2``
+        # root returns HTTP 404 (the resolver hit exactly this in task #148).
+        return self.descriptor.base_url.rstrip("/") + "/items"
+
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
         key = self.api_key("DPLA_API_KEY")
         if not key:
@@ -73,7 +78,7 @@ class DplaConnector(Connector):
             "page_size": str(min(limit, 100)),
             "page": "1",
         }
-        data = await self.http.get_json(self.descriptor.base_url, params=params)
+        data = await self.http.get_json(self._items_url(), params=params)
 
         assets: list[Asset] = []
         for item in data.get("docs", []) or []:

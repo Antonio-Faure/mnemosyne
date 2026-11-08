@@ -25,4 +25,6 @@ notes: >-
   (DPLA_API_KEY, request one at https://dp.la/developers). Images come from
   `docs[].object`, page links from `docs[].isShownAt`, and descriptive metadata
   from `docs[].sourceResource` (title/creator/date/description). Keyless calls
-  return no results.
+  return no results. Correctif 2026-11-08 (tâche #149) : le connecteur visait le
+  root `/v2` (HTTP 404) ; il cible désormais `/v2/items` (200 avec `count`+`docs`).
+  La clé reste lue depuis le vault (DPLA_API_KEY).

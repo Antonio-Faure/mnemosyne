@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 import yaml
 
@@ -58,6 +59,34 @@ class _FakeHttp:
 
     def object_calls(self) -> int:
         return sum(1 for url, _ in self.calls if "/objects/" in url)
+
+
+def _status_error(url: str, status: int) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", url)
+    response = httpx.Response(status, request=request)
+    return httpx.HTTPStatusError(f"HTTP {status}", request=request, response=response)
+
+
+class _HttpWithFailingObject(_FakeHttp):
+    """Like ``_FakeHttp`` but selected object ids raise an ``HTTPStatusError``."""
+
+    def __init__(
+        self,
+        search: dict[str, Any],
+        objects: dict[str, Any],
+        failing: set[str],
+        status: int = 404,
+    ) -> None:
+        super().__init__(search, objects)
+        self._failing = set(failing)
+        self._status = status
+
+    async def get_json(self, url: str, **kwargs: Any) -> Any:
+        object_id = url.rstrip("/").rsplit("/", 1)[-1]
+        if "/objects/" in url and object_id in self._failing:
+            self.calls.append((url, kwargs))
+            raise _status_error(url, self._status)
+        return await super().get_json(url, **kwargs)
 
 
 def _raw() -> dict[str, Any]:
@@ -186,6 +215,30 @@ async def test_met_empty_search_returns_no_assets():
 
     assert await connector.search("nothing", limit=5) == []
     assert http.object_calls() == 0
+
+
+@pytest.mark.asyncio
+async def test_met_skips_object_that_404s_without_degrading_source():
+    """Regression (#149): a withdrawn object id (404) is skipped, not fatal."""
+    objects = {"3": _object(3)}
+    http = _HttpWithFailingObject(_search(2, 3), objects, failing={"2"}, status=404)
+    connector = MetConnector(_descriptor(), http)
+
+    assets = await connector.search("locomotive", limit=5)
+
+    # object 2 (404) is dropped; object 3 is still returned — no source error
+    assert [a.source_asset_id for a in assets] == ["3"]
+
+
+@pytest.mark.asyncio
+async def test_met_reraises_non_404_object_error():
+    """A real access/outage error (e.g. 403) is not masked."""
+    objects = {"3": _object(3)}
+    http = _HttpWithFailingObject(_search(2, 3), objects, failing={"2"}, status=403)
+    connector = MetConnector(_descriptor(), http)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await connector.search("locomotive", limit=5)
 
 
 def test_met_is_public_domain_accepts_bool_and_string():
