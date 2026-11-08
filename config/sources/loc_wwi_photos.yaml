@@ -1,0 +1,28 @@
+id: loc_wwi_photos
+name: Library of Congress — World War I photographs (Prints & Photographs)
+institution: Library of Congress
+country: US
+protocol: rest
+base_url: https://www.loc.gov/collections/world-war-i/
+auth: none
+license: varies
+rights: "LoC — vérifier par notice (souvent domaine public / « no known restrictions » ; sinon « In Copyright »)"
+rate_limit_per_s: 0.5
+priority: 20
+tags: [national-library, usa, wwi, photographs, keyless, json, iiif]
+seeds:
+  - "German army Belgium 1914"
+  - "German invasion Belgium 1914"
+  - "World War I Belgium refugees"
+  - "western front 1914"
+  - "Bain News Service World War I"
+notes: >-
+  API JSON publique sans clé du loc.gov : `/collections/world-war-i/?fo=json`
+  (champ `results[]` ; chaque notice porte `id`/`url`, `title`, `date`,
+  `description`, `contributor`, `rights` et une liste `image_url` ordonnée de
+  la plus petite à la plus grande dérivée sur `tile.loc.gov`). Accès 100 %
+  programmatique, aucun scraping HTML. Constat 2026-11-08 via `fetch_url` :
+  l'endpoint `?fo=json` (et même les pages `/collections/`) renvoie HTTP 403
+  après quelques requêtes depuis l'IP d'exécution (détection de bot type
+  Akamai) — vérification de la forme JSON et du 200 à confirmer via navigateur ;
+  le connecteur reste correct (l'API JSON est la voie officielle).
