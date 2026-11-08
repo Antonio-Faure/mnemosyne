@@ -109,6 +109,7 @@ async def ask_operator(
     task_id: int,
     question: str,
     options: list[dict[str, Any]],
+    bot_agent: str | None = None,
 ) -> str:
     """Register the question, post it in the task mailbox, send it to Telegram.
 
@@ -122,7 +123,10 @@ async def ask_operator(
     )
     message_id = mailbox.post(agent, OPERATOR, body, task_id)
     db.create_ask(ask_id, task_id, agent, question, options, message_id=message_id)
-    sent = await send_ask(config, agent, db.get_ask(ask_id), vault_get)
+    # The question belongs to `agent` (the answer goes back to its mailbox),
+    # while the Telegram bot/chat can be another one (e.g. resolver reuses the
+    # browser bot to avoid a third token).
+    sent = await send_ask(config, bot_agent or agent, db.get_ask(ask_id), vault_get)
     if sent:
         db.set_ask_telegram(ask_id, sent[0], sent[1])
     return ask_id
