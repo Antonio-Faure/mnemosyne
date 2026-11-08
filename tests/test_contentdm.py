@@ -175,7 +175,7 @@ async def test_scdl_public_domain_is_asset():
 
 
 @pytest.mark.asyncio
-async def test_indiana_noc_us_is_asset():
+async def test_noc_us_is_asset():
     alias, item_id = "p15078coll1", "20"
     fields = [
         _field("title", "Title", "Indiana glass negative"),
@@ -262,6 +262,66 @@ async def test_missing_rights_are_ignored():
     connector, _ = _run("teva", TEVA, pages, details)
 
     assert await connector.search("anything") == []
+
+
+@pytest.mark.asyncio
+async def test_public_domain_with_contact_note_is_open():
+    # "please contact the library" is informational, not a restriction.
+    alias, item_id = "p1", "1"
+    fields = [
+        _field(
+            "rights",
+            "Rights",
+            "Public Domain. For further information please contact South "
+            "Caroliniana Library, Columbia, SC.",
+        )
+    ]
+    details = {(alias, item_id): _detail(image_uri=_iiif(SCDL, alias, item_id), fields=fields)}
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("scdl", SCDL, pages, details)
+
+    assets = await connector.search("map")
+
+    assert len(assets) == 1
+    assert assets[0].license == "PDM-1.0"
+
+
+@pytest.mark.asyncio
+async def test_restrictive_personal_educational_statement_is_rejected():
+    # NoC-US is present, but the use statement limits reuse to personal /
+    # educational / not-for-profit purposes -> reject.
+    alias, item_id = "p1", "1"
+    fields = [
+        _field(
+            "rights",
+            "Rights",
+            "http://rightsstatements.org/vocab/NoC-US/1.0/; This image may be "
+            "used for personal, educational, and not-for-profit purposes until "
+            "further notice; for other uses contact the museum.",
+        )
+    ]
+    details = {(alias, item_id): _detail(image_uri=_iiif(INDIANA, alias, item_id), fields=fields)}
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("indiana_memory", INDIANA, pages, details)
+
+    assert await connector.search("portrait") == []
+
+
+@pytest.mark.asyncio
+async def test_http_image_uri_is_upgraded_to_https():
+    alias, item_id = "p1", "1"
+    fields = [_field("rights", "Rights", "Public Domain")]
+    http_uri = f"http://teva.contentdm.oclc.org/iiif/2/{alias}:{item_id}/full/full/0/default.jpg"
+    details = {(alias, item_id): _detail(image_uri=http_uri, fields=fields)}
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("teva", TEVA, pages, details)
+
+    assets = await connector.search("engine")
+
+    assert len(assets) == 1
+    assert assets[0].image_url.startswith("https://teva.contentdm.oclc.org/")
+    assert "!1200,1200" in assets[0].image_url
+    assert "!400,400" in assets[0].thumbnail_url
 
 
 # --------------------------------------------------------------------------- #
@@ -434,7 +494,6 @@ async def test_page_url_from_item_link_and_fallback():
     ("source_id", "base_url"),
     [
         ("byu", BYU),
-        ("indiana_memory", INDIANA),
         ("scdl", SCDL),
         ("teva", TEVA),
     ],
@@ -452,6 +511,6 @@ def test_descriptor_deserializes_and_is_registered(source_id, base_url):
     assert CONNECTORS[source_id] is ContentDmConnector
 
 
-def test_all_four_sources_registered():
-    for source_id in ("teva", "scdl", "indiana_memory", "byu"):
+def test_all_three_sources_registered():
+    for source_id in ("teva", "scdl", "byu"):
         assert CONNECTORS[source_id] is ContentDmConnector

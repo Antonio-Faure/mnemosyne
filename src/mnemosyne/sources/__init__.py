@@ -42,7 +42,6 @@ CONNECTORS: dict[str, type[Connector]] = {
     "gbif": GbifConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
-    "indiana_memory": ContentDmConnector,
     "internet_archive": InternetArchiveConnector,
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,

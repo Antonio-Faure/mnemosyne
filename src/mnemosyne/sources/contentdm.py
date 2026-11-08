@@ -38,19 +38,25 @@ _OPEN_MARKERS = (
     "creativecommons.org/licenses/by/",
 )
 
-#: markers that must win over any open marker (checked first).
+#: markers that must win over any open marker (checked first). Keep these
+#: specific: generic words like "contact" or "permission" also appear in open
+#: statements ("Public Domain ... please contact ...", "without permission").
 _BAD_MARKERS = (
     "not evaluated",
     "undetermined",
     "all rights reserved",
     "may be protected",
-    "permission",
-    "educational purposes",
+    "permission required",
+    "contact host",
+    "contact for permission",
+    "contact us for permission",
+    "educational purposes only",
+    "not-for-profit purposes",
+    "personal, educational",
     "in copyright",
     "inc/",
     "by-nc",
     "by-nd",
-    "contact",
 )
 
 _URL_RE = re.compile(r"https?://[^\s;]+")
@@ -127,6 +133,10 @@ def _first_url(text: str) -> str | None:
 
 
 def _absolute(base: str, uri: str) -> str:
+    # CONTENTdm sometimes returns http:// image URLs even when the host serves
+    # https; upgrade to avoid mixed-content failures in the UI.
+    if uri.startswith("http://") and base.startswith("https://"):
+        uri = "https://" + uri[len("http://") :]
     if uri.startswith("http://") or uri.startswith("https://"):
         return uri
     if uri.startswith("/"):
