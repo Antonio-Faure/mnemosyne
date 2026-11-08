@@ -1,0 +1,45 @@
+id: nb_no
+name: National Library of Norway — Nasjonalbiblioteket
+institution: National Library of Norway
+country: "NO"
+protocol: rest
+base_url: https://api.nb.no/catalog/v1
+auth: none
+license: PDM-1.0
+rights: >-
+  Domaine public — uniquement les notices accessInfo.isPublicDomain == true et
+  isDigital == true ; images via manifeste IIIF ; vérifier par notice.
+rate_limit_per_s: 1.0
+priority: 60
+tags: [library, norway, keyless, public-domain, iiif, photography]
+seeds:
+  - dampskip
+  - fabrikk
+  - jernbane
+  - gruve
+  - landskap
+  - portrett
+  - bybilde
+  - kyst
+notes: >-
+  API REST publique sans clé de la Nasjonalbiblioteket (Bibliothèque nationale
+  de Norvège). Endpoint de recherche :
+  GET https://api.nb.no/catalog/v1/items?q=<query>&size=100&page=0 — réponse
+  {"page": {number,size,totalElements,totalPages}, "_embedded": {items: [...]},
+  "_links": {...}}. Chaque item : id, _links.presentation.href (manifeste IIIF),
+  accessInfo {isDigital, isPublicDomain, license ("publicdomain" /
+  "copyrighted" / …), viewability ("ALL" / "NONE" / …)}, metadata {title,
+  creators, originInfo {issued, publisher}, mediaTypes, languages, subjects?}.
+  Filtre : ne garder QUE les items accessInfo.isPublicDomain == true ET
+  accessInfo.isDigital == true (viewability != "NONE") ; les autres sont
+  ignorés, sans aucune requête de manifeste pour un item fermé. Manifeste IIIF
+  à _links.presentation.href (…/iiif/<id>/manifest) : sequences[0].canvases[0]
+  → images[0].resource["@id"] (première page seulement pour un livre
+  multi-pages) ; vignette = manifest.thumbnail["@id"] si présent, sinon image
+  principale ; manifestes sans canvas/image ignorés. page_url =
+  https://www.nb.no/items/<id>. Pagination `page` 0-based, size ≤ 100 (clampé),
+  arrêt sur totalPages / totalElements / page vide ou limite atteinte. Licence :
+  PDM-1.0 (Public Domain Mark) pour le domaine public, CC0-1.0 si
+  accessInfo.license == "cc0" ; rights = "Public domain — National Library of
+  Norway". Rate limit poli 1.0 req/s, aucun scraping HTML, aucune image
+  téléchargée, aucune clé.

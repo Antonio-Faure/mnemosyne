@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **51**
-- Sources actives : **40**
+- Sources déclarées : **52**
+- Sources actives : **41**
 - Sources désactivées : **11**
-## Sources actives (40)
+## Sources actives (41)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -30,7 +30,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
 | bsb_collection | Bavarian State Library — digital collections (IIIF) | Bayerische Staatsbibliothek, München | DE | iiif | none | varies | Bayerische Staatsbibliothek — vérifier par notice (domaine public pour une grande partie) ; Collection IIIF « top » (iiif/presentation/v2/collection/top) |
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
-| colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries | US | iiif | none | varies | University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright) ; manifeste unique par notice (pas de Collection IIIF) |
+| colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright) ; manifeste unique par notice (pas de Collection IIIF) |
 | cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Européana), vérifier `rights` et le fournisseur |
 | digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les notices explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
@@ -48,6 +48,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | met | Metropolitan Museum of Art — Open Access | The Metropolitan Museum of Art, New York | US | rest | none | CC0-1.0 | Met Open Access — images du domaine public sous CC0 1.0 Universal ; vérifier par notice (`isPublicDomain`, `primaryImage`) ; recherche v1.1 (l'ancien v1 retiré le 2026-10-01) ; ne conserver que `isPublicDomain == true` et `primaryImage` non vide |
 | nationalmuseum_se | Nationalmuseum Sweden — IIIF (iiifhosting.com) | Nationalmuseum (Sweden) | SE | iiif | none | varies | Nationalmuseum (Sweden) — vérifier par notice (domaine public / CC) ; manifeste unique par objet (pas de Collection IIIF) |
 | nasa | NASA Image and Video Library | NASA | US | rest | none | Public Domain (NASA) | NASA content generally not copyrighted; some items may be third-party — verify per item ; API REST publique sans clé (images-api.nasa.gov/search) ; pagination 1-based (`page_size` ≤ 100, `collection.metadata.total_hits`) ; ignorer items sans `links` ou `media_type != image` ; URLs d'images via `links[].href` (~large / ~medium / ~orig, vignette ~thumb) ; page_url images.nasa.gov/details/<nasa_id> ; aucun téléchargement (URLs seulement) |
+| nb_no | National Library of Norway — Nasjonalbiblioteket | National Library of Norway | NO | rest | none | PDM-1.0 | Bibliothèque nationale de Norvège — API REST publique sans clé (api.nb.no/catalog/v1/items) ; ne garder que les notices `accessInfo.isPublicDomain == true` et `accessInfo.isDigital == true` (viewability ≠ « NONE ») ; images via manifeste IIIF (première page des livres multi-pages), vignette `thumbnail` si présente ; pagination 0-based (`page`, `size` ≤ 100, `totalPages`) ; aucun scraping HTML, aucune image téléchargée |
 | ndl | National Diet Library Digital Collections (IIIF) | National Diet Library (国立国会図書館), Tokyo | JP | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | 国立国会図書館 National Diet Library, JAPAN — Public Domain Mark (PDM) ; manifeste unique par notice (pas de Collection IIIF) |
 | nga | National Gallery of Art (Washington, DC) | National Gallery of Art | US | iiif | none | varies | National Gallery of Art — Open Access (images du domaine public libres, y compris usage commercial ; métadonnées CC0) ; vérifier les droits par notice ; manifeste unique par objet (pas de Collection IIIF) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
@@ -83,7 +84,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 ## Raccourcis licence
 
 - **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `cooper_hewitt`,
-  `digital_commonwealth`, `kmska`, `llgc`, `met`, `nasa`, `ndl`, `rijksmuseum`,
+  `digital_commonwealth`, `kmska`, `llgc`, `met`, `nasa`, `nb_no`, `ndl`, `rijksmuseum`,
   `smk`, `smithsonian` (plus `wikidata` pour les données ; `nasa` = domaine public
   US, pas CC0).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
