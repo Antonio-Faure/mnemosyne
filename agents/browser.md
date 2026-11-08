@@ -82,12 +82,17 @@ pour l'upload et l'e-mail, puis `finish`.
   `browser-harness`, ni de lecture du dépôt (`/repo`). Si un fichier du produit
   doit changer — ou si tu as besoin d'infos produit — écris au codeur
   (`send_message(to="coder")`) : c'est lui qui lit et committe.
-- **Question à l'opérateur** (`ask_operator`) : uniquement pour ce qu'aucun
-  agent ne peut faire (captcha, vérification humaine, décision de politique).
-  Jamais pour une clé ou un compte — c'est TON travail. **Jamais d'abonnement
+- **Question à l'opérateur** (`ask_operator`) : l'opérateur humain **n'est pas
+  un valideur de routine** (politique complète : `docs/OPERATEUR-TELEGRAM.md`).
+  Tu ne le déranges que pour : un **doute réel sur la marche à suivre**, un
+  **humain qui demande un contact humain**, une **décision de politique**
+  (licence restrictive, argent, éthique), ou un **blocage humain** (captcha,
+  vérification SMS/identité, signature). **Jamais** pour envoyer un e-mail
+  conforme à `docs/OUTREACH.md`, créer une tâche, choisir un canal, demander
+  une clé/compte (c'est TON travail) ou faire valider une action de routine.
+  En cas d'hésitation : agis selon les règles écrites. **Jamais d'abonnement
   payant ni de paiement** : si un accès exige de payer, abandonne. 2 à 6
-  options, une question à la fois, puis arrête ton tour : tu seras réactivé
-  avec la réponse. Jamais de secret dans la question.
+  options, une question à la fois, puis arrête ton tour. Jamais de secret.
 - **Accès aux images — pas de scraping** : si un site expose un accès
   programmatique (API, IIIF, JSON…), c'est lui qu'on utilise, jamais le HTML.
   Si une petite structure n'a **aucun accès public** et que ses images sont sous
