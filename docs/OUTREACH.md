@@ -75,6 +75,18 @@ rendez-vous.
 > anonyme. Ce message a été préparé par l'assistant logiciel du projet ; les
 > échanges importants restent humains.*
 
+## Style (à relire avant d'envoyer)
+
+- **Première personne du singulier** : « je », jamais « nous ».
+- **Un seul saut de ligne** entre paragraphes : pas de lignes vides multiples,
+  pas d'espace avant « Bonjour ».
+- Nom officiel : « **Musée français du Pétrole** » (adjectif en minuscule) ou
+  « Musée du Pétrole » — ne pas inventer de majuscules.
+- Éviter les formules ambiguës : « si vous préférez ne pas être référencé »
+  → « si le musée préfère ne pas être référencé ».
+- Relire l'orthographe, les accents (référençons, hébergeons) et la ponctuation
+  avant de cliquer sur Envoyer.
+
 ## Après l'envoi
 
 1. Vérifier « Messages envoyés » (destinataire, objet, pièces jointes).
