@@ -198,18 +198,15 @@ class ResolverToolProvider(ToolProvider):
                     "la redemander ; si elle ne renvoie rien, c'est un trou de "
                     "couverture interne, pas une source manquante."
                 )
+            # Same host is allowed: a photo-only sibling of a text connector is
+            # a legitimate specialisation (see wikimedia_commons_photos). The
+            # duplicate *id* is the only hard error.
             host = domain_of(p.api_url) if p.api_url else ""
             same_host = [
                 descriptor
                 for descriptor in known.values()
                 if host and domain_of(descriptor.base_url) == host
             ]
-            if same_host:
-                return _fail(
-                    f"cet hôte ({host}) est déjà couvert par la source "
-                    f"{same_host[0].id} : utilise catalog_search(source_ids="
-                    f"['{same_host[0].id}'])."
-                )
             segment_id = self._segment_id()
             objective = (
                 "Source demandée par le résolveur adversarial"
@@ -244,10 +241,16 @@ class ResolverToolProvider(ToolProvider):
                 )
             except Exception as exc:  # noqa: BLE001 - never break the session
                 return _fail(f"demande de source non enregistrée : {exc}")
+            note = ""
+            if same_host:
+                note = (
+                    f" Note : l'hôte {host} est déjà couvert par {same_host[0].id} — "
+                    "précise dans la raison en quoi ce profil de recherche diffère."
+                )
             return _ok(
                 f"tâche biagent #{biagent_task_id} créée (request #{request_id}) pour "
                 f"{p.source_name} ; la session resolver sera parquée tant que la source "
-                "n'est pas terminale."
+                f"n'est pas terminale.{note}"
             )
 
         async def wait_for_sources_exec(p: EmptyParams):
