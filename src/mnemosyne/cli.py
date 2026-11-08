@@ -299,7 +299,11 @@ def _cmd_resolve_enqueue(args: argparse.Namespace) -> int:
     cfg = get_config()
     db = Database(cfg.db_file())
     try:
-        task_id, reason = enqueue_sentence(db, args.segment_id)
+        from mnemosyne.resolver.queue import catalog_inventory
+
+        task_id, reason = enqueue_sentence(
+            db, args.segment_id, sources=catalog_inventory(cfg)
+        )
     finally:
         db.close()
     if task_id is None:

@@ -58,6 +58,32 @@ def _fail(content: str) -> ToolResult[ToolUseCountMetadata]:
     return ToolResult(content=content, success=False, metadata=ToolUseCountMetadata())
 
 
+#: Connector words only: "Library of Congress" and "Library of Congress — Prints"
+#: stay different sources, while "Gallica (BnF)" and "gallica_bnf" are the same.
+_GLUE = frozenset(
+    {
+        "the", "of", "de", "la", "le", "les", "des", "du", "and", "et", "a", "à",
+        "en", "for", "pour", "sur", "collections", "collection", "fonds",
+    }
+)
+
+
+def _name_tokens(*values: str | None) -> set[str]:
+    words: set[str] = set()
+    for value in values:
+        for raw in str(value or "").replace("_", " ").replace("-", " ").split():
+            word = raw.strip("()[].,;:!?/\\'\"").lower()
+            if len(word) >= 3 and word not in _GLUE:
+                words.add(word)
+    return words
+
+
+def _same_source(a: set[str], b: set[str], threshold: float = 0.6) -> bool:
+    if not a or not b:
+        return False
+    return len(a & b) / len(a | b) >= threshold
+
+
 class CatalogSearchParams(BaseModel):
     query: str = Field(description="Historical search query (entities, place, period, synonyms)")
     limit: int = Field(default=10, ge=1, le=30)
@@ -74,6 +100,14 @@ class RequestSourceParams(BaseModel):
         default="coder", description="Biagent to use (browser if auth/API research is needed)"
     )
     api_url: str = Field(default="", description="Optional API/docs URL to attach to the task")
+    specialisation: bool = Field(
+        default=False,
+        description=(
+            "true only for a deliberate sibling of an existing source (e.g. a "
+            "photo-only connector when the existing one returns books). Explain "
+            "the different scope in `reason`."
+        ),
+    )
 
 
 class RecordResultParams(BaseModel):
@@ -189,6 +223,7 @@ class ResolverToolProvider(ToolProvider):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
             known = self._known_sources()
+            wanted = _name_tokens(p.source_id, p.source_name)
             if p.source_id in known:
                 descriptor = known[p.source_id]
                 state = "activée" if descriptor.enabled else "désactivée"
@@ -198,6 +233,35 @@ class ResolverToolProvider(ToolProvider):
                     "la redemander ; si elle ne renvoie rien, c'est un trou de "
                     "couverture interne, pas une source manquante."
                 )
+            requested_id = p.source_id.strip().lower()
+            for descriptor in known.values():
+                existing_id = descriptor.id.lower()
+                # `gallica_bnf` is `gallica` + a qualifier: same provider, new name.
+                same_family = requested_id.startswith(f"{existing_id}_") or existing_id.startswith(
+                    f"{requested_id}_"
+                )
+                if (same_family and not p.specialisation) or _same_source(
+                    wanted, _name_tokens(descriptor.id, descriptor.name)
+                ):
+                    state = "activée" if descriptor.enabled else "désactivée"
+                    return _fail(
+                        f"la source demandée ({p.source_name}) est déjà couverte par "
+                        f"`{descriptor.id}` — {state}. Interroge-la avec "
+                        f"catalog_search(source_ids=['{descriptor.id}']) ; un "
+                        "résultat vide n'autorise pas à recréer la même source. "
+                        "Si c'est une vraie spécialisation (périmètre différent), "
+                        "rappelle request_source avec specialisation=true et "
+                        "explique la différence dans `reason`."
+                    )
+            for request in self.db.open_resolver_requests():
+                if request.get("source_id") == p.source_id or _same_source(
+                    wanted, _name_tokens(request.get("source_id"), request.get("source_name"))
+                ):
+                    return _fail(
+                        f"cette source est déjà demandée (request #{request['id']}, "
+                        f"tâche #{request.get('biagent_task_id')}) : ne la redemande pas, "
+                        "elle sera ajoutée par le biagent."
+                    )
             # Same host is allowed: a photo-only sibling of a text connector is
             # a legitimate specialisation (see wikimedia_commons_photos). The
             # duplicate *id* is the only hard error.
