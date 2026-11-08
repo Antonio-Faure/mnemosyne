@@ -1,3 +1,7 @@
+> **Déprécié (novembre 2026).** Mnemosyne ne moissonne plus d'assets : la
+> recherche est fédérée en direct et aucune base locale d'images n'est
+> conservée. Ce document décrit l'ancien mécanisme, gardé comme archive.
+
 # Harvest — pourquoi, combien, comment régler
 
 ## Ce que fait un harvest

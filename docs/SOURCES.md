@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **66**
-- Sources actives : **54**
-- Sources désactivées : **12**
-## Sources actives (54)
+- Sources déclarées : **68**
+- Sources actives : **55**
+- Sources désactivées : **13**
+## Sources actives (55)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -38,6 +38,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Européana), vérifier `rights` et le fournisseur ; recherche `/v2/items` (correctif 2026-11-08) |
 | digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les notices explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
+| digitalnz | DigitalNZ — Te Puna Mātauranga o Aotearoa | National Library of New Zealand | NZ | rest | none | varies | DigitalNZ (Te Puna Mātauranga o Aotearoa) — API REST officielle v3 sans clé (api.digitalnz.org/v3/records.json) ; recherche `text` + `and[category][]=Images` + `and[usage][]=Use commercially` + `per_page` (≤ 100) + `page` (1-based) ; filtre par notice : usage commercial (`usage` contient « Use commercially » ; `is_commercial_use` souvent `null` — seul un `false` explicite disqualifie) et image http(s) obligatoire (`large_thumbnail_url` sinon `thumbnail_url`, sinon notice ignorée) ; droits explicites par notice (PD / No known copyright / out of copyright / CC0 / CC BY acceptés ; Some/All rights reserved, Copyright must be cleared, CC BY-NC/ND rejetés) ; aucune image téléchargée, aucun scraping HTML, pagination bornée |
 | eol | Encyclopedia of Life | Encyclopedia of Life | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | Encyclopedia of Life — API REST publique sans clé (eol.org/api) ; recherche `/search/1.0.json` (page 1-based, itemsPerPage 50, borné par `totalResults`) puis détail `/pages/1.0/<id>.json` (`taxonConcept.dataObjects[]`) ; une image qualifiée = un Asset ; conserver seulement les dataObjects `image/*` dont `license` est CC0 1.0 ou CC BY 3.0/4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`) ; page détail récupérée seulement tant que la limite n'est pas atteinte (`max_pages` défaut 3) ; 5xx/429 transitoires tolérés (correctif 2026-11-08) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Europeana — Search API v2 (api.europeana.eu/record/v2/search.json) ; clé API requise (`EUROPEANA_API_KEY`) ; images via `edmIsShownBy`, vignettes via `edmPreview` ; droits par notice (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | Gallica (BnF) — SRU renvoie des notices Dublin Core ; images exposées via IIIF ; vérifier les droits par notice (domaine public / sous licence) ; **indisponible depuis cette IP (Cloudflare/WAF 403, 2026-11-08)** — voir « Sources dégradées » ci-dessous |
@@ -78,7 +79,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 | yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | INTL | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
-## Sources désactivées (12)
+## Sources désactivées (13)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
@@ -89,6 +90,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | loc_wwi_photos | Library of Congress — World War I photographs (Prints & Photographs) | Library of Congress | US | rest | varies | API JSON `?fo=json` officielle mais **403 Akamai** depuis l'IP d'exécution (2026-11-08) ; connecteur prêt, activation dès que l'accès est rétabli (même cas que Gallica/NGA) |
 | mai_saint_etienne | Musée d'Art et d'Industrie de Saint-Étienne | Musée d'Art et d'Industrie de Saint-Étienne (Pôle muséal) | FR | rest | © Musée d'Art et d'Industrie de Saint-Étienne | Mention globale réservant l'usage commercial des images (autorisation requise) — non commercial |
 | musee_orsay | Musée d'Orsay — Collections (IIIF) | Établissement public des musées d'Orsay et de l'Orangerie (EPMO) | FR | iiif | Droits réservés — © EPMO | Mentions légales EPMO : reproduction/représentation interdite sans autorisation expresse (droits réservés) — à confirmer par la politique du projet |
+| musee_petrole_pechelbronn | Musée français du Pétrole — Merkwiller-Pechelbronn (photothèque) | Association des Amis du Musée du Pétrole | FR | rest | Droits réservés — © Musée français du Pétrole | Tous droits réservés (musee-du-petrole.com + portail WebMuseo du Parc naturel régional des Vosges du Nord) : reproduction/représentation interdite. API WordPress `wp-json/wp/v2/media` ouverte (≈1109 médias, métadonnées minces) sans licence de réutilisation → aucun ré-hébergement ni ingestion ; connecteur + tests prêts, activation (CC BY / CC BY-SA 4.0 ou domaine public) dès autorisation écrite du musée — prise de contact 2026-11-08 : l'adresse publiée museedupetrole@wanadoo.fr renvoie 550 (destinataire invalide), musee.petrole@musees-vosges-nord.org a un domaine mail cassé, seul contact@parc-vosges-nord.fr a été délivré (+ formulaire du musée avec accusé) ; aucune réponse à ce jour, aucune adresse morte à réutiliser |
 | musei_vaticani | Musei Vaticani — Catalogo Online | Musei Vaticani (Musei e Gallerie Pontificie) | VA | iiif | varies | Droits à confirmer par la politique du projet avant activation |
 | pop | POP — Plateforme ouverte du patrimoine | Ministère de la Culture (France) | FR | iiif | Licence Ouverte 2.0 (métadonnées) | Images par notice majoritairement restrictives (DIFF/DIFFU) — ne pas republier ; métadonnées réutilisables |
 | vam | Victoria and Albert Museum | Victoria and Albert Museum, London | GB | iiif | varies | V&A Terms and Conditions (restrictif) |
@@ -111,13 +113,13 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   (licence vérifiée au niveau de chaque média `media[].license`), attribution par
   média. `inaturalist` : uniquement les photos sous CC0 ou CC BY 4.0.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
-  `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
+  `colenda`, `dpla`, `digitalnz`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
   `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
   `wikimedia_commons_photos`, `yale`, `yale_lux` — la licence est décidée au
   niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
-  `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
+  `mai_saint_etienne`, `musee_orsay`, `musee_petrole_pechelbronn`, `musei_vaticani`, `vam`, `vatican`,
   `wellcome`.
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
   Ouverte 2.0 (etalab) ; images soumises à autorisation par notice (DIFF/DIFFU),

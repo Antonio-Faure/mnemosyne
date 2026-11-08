@@ -1,11 +1,11 @@
-"""Unified aggregation API over every connected archive provider."""
+"""Federated search API over every connected archive provider (live queries)."""
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 
 from mnemosyne.api.observatory import router as observatory_router
@@ -32,15 +32,17 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="mnemosyne",
         version="0.1.0",
-        description="Unified search over aggregated historical image archive providers.",
+        description=(
+            "Federated live search over historical image archive providers — "
+            "no image copies."
+        ),
         lifespan=lifespan,
     )
     app.include_router(observatory_router)
 
     @app.get("/health")
     async def health() -> dict:
-        engine: Engine = app.state.engine
-        return {"status": "ok", "assets_total": engine.db.count_assets()}
+        return {"status": "ok"}
 
     @app.get("/sources")
     async def sources() -> list[dict]:
@@ -85,14 +87,6 @@ def create_app() -> FastAPI:
         engine: Engine = app.state.engine
         path = engine.config.data_path / "chrome-profile" / "Default" / "History"
         return read_history(path, top=top)
-
-    @app.get("/asset/{asset_id}")
-    async def asset(asset_id: str) -> dict:
-        engine: Engine = app.state.engine
-        found = engine.db.get_asset(asset_id)
-        if found is None:
-            raise HTTPException(status_code=404, detail="asset not found")
-        return _serialize(found)
 
     _mount_frontend(app)
     return app

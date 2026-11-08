@@ -173,6 +173,7 @@ class Governor:
                 "outbound_per_day": phase.outbound_per_day,
             },
             "today": {
+                "search": self.daily_count("search"),
                 "harvest": self.daily_count("harvest"),
                 "outbound": self.daily_count("outbound"),
             },

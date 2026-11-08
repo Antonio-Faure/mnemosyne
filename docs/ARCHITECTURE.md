@@ -2,10 +2,10 @@
 
 ## Goal
 
-Aggregate hundreds of heterogeneous historical image providers into one search
-API. The bottleneck is not search but **access**: onboarding providers (accounts,
-API keys, emails) is a long human task, so it is delegated to a perpetual agent
-with a heartbeat.
+Federate access to hundreds of heterogeneous historical image providers through
+one live search API — without copying or hosting their images. The bottleneck is
+not search but **access**: onboarding providers (accounts, API keys, emails) is a
+long human task, so it is delegated to a perpetual agent with a heartbeat.
 
 ## Layers
 

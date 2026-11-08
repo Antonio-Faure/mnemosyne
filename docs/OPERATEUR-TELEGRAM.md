@@ -4,6 +4,31 @@
 > l'opérateur (toi) ; la tâche se gare, ta réponse la réveille. Le canal vit
 > dans la **boîte de la tâche**, jamais dans la file.
 
+## Quand déranger l'opérateur (politique)
+
+L'opérateur humain **n'est pas un valideur de routine**. Il a 24 h dans une
+journée ; chaque sollicitation doit être justifiée.
+
+**Déclencheurs légitimes :**
+
+1. **doute réel sur la marche à suivre** — pas sur l'exécution d'une action
+   déjà prévue et encadrée par un document ;
+2. un **humain demande un contact humain** (institution, correspondant,
+   demande d'appel ou de visio) ;
+3. **décision de politique** : licence restrictive, argent/paiement, éthique,
+   données personnelles, accès non public ;
+4. **blocage humain** : captcha, vérification SMS/identité, signature,
+   appel téléphonique.
+
+**Jamais pour :** envoyer un e-mail conforme à `docs/OUTREACH.md`, créer ou
+annuler une tâche, ouvrir une PR, lancer un test, choisir une source,
+réessayer une requête, demander une clé ou un compte (c'est le travail du
+navigateur), ou faire valider une action de routine.
+
+**Règle d'arbitrage :** en cas d'hésitation entre agir et demander, agis
+conformément aux règles écrites. Ne demande que si l'action est **irréversible
+ET sort du cadre écrit**.
+
 ## Le principe
 
 - **Un troisième correspondant** dans la boîte : `operator`. Les agents
