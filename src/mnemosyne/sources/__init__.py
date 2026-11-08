@@ -10,6 +10,7 @@ from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
 from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
 from mnemosyne.sources.dpla import DplaConnector
+from mnemosyne.sources.eol import EolConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.gbif import GbifConnector
@@ -32,6 +33,9 @@ CONNECTORS: dict[str, type[Connector]] = {
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,
+    "dpla": DplaConnector,
+    "eol": EolConnector,
+    "europeana": EuropeanaConnector,
     "gallica": GallicaConnector,
     "gbif": GbifConnector,
     "wikidata": WikidataConnector,
@@ -39,8 +43,6 @@ CONNECTORS: dict[str, type[Connector]] = {
     "internet_archive": InternetArchiveConnector,
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
-    "europeana": EuropeanaConnector,
-    "dpla": DplaConnector,
     "smithsonian": SmithsonianConnector,
     "mai_saint_etienne": MAISaintEtienneConnector,
     "met": MetConnector,

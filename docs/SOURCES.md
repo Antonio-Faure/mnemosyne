@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **52**
-- Sources actives : **41**
+- Sources déclarées : **53**
+- Sources actives : **42**
 - Sources désactivées : **11**
-## Sources actives (41)
+## Sources actives (42)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -34,6 +34,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Européana), vérifier `rights` et le fournisseur |
 | digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les notices explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
+| eol | Encyclopedia of Life | Encyclopedia of Life | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | Encyclopedia of Life — API REST publique sans clé (eol.org/api) ; recherche `/search/1.0.json` (page 1-based, itemsPerPage 50, borné par `totalResults`) puis détail `/pages/1.0/<id>.json` (`taxonConcept.dataObjects[]`) ; une image qualifiée = un Asset ; conserver seulement les dataObjects `image/*` dont `license` est CC0 1.0 ou CC BY 3.0/4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`) ; page détail récupérée seulement tant que la limite n'est pas atteinte (`max_pages` défaut 3) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
 | gbif | GBIF — Global Biodiversity Information Facility | GBIF | INTL | rest | none | varies (CC0-1.0 / CC-BY-4.0) | GBIF — API REST publique sans clé (api.gbif.org/v1/occurrence/search, mediaType=StillImage) ; une occurrence peut produire plusieurs Assets (un par média) ; conserver seulement les médias dont `media[].license` est CC0 1.0 ou CC BY 4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`/`creator`) ; pagination par offset (limit ≤ 300, `count`, `endOfRecords`) ; aucun téléchargement (URLs seulement) |
@@ -88,12 +89,14 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   `smk`, `smithsonian` (plus `wikidata` pour les données ; `nasa` = domaine public
   US, pas CC0).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
-  `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1 du code
-  du patrimoine) ; certaines vues restent « non affichables » par notice et sont
-  ignorées. `gbif` : uniquement les médias sous CC0 1.0 ou CC BY 4.0 (licence
-  vérifiée au niveau de chaque média `media[].license`), attribution par média.
-  `inaturalist` : uniquement les photos sous CC0 ou CC BY (licence vérifiée au
-  niveau de chaque photo), attribution par photo.
+  `eol`, `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1
+  du code du patrimoine) ; certaines vues restent « non affichables » par notice
+  et sont ignorées. `eol` : uniquement les médias sous CC0 1.0 ou CC BY 3.0/4.0
+  (licence vérifiée au niveau de chaque média `dataObjects[].license`),
+  attribution par média. `gbif` : uniquement les médias sous CC0 1.0 ou CC BY 4.0
+  (licence vérifiée au niveau de chaque média `media[].license`), attribution par
+  média. `inaturalist` : uniquement les photos sous CC0 ou CC BY (licence
+  vérifiée au niveau de chaque photo), attribution par photo.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
