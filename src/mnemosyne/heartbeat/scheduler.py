@@ -47,6 +47,9 @@ class Heartbeat:
             notifier=self.notifier,
         )
         self._stop = asyncio.Event()
+        # Jobs run OUTSIDE the tick: a long agent session (agency, resolver) must
+        # never freeze the heartbeat and starve the other permanent loop.
+        self._inflight: dict[int, asyncio.Task] = {}
 
     # ── bootstrap ────────────────────────────────────────────────────────
     def bootstrap(self) -> None:
@@ -209,7 +212,7 @@ class Heartbeat:
         self.stop()
 
     def release_own_leases(self) -> None:
-        for name in ("agency", "browser"):
+        for name in ("agency", "browser", "resolver"):
             try:
                 self.engine.db.release_own_lease(name)
             except Exception as exc:  # noqa: BLE001 - shutdown must never raise
@@ -234,16 +237,35 @@ class Heartbeat:
                 f"{recovered} jobs bloqués récupérés", level="warn", source="recovery"
             )
 
-        jobs = self.engine.db.claim_due_jobs(utcnow_iso(), self.config.heartbeat.max_workers)
-        if not jobs:
+        jobs = self.engine.db.claim_due_jobs(utcnow_iso(), self._free_slots())
+        for job in jobs:
+            self._dispatch(job)
+
+    def _free_slots(self) -> int:
+        """Concurrency budget left: `max_workers` minus the jobs already running."""
+        return max(0, self.config.heartbeat.max_workers - len(self._inflight))
+
+    def _dispatch(self, job: Job) -> None:
+        """Start one job in its own task; `_tick` never waits for it."""
+        assert job.id is not None
+        task = asyncio.create_task(self._run_job(job), name=f"job:{job.kind}:{job.id}")
+        self._inflight[job.id] = task
+        task.add_done_callback(lambda t: self._job_finished(job.id, t))
+
+    def _job_finished(self, job_id: int, task: asyncio.Task) -> None:
+        self._inflight.pop(job_id, None)
+        if task.cancelled():
             return
-        sem = asyncio.Semaphore(self.config.heartbeat.max_workers)
+        exc = task.exception()
+        if exc is not None:
+            # `_run_job` handles handler errors itself; reaching this point means
+            # the bookkeeping around it broke. The stale-job recovery is the net.
+            log.error("job #%s crashed outside its handler: %s", job_id, exc, exc_info=exc)
 
-        async def run(job: Job) -> None:
-            async with sem:
-                await self._run_job(job)
-
-        await asyncio.gather(*(run(j) for j in jobs))
+    async def _drain(self) -> None:
+        """Wait for every dispatched job (tests, graceful shutdown)."""
+        while self._inflight:
+            await asyncio.gather(*list(self._inflight.values()), return_exceptions=True)
 
     async def _run_job(self, job: Job) -> None:
         assert job.id is not None

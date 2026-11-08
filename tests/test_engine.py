@@ -1,3 +1,6 @@
+import asyncio
+import time
+
 import pytest
 import yaml
 
@@ -136,3 +139,43 @@ async def test_search_keeps_generic_titles_from_different_sources(
         await engine.aclose()
 
     assert len(assets) == 2
+
+
+@pytest.mark.asyncio
+async def test_one_hung_source_cannot_hold_the_whole_search(
+    config, sources_dir, monkeypatch
+):
+    """A dead provider is capped by SOURCE_SEARCH_TIMEOUT_S, not by luck.
+
+    The resolver's catalog_search fires one request per source: before the cap,
+    a single host that never answered kept the tool call pending for minutes and
+    (with the old tick) starved the biagent loop behind it.
+    """
+    _add_second_source(sources_dir)
+
+    class Fast(Connector):
+        async def search(self, query, limit=20, **filters):
+            return [Asset.build(self.id, "1", title="Puits de Lacq 1950", image_url="http://x/1.jpg")]
+
+    class Hung(Connector):
+        async def search(self, query, limit=20, **filters):
+            await asyncio.sleep(30)
+            return []
+
+    def _build(descriptor, http):
+        return Hung(descriptor, http) if descriptor.id == "second" else Fast(descriptor, http)
+
+    monkeypatch.setattr("mnemosyne.engine.build_connector", _build)
+    monkeypatch.setattr("mnemosyne.engine.SOURCE_SEARCH_TIMEOUT_S", 0.2)
+
+    engine = Engine(config)
+    engine.catalog.sync()
+    try:
+        started = time.monotonic()
+        assets = await engine.search("usine")
+        elapsed = time.monotonic() - started
+    finally:
+        await engine.aclose()
+
+    assert [a.source_id for a in assets] == ["gallica"]
+    assert elapsed < 5, f"search took {elapsed:.1f}s despite the per-source cap"

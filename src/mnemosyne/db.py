@@ -1709,7 +1709,7 @@ class Database:
     def renew_own(self) -> None:
         """One renewal pass for this incarnation (leases + job claims)."""
         self.renew_own_jobs()
-        for name in ("agency", "browser"):
+        for name in ("agency", "browser", "resolver"):
             self.renew_own_lease(name)
 
     def list_messages(self, status: str | None = None, limit: int = 50) -> list[dict]:
