@@ -26,6 +26,7 @@ INDIANA = "https://indianamemory.contentdm.oclc.org"
 BYU = "https://contentdm.lib.byu.edu"
 ATLANTA = "https://album.atlantahistorycenter.com"
 NORTH_DAKOTA = "https://digitalhorizonsonline.org"
+PENN_STATE = "https://digital.libraries.psu.edu"
 
 _SENTINEL = object()
 
@@ -264,6 +265,38 @@ async def test_north_dakota_in_public_domain_is_asset():
     assert "!1200,1200" in asset.image_url
     assert asset.image_url.startswith(f"{NORTH_DAKOTA}/iiif/2/{alias}:{item_id}/full/!1200,1200/0/")
     assert asset.source_id == "north_dakota"
+
+
+@pytest.mark.asyncio
+async def test_penn_state_public_domain_is_asset():
+    alias, item_id = "pageol", "52125"
+    fields = [
+        _field("title", "Title", "Map of Pennsylvania"),
+        _field(
+            "rights",
+            "Rights",
+            "Public Domain. This item is made available by Penn State "
+            "University Libraries.",
+        ),
+    ]
+    details = {
+        (alias, item_id): _detail(image_uri=_iiif(PENN_STATE, alias, item_id), fields=fields)
+    }
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("penn_state", PENN_STATE, pages, details)
+
+    assets = await connector.search("map")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.license == "PDM-1.0"
+    assert asset.title == "Map of Pennsylvania"
+    assert "!1200,1200" in asset.image_url
+    assert asset.image_url.startswith(
+        f"{PENN_STATE}/iiif/2/{alias}:{item_id}/full/!1200,1200/0/"
+    )
+    assert "!400,400" in asset.thumbnail_url
+    assert asset.source_id == "penn_state"
 
 
 @pytest.mark.asyncio
@@ -554,6 +587,7 @@ async def test_page_url_from_item_link_and_fallback():
         ("atlanta", ATLANTA),
         ("byu", BYU),
         ("north_dakota", NORTH_DAKOTA),
+        ("penn_state", PENN_STATE),
         ("scdl", SCDL),
         ("teva", TEVA),
     ],
@@ -572,5 +606,5 @@ def test_descriptor_deserializes_and_is_registered(source_id, base_url):
 
 
 def test_all_contentdm_sources_registered():
-    for source_id in ("atlanta", "teva", "scdl", "byu", "north_dakota"):
+    for source_id in ("atlanta", "teva", "scdl", "byu", "north_dakota", "penn_state"):
         assert CONNECTORS[source_id] is ContentDmConnector
