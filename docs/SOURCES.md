@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **68**
-- Sources actives : **55**
+- Sources déclarées : **69**
+- Sources actives : **56**
 - Sources désactivées : **13**
-## Sources actives (55)
+## Sources actives (56)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -71,6 +71,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | smithsonian | Smithsonian Open Access | Smithsonian Institution | US | rest | api_key | CC0 | Open Access ; majoritairement CC0, vérifier par notice (`metadata_usage.access`, `media[].usage.access`) |
 | smk | SMK — Statens Museum for Kunst (National Gallery of Denmark) | SMK — Statens Museum for Kunst | DK | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — SMK — the national gallery of Denmark |
 | teva | Tennessee Virtual Archive (TeVA) | Tennessee State Library and Archives | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Tennessee State Library and Archives — API CONTENTdm publique sans clé (teva.contentdm.oclc.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites (NoC-US/PD/CC0/CC BY ; rejette non évalués et droits réservés) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
+| texas_history | The Portal to Texas History (UNT Libraries) | University of North Texas Libraries | US | iiif | none | varies | Bibliothèque numérique de l'UNT ; forte en photographie de l'industrie pétrolière texane (Spindletop 1901, East Texas, Permian Basin, incendies de puits). La recherche HTML est protégée par un anti-bot Altcha → le connecteur s'appuie sur une liste curée d'ARKs résolus via les manifestes IIIF Presentation v2 (un item = une image, premier canvas) ; les items `rights.access=restricted` sont ignorés ; droits par notice ; aucune image téléchargée, aucun scraping HTML |
 | vanderbilt | Vanderbilt University Museum of Art (IIIF) | Vanderbilt University Museum of Art | US | iiif | none | varies | Vanderbilt University Museum of Art — vérifier par notice (droits réservés possibles) ; manifeste unique par notice (pas de Collection IIIF) |
 | wellesley | Wellesley College Digital Repository (IIIF) | Wellesley College Library | US | iiif | none | varies | Wellesley College — vérifier par notice (droits variables, rightsstatements.org possible) ; manifeste unique par notice (pas de Collection IIIF) ; hôte derrière un challenge Cloudflare Turnstile (accès programmatique à résoudre via navigateur/HITL) |
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
@@ -114,7 +115,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   média. `inaturalist` : uniquement les photos sous CC0 ou CC BY 4.0.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `digitalnz`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
-  `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
+  `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`, `texas_history`,
   `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
   `wikimedia_commons_photos`, `yale`, `yale_lux` — la licence est décidée au
   niveau de l'`Asset` à la frontière du connecteur, pas de la source.
