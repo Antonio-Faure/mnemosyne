@@ -1,0 +1,33 @@
+id: carli
+name: CARLI Digital Collections — Illinois
+institution: Consortium of Academic and Research Libraries in Illinois
+country: US
+protocol: rest
+base_url: https://collections.carli.illinois.edu
+auth: none
+license: "PDM-1.0 / CC0-1.0 / CC-BY-4.0"
+rights: "Droits explicites par notice (Public Domain / NoC-US / CC0 / CC BY) ; le connecteur CONTENTdm rejette InC, CNE, droits réservés et restrictions non commerciales."
+rate_limit_per_s: 1.0
+priority: 64
+tags: [consortium, illinois, chicago, keyless, public-domain, contentdm]
+seeds:
+  - portrait
+  - chicago
+  - photograph
+  - building
+  - map
+  - railroad
+  - school
+  - family
+notes: >-
+  Consortium of Academic and Research Libraries in Illinois — API CONTENTdm
+  publique sans clé (collections.carli.illinois.edu/digital/api) ; recherche
+  `/digital/api/search/searchterm/<q>` (maxRecords 10, pagination `start`)
+  puis `/digital/api/singleitem/collection/<alias>/id/<id>` ; filtre image
+  `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites
+  par notice (PD/NoC-US/CC0/CC BY ; rejette InC, CNE, droits réservés et
+  restrictions non commerciales / CC BY-NC/ND) ; images via IIIF
+  `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement
+  (URLs seulement), aucun scraping HTML. Seeds orientés portrait/Chicago : la
+  requête `portrait` renvoie des images ouvertes de la collection chm_museum
+  (« No known copyright restrictions »).

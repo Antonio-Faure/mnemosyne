@@ -34,6 +34,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
     "atlanta": ContentDmConnector,
     "byu": ContentDmConnector,
+    "carli": ContentDmConnector,
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,

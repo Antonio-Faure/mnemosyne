@@ -29,6 +29,7 @@ NORTH_DAKOTA = "https://digitalhorizonsonline.org"
 PENN_STATE = "https://digital.libraries.psu.edu"
 HILLSBOROUGH = "https://digitalcollections.hcplc.org"
 HENNEPIN = "https://digitalcollections.hclib.org"
+CARLI = "https://collections.carli.illinois.edu"
 
 _SENTINEL = object()
 
@@ -243,6 +244,34 @@ async def test_byu_public_domain_is_asset():
 
     assert len(assets) == 1
     assert assets[0].license == "PDM-1.0"
+
+
+@pytest.mark.asyncio
+async def test_carli_portrait_noc_us_is_asset():
+    # CARLI `portrait` surfaces chm_museum records marked
+    # "No known copyright restrictions" (rightsstatements.org NoC-US wording).
+    alias, item_id = "chm_museum", "42"
+    fields = [
+        _field("title", "Title", "Portrait of a Chicago family"),
+        _field("date", "Date", "1900"),
+        _field("rights", "Rights", "No known copyright restrictions"),
+    ]
+    details = {
+        (alias, item_id): _detail(image_uri=_iiif(CARLI, alias, item_id), fields=fields)
+    }
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("carli", CARLI, pages, details)
+
+    assets = await connector.search("portrait")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.license == "PDM-1.0"
+    assert asset.title == "Portrait of a Chicago family"
+    assert "!1200,1200" in asset.image_url
+    assert "!400,400" in asset.thumbnail_url
+    assert asset.image_url.startswith(f"{CARLI}/iiif/2/{alias}:{item_id}/full/!1200,1200/0/")
+    assert asset.source_id == "carli"
 
 
 @pytest.mark.asyncio
@@ -684,6 +713,7 @@ async def test_page_url_from_item_link_and_fallback():
     [
         ("atlanta", ATLANTA),
         ("byu", BYU),
+        ("carli", CARLI),
         ("hennepin", HENNEPIN),
         ("hillsborough", HILLSBOROUGH),
         ("north_dakota", NORTH_DAKOTA),
@@ -709,6 +739,7 @@ def test_all_contentdm_sources_registered():
     for source_id in (
         "atlanta",
         "byu",
+        "carli",
         "hennepin",
         "hillsborough",
         "north_dakota",
