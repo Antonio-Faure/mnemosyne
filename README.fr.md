@@ -109,7 +109,7 @@ téléchargées : seules leurs URL sont transmises.
 
 ```bash
 mnemosyne search "puits de Lacq 1950"   # recherche live multi-sources
-mnemosyne status                        # sources, assets, gouverneur
+mnemosyne status                        # sources + gouverneur
 mnemosyne run                           # heartbeat (moteur permanent)
 mnemosyne agency "..."                  # bi-agent (codeur + navigateur)
 mnemosyne resolve enqueue <segment_id>  # résolveur phrase → image
@@ -133,7 +133,7 @@ phrase → image (candidats, validation humaine, trous de couverture).
 
 ### État du projet
 
-- **65 sources déclarées, 53 actives** (novembre 2026).
+- **66 sources déclarées, 53 actives** (novembre 2026).
 - Sources réparties entre bibliothèques nationales, musées, archives régionales
   et agrégateurs (Europe, Amériques, Asie, Océanie).
 - Quelques sources sont momentanément bloquées depuis notre infrastructure
