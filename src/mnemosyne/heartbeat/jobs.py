@@ -260,6 +260,26 @@ async def handle_agency(ctx: JobContext, job: Job) -> dict | None:
     return None
 
 
+@handler("resolver")
+async def handle_resolver(ctx: JobContext, job: Job) -> dict | None:
+    """Second permanent loop: one resolver activation per tick."""
+    from mnemosyne.agents.supervisor import run_pending_once
+
+    if not ctx.config.resolver.enabled:
+        return {"interval_s": 300}
+    ran = await run_pending_once(
+        ctx.config,
+        journal=ctx.journal,
+        vault_get=_vault_get(ctx),
+        agents=("resolver",),
+        lease="resolver",
+    )
+    if ran:
+        log.info("resolver background ran: %s", ran.get("task_id"))
+        return {"_activity": f"résolveur — tâche #{ran.get('task_id')}"}
+    return None
+
+
 @handler("telegram")
 async def handle_telegram(ctx: JobContext, job: Job) -> dict | None:
     """Operator channel: poll both bots, route the answers into the mailboxes."""

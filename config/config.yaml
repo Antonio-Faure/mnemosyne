@@ -90,6 +90,15 @@ email:
   username_env: MNEMOSYNE_EMAIL_USER
   password_env: MNEMOSYNE_EMAIL_PASSWORD
 
+# Adversarial resolver: a second permanent loop, one session per sentence.
+# It reads the catalog meta API, asks the operator to validate candidates, and
+# requests missing sources from the biagent queue.
+resolver:
+  enabled: true
+  model: deepseek-v4.1-flash
+  max_turns: 120
+  interval_s: 60
+
 # Public identity disclosed in every email / contact form (transparency).
 identity:
   name: mnemosyne

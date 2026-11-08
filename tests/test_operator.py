@@ -216,3 +216,28 @@ def test_answer_wakes_the_parked_task_before_pending(config, monkeypatch):
     db = Database(config.db_file())
     assert db.get_task(1)["status"] == "done"
     db.close()
+
+
+def test_resolver_question_is_stored_for_resolver_mailbox(config):
+    db = Database(config.db_file())
+    db.enqueue_task("resolver", "illustrate a sentence")
+    try:
+        ask_id = asyncio.run(
+            telegram.ask_operator(
+                config,
+                db,
+                None,
+                agent="resolver",
+                task_id=1,
+                question="Valide ce candidat ?",
+                options=[{"label": "Valide"}, {"label": "Refuse"}],
+                bot_agent="browser",
+            )
+        )
+        assert db.get_ask(ask_id)["agent"] == "resolver"
+        asked = db.pending_task_messages(1, "operator")
+        assert len(asked) == 1
+        assert asked[0]["sender"] == "resolver"
+        assert "Valide ce candidat" in asked[0]["body"]
+    finally:
+        db.close()
