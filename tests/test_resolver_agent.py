@@ -180,8 +180,8 @@ def test_request_source_refuses_a_source_already_in_the_catalog(config):
         db.close()
 
 
-def test_request_source_refuses_a_host_already_covered(config):
-    """A new id on the same host is the same provider: no duplicate onboarding."""
+def test_request_source_allows_a_same_host_specialisation(config):
+    """A photo-only sibling of a text connector is legitimate (PR #74)."""
     db = _db(config)
     try:
         task_id = _seed_task(db, config)
@@ -198,9 +198,10 @@ def test_request_source_refuses_a_host_already_covered(config):
                 )
             )
         )
-        assert result.success is False
+        assert result.success is True
         assert "déjà couvert" in result.content
-        assert db.resolver_requests(task_id) == []
+        assert "profil de recherche" in result.content
+        assert len(db.resolver_requests(task_id)) == 1
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
