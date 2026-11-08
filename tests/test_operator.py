@@ -68,6 +68,65 @@ def test_free_text_reply_routes_custom_answer(config):
     db.close()
 
 
+def test_random_message_without_reply_is_ignored(config):
+    """A plain message is NOT an answer: it must not enter any task context."""
+    db = Database(config.db_file())
+    db.enqueue_task("coder", "mission")
+    db.create_ask("a3", 1, "coder", "question ?", [{"label": "Oui"}])
+    db.set_ask_telegram("a3", "42", 100)
+
+    update = {
+        "message": {
+            "text": "bonjour, je passais par là",
+            "chat": {"id": 42},
+        }
+    }
+    order = telegram.handle_update(db, "coder", update)
+
+    assert order is None
+    assert db.get_ask("a3")["status"] == "pending"
+    assert db.pending_task_messages(1, OPERATOR) == []
+    assert db.pending_task_messages(1, "coder") == []
+    db.close()
+
+
+def test_reply_to_a_non_question_message_is_ignored(config):
+    db = Database(config.db_file())
+    db.enqueue_task("coder", "mission")
+    db.create_ask("a4", 1, "coder", "question ?", [{"label": "Oui"}])
+    db.set_ask_telegram("a4", "42", 100)
+
+    update = {
+        "message": {
+            "text": "réponse à un vieux message",
+            "chat": {"id": 42},
+            "reply_to_message": {"message_id": 999},
+        }
+    }
+    assert telegram.handle_update(db, "coder", update) is None
+    assert db.get_ask("a4")["status"] == "pending"
+    db.close()
+
+
+def test_reply_to_an_answered_question_is_ignored(config):
+    db = Database(config.db_file())
+    db.enqueue_task("coder", "mission")
+    db.create_ask("a5", 1, "coder", "question ?", [{"label": "Oui"}])
+    db.set_ask_telegram("a5", "42", 100)
+    db.answer_ask("a5", "Oui")
+
+    update = {
+        "message": {
+            "text": "trop tard",
+            "chat": {"id": 42},
+            "reply_to_message": {"message_id": 100},
+        }
+    }
+    assert telegram.handle_update(db, "coder", update) is None
+    assert db.get_ask("a5")["status"] == "answered"
+    db.close()
+
+
 def test_unknown_callback_is_stale(config):
     db = Database(config.db_file())
     update = {"callback_query": {"id": "cb", "data": "q:nope:0", "message": {"chat": {"id": 1}}}}

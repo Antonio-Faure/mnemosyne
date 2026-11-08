@@ -1,7 +1,9 @@
-"""Telegram alerts + operator dialogue for human-in-the-loop.
+"""Telegram alerts (send-only).
 
-Two-way: the agent sends alerts/questions, and the heartbeat polls the operator's
-replies (any message to the bot) so the operator can answer or steer the agent.
+Agent questionnaires are a separate channel: `mnemosyne.operator.telegram`
+uses one bot per agent and only routes a reply to a pending question (button or
+reply to the question/ForceReply prompt). Random messages to the alert bot are
+never consumed and never enter a session context.
 """
 
 from __future__ import annotations
@@ -73,20 +75,3 @@ class Notifier:
         except httpx.HTTPError as exc:
             log.warning("telegram getUpdates failed: %s", exc)
             return []
-
-    async def poll(self, offset: int | None = None) -> tuple[list[str], int | None]:
-        """Return (operator messages, next offset). Only the configured chat."""
-        updates = await self.get_updates(offset=offset)
-        if not updates:
-            return [], offset
-        next_offset = offset
-        messages: list[str] = []
-        for update in updates:
-            next_offset = max(int(update.get("update_id", 0)) + 1, next_offset or 0)
-            msg = update.get("message") or {}
-            chat = msg.get("chat") or {}
-            text = (msg.get("text") or "").strip()
-            # Ignore Telegram bot commands (/start, /help…) — keep real messages.
-            if text and not text.startswith("/") and str(chat.get("id")) == str(self.chat_id):
-                messages.append(text)
-        return messages, next_offset
