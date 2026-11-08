@@ -12,9 +12,10 @@ laisse toujours une porte humaine.
 On ne parle jamais de « réutilisation d'images » : le projet ne copie, n'héberge,
 ne redistribue et ne revend aucune image.
 
-Le fondateur du projet souhaite **rester anonyme** : on ne signe pas avec un nom,
-on signe avec le projet. Les échanges téléphoniques ou en visioconférence se
-**demandent par e-mail** — c'est par e-mail qu'on fixe le rendez-vous.
+Le fondateur signe sous le pseudonyme **Antonio-Faure** ; son **identité civile
+reste anonyme** (jamais de prénom/nom réel). Les échanges téléphoniques ou en
+visioconférence se **demandent par e-mail** — c'est par e-mail qu'on fixe le
+rendez-vous.
 
 ## Avant d'écrire — checklist obligatoire
 
@@ -27,8 +28,8 @@ on signe avec le projet. Les échanges téléphoniques ou en visioconférence se
       aucune revente ; les images restent chez vous*.
 - [ ] Lien vers `docs/POUR-LES-INSTITUTIONS.md`.
 - [ ] **Offre d'échange humain, à demander par e-mail** (téléphone ou visio).
-- [ ] Signature **sans nom** : « Le projet Mnemosyne » + mention que le fondateur
-      reste anonyme.
+- [ ] Signature **pseudonyme uniquement** : « Antonio-Faure (pseudonyme), projet
+      Mnemosyne » + mention que l'identité civile reste anonyme. Jamais de prénom/nom réel.
 - [ ] **Cc vérifiés un par un** (chaque adresse doit être vivante).
 - [ ] Journal : destinataire, objet, date, canal.
 
@@ -66,12 +67,13 @@ on signe avec le projet. Les échanges téléphoniques ou en visioconférence se
 > technique requise.
 >
 > Bien cordialement,
-> **Le projet Mnemosyne**
+> **Antonio-Faure (pseudonyme)** — projet Mnemosyne
 > https://github.com/Antonio-Faure/mnemosyne
 > archivist.mnemosyne@gmail.com
 >
-> *Le fondateur du projet souhaite rester anonyme. Ce message a été préparé par
-> l'assistant logiciel du projet ; les échanges importants restent humains.*
+> *Le fondateur signe sous le pseudonyme Antonio-Faure ; son identité civile reste
+> anonyme. Ce message a été préparé par l'assistant logiciel du projet ; les
+> échanges importants restent humains.*
 
 ## Après l'envoi
 
@@ -90,6 +92,6 @@ on signe avec le projet. Les échanges téléphoniques ou en visioconférence se
 - Pas de demande d'autorisation pour des pages publiques.
 - Pas de « réutilisation », « catalogue libre », « extraction », « scraping »
   dans un message à une institution.
-- Pas de nom du fondateur (il est anonyme).
+- Pas de prénom/nom réel du fondateur : uniquement le pseudonyme Antonio-Faure.
 - Pas de secret, de clé ou de donnée personnelle dans un message.
 - Pas d'envoi à une adresse non vérifiée.

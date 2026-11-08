@@ -99,8 +99,8 @@ collections ?
   connaissance technique n'est nécessaire.
 - Vous voulez que votre institution soit retirée ? Dites-le : c'est immédiat.
 
-Je préfère rester anonyme. Le projet, lui, est public :
-code source, documentation et historique sont ouverts.
+Mon pseudonyme est **Antonio-Faure** ; mon identité civile reste anonyme. Le
+projet, lui, est public : code source, documentation et historique sont ouverts.
 
 ## Pour les développeurs
 
@@ -287,8 +287,8 @@ collections?
   appointment by email; no technical knowledge is needed.
 - Want your institution removed? Say so: it is immediate.
 
-I prefer to remain anonymous. The project itself is public: source code,
-documentation and history are open.
+My handle is **Antonio-Faure**; my civil identity remains anonymous. The project
+itself is public: source code, documentation and history are open.
 
 ### For developers
 

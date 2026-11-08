@@ -17,8 +17,8 @@ aussi les petites structures, les catalogues anciens, les sites sans accès
 programmatique. **Le nombre de sources est amené à exploser** dans les mois qui
 viennent.
 
-Je préfère rester **anonyme**. Le projet, lui, est public :
-code source, documentation et historique sont ouverts.
+Mon pseudonyme est **Antonio-Faure** ; mon identité civile reste **anonyme**. Le
+projet, lui, est public : code source, documentation et historique sont ouverts.
 
 ## Ce que je fais
 
