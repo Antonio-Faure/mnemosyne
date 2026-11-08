@@ -1,6 +1,16 @@
 # AGENTS.md — mnemosyne
 
-Autonomous heartbeat agent that aggregates historical image archive providers into one unified API.
+Free and open source federated access to historical image archives — live queries, no image copies, provenance and rights attached.
+
+# Opérateur humain
+
+L'opérateur n'est **pas un valideur de routine**. Il n'est sollicité que pour :
+un doute réel sur la marche à suivre, un humain qui demande un contact humain,
+une décision de politique (licence, argent, éthique, données personnelles,
+accès non public), ou un blocage humain (captcha, vérification d'identité).
+Jamais pour envoyer un e-mail conforme, créer une tâche, ouvrir une PR, lancer
+un test ou faire valider une action de routine. Détail :
+`docs/OPERATEUR-TELEGRAM.md`.
 
 # Priorities
 
@@ -23,7 +33,7 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup ag
 - `src/mnemosyne/dev/` — coder agent: `agent.py`, `tools.py`, `guard.py`, `git_ops.py`, `worktree.py`
 - `src/mnemosyne/discovery/` — find new providers (Wikidata IIIF hosts)
 - `src/mnemosyne/normalize/` — canonical `Asset`, dedup
-- `src/mnemosyne/api/` — FastAPI aggregation service
+- `src/mnemosyne/api/` — FastAPI federated search service
 - `src/mnemosyne/vault/` — encrypted credentials · `src/mnemosyne/notify/` — Telegram
 - `src/mnemosyne/browser/` — CDP client, history reader · `src/mnemosyne/journal.py` — daily + per-service journals
 - `src/mnemosyne/identity.py` — transparency (identity + repo URL)

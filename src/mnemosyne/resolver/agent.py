@@ -417,7 +417,9 @@ class ResolverToolProvider(ToolProvider):
                 name="ask_operator",
                 description=(
                     "Ask the human operator a multiple-choice question (candidate "
-                    "validation, ambiguity). Ends your turn until the answer."
+                    "validation, ambiguity). The operator is not a routine validator: "
+                    "asking for a human judgement on a candidate is fine, asking to "
+                    "approve an execution step is not. Ends your turn until the answer."
                 ),
                 parameters=AskOperatorParams,
                 executor=ask_exec,

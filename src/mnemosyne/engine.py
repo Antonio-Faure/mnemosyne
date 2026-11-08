@@ -119,20 +119,7 @@ class Engine:
             index.add(a)
         return fresh
 
-    # ── harvest / verify ─────────────────────────────────────────────────
-    async def harvest(self, source_id: str, query: str, limit: int = 20) -> int:
-        descriptor = self.catalog.get(source_id)
-        if descriptor is None:
-            return 0
-        if not descriptor.enabled:
-            log.info("source %s is disabled; refusing to harvest", source_id)
-            return 0
-        assets = await self._search_one(descriptor, query, limit)
-        saved = self.db.save_assets(assets)
-        if saved:
-            self.catalog.set_state(source_id, SourceState.CONNECTED)
-        return saved
-
+    # ── verify ───────────────────────────────────────────────────────────
     async def verify(self, source_id: str) -> bool:
         descriptor = self.catalog.get(source_id)
         if descriptor is None:
@@ -169,11 +156,9 @@ class Engine:
                     "protocol": descriptor.get("protocol"),
                     "auth": descriptor.get("auth"),
                     "last_error": record["last_error"],
-                    "asset_count": self.db.count_assets(record["id"]),
                 }
             )
         return {
             "sources": sources,
-            "assets_total": self.db.count_assets(),
             "governor": self.governor.status(),
         }
