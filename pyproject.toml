@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mnemosyne"
 version = "0.1.0"
-description = "Autonomous heartbeat agent that discovers, connects and aggregates historical image archive providers into a unified API."
+description = "Free and open source federated access to historical image archives — live queries, no image copies, provenance and rights attached."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Antonio-Faure" }]
-keywords = ["archives", "images", "iiif", "glam", "autonomous-agent", "aggregation"]
+keywords = ["archives", "images", "iiif", "glam", "cultural-heritage", "federated-search"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: POSIX :: Linux",

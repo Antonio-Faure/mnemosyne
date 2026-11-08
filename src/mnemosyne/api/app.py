@@ -1,4 +1,4 @@
-"""Unified aggregation API over every connected archive provider."""
+"""Federated search API over every connected archive provider (live queries)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="mnemosyne",
         version="0.1.0",
-        description="Unified search over aggregated historical image archive providers.",
+        description="Federated live search over historical image archive providers — no image copies.",
         lifespan=lifespan,
     )
     app.include_router(observatory_router)

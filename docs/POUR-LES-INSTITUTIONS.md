@@ -101,4 +101,4 @@ de décider ?
 
 - Projet : <https://github.com/Antonio-Faure/mnemosyne>
 - E-mail : archivist.mnemosyne@gmail.com
-- Code source et documentation : voir le [README](../README.fr.md)
+- Code source et documentation : voir le [README](../README.md)

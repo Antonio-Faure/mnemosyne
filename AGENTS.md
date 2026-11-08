@@ -1,6 +1,6 @@
 # AGENTS.md — mnemosyne
 
-Autonomous heartbeat agent that aggregates historical image archive providers into one unified API.
+Free and open source federated access to historical image archives — live queries, no image copies, provenance and rights attached.
 
 # Opérateur humain
 
@@ -33,7 +33,7 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup ag
 - `src/mnemosyne/dev/` — coder agent: `agent.py`, `tools.py`, `guard.py`, `git_ops.py`, `worktree.py`
 - `src/mnemosyne/discovery/` — find new providers (Wikidata IIIF hosts)
 - `src/mnemosyne/normalize/` — canonical `Asset`, dedup
-- `src/mnemosyne/api/` — FastAPI aggregation service
+- `src/mnemosyne/api/` — FastAPI federated search service
 - `src/mnemosyne/vault/` — encrypted credentials · `src/mnemosyne/notify/` — Telegram
 - `src/mnemosyne/browser/` — CDP client, history reader · `src/mnemosyne/journal.py` — daily + per-service journals
 - `src/mnemosyne/identity.py` — transparency (identity + repo URL)
