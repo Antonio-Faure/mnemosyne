@@ -1,0 +1,37 @@
+id: byu
+name: BYU Digital Collections
+institution: Brigham Young University
+country: US
+protocol: rest
+base_url: https://contentdm.lib.byu.edu
+auth: none
+license: "PDM-1.0 / CC0-1.0 / CC-BY-4.0"
+rights: "No copyright - United States / Public Domain par notice ; filtre explicite sur les champs rights/copyright"
+rate_limit_per_s: 1.0
+priority: 58
+tags: [university, utah, keyless, public-domain, contentdm]
+seeds:
+  - "steam engine"
+  - "railroad"
+  - "portrait"
+  - "photograph"
+  - "map"
+  - "newspaper"
+  - "building"
+  - "family"
+notes: >-
+  CONTENTdm (BYU Digital Collections, Brigham Young University) — API JSON
+  officielle sans clé. Recherche cross-collection : GET
+  {base}/digital/api/search/searchterm/<query url-encodé>?maxRecords=10&start=<offset>
+  (10 items par page ; pagination par `start`, arrêt sur limite / totalResults /
+  page vide ; max_pages défaut 3). Détail d'un item : GET
+  {base}/digital/api/singleitem/collection/<alias>/id/<id> pour lire
+  contentType/imageUri et la liste `fields`. Filtre image : ne garder que
+  contentType `image/*` avec imageUri non vide (http(s) absolu ou chemin « / »).
+  Filtre droits explicite par notice sur les champs rights/copyright (clé
+  « copyri » / label « Copyright Status Owner » ; accepte « Public Domain » /
+  NoC-US / CC0 / CC BY ; rejette « not evaluated », « undetermined », « all rights
+  reserved », « In Copyright », CC BY-NC/ND…). Images via IIIF
+  https://<base>/iiif/2/<alias>:<id>/full/!1200,1200/0/default.jpg (image) et
+  /full/!400,400/0/ (vignette). Aucune image téléchargée, aucun scraping HTML,
+  pas de clé, rate limit poli 1.0 req/s.
