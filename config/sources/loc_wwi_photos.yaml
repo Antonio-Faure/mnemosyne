@@ -5,6 +5,9 @@ country: US
 protocol: rest
 base_url: https://www.loc.gov/collections/world-war-i/
 auth: none
+# 403 Akamai depuis l'IP d'exécution (2026-11-08) : connecteur prêt, activation
+# dès que l'accès JSON est rétabli (même cas que Gallica/NGA).
+enabled: false
 license: varies
 rights: "LoC — vérifier par notice (souvent domaine public / « no known restrictions » ; sinon « In Copyright »)"
 rate_limit_per_s: 0.5
