@@ -22,6 +22,122 @@ Il produit :
 Le résolveur ne remplace pas les connecteurs d'images : il les utilise et les
 met à l'épreuve.
 
+## Deux boucles permanentes
+
+```text
+job:agency    → tâches coder/browser (sources, code, navigateur)
+job:resolver  → tâches resolver (une session par phrase)
+```
+
+Les deux jobs tournent en parallèle avec des leases séparés :
+
+- `agency` ne sélectionne que les tâches `start_agent ∈ {coder, browser}` ;
+- `resolver` ne sélectionne que les tâches `start_agent = resolver`.
+
+`Database.next_task(agents=...)` filtre la famille ; le reste du cycle
+(mailbox, cache de session, activation, events) est partagé. Le heartbeat a
+`max_workers > 1`, donc les deux boucles avancent en même temps.
+
+Une tâche resolver est créée **par phrase** (ou par petit lot) à partir du
+golden dataset / transcript. Elle porte `sentence_id`, la phrase, le claim et
+les critères. Elle peut :
+
+1. interroger la **meta API du biagent** (`Engine.search`, le catalogue) ;
+2. demander une revue humaine ;
+3. demander l'ajout d'une ou plusieurs sources au biagent ;
+4. se parquer en attendant ces sources, puis être réveillée.
+
+## Agent resolver
+
+Comme le coder/browser, c'est un agent Stirrup avec un runner et des outils
+propres :
+
+| Outil | Rôle |
+|---|---|
+| `catalog_search(query, limit)` | interroge la meta API (catalogue, connecteurs) |
+| `asset_details(asset_id)` | vérifie provenance, date, lieu, licence, image |
+| `propose_sources(claim)` | cherche des APIs/sources candidates (LLM/recherche) |
+| `request_source(source, reason)` | enqueue **une tâche biagent par source** + dépendance |
+| `wait_for_sources()` | parke la session resolver jusqu'à complétion |
+| `submit_for_review(asset_id, evidence)` | demande la validation humaine (Telegram/CLI) |
+| `abstain(reason, missing)` | enregistre `no_match` + gap de couverture |
+| `ask_operator` / `wait_for_email` | réutilisés tels quels |
+
+Le resolver n'écrit pas dans le catalogue : il lit la meta API et produit des
+candidats, des verdicts et des demandes de sources.
+
+## Demandes de sources et réveil
+
+```text
+resolver task (sentence)
+  └─ request_source("kbr.be")
+       └─ biagent task (coder/browser) : ajouter la source
+            └─ à la fermeture : resolver_requests.status = done
+                 └─ si toutes les demandes sont terminales :
+                      mailbox system → resolver
+                      next_task() réveille la session resolver
+```
+
+Table `resolver_requests` :
+
+```sql
+resolver_requests (
+  id INTEGER PRIMARY KEY,
+  resolver_task_id INTEGER NOT NULL,
+  sentence_id TEXT,
+  source_id TEXT,
+  source_name TEXT,
+  biagent_task_id INTEGER,
+  status TEXT,              -- pending|running|done|failed
+  created_at TEXT,
+  completed_at TEXT,
+  note TEXT
+)
+```
+
+- `request_source` crée la tâche biagent et la ligne `resolver_requests`.
+- Le supervisor, à la fermeture d'une tâche biagent, marque la demande
+  `done`/`failed`.
+- Quand toutes les demandes d'une session resolver sont terminales, il poste
+  un message `system → resolver` et la session reprend.
+- Pendant l'attente, `next_task()` parke la session resolver (zéro token,
+  file non bloquée), exactement comme un `ask_operator` ou un `wait_for_email`.
+
+## Vérification humaine / anti-triche
+
+Le resolver ne peut pas se contenter d'un score. Pour chaque match :
+
+1. il présente l'asset, la source, la licence, la date, le lieu, la caption et
+   les preuves ;
+2. il demande une revue via `ask_operator` :
+   - `Valide`
+   - `Refuse`
+   - `Ambigu`
+3. la réponse est stockée dans `resolver_reviews` et, si `Valide`, devient une
+   ligne `resolver_golden` (label humain) ;
+4. un `Refuse` devient un **hard negative** rejoué plus tard.
+
+Contrôles anti-triche automatiques avant la revue :
+
+- l'URL image doit venir de la source/notice (pas d'image générée ou stock) ;
+- licence et provenance présentes ;
+- date de l'image compatible avec le claim (pas d'anachronisme) ;
+- l'agent ne peut pas réutiliser une image d'une autre phrase sans preuve ;
+- toute image non issue du catalogue/meta API est refusée.
+
+## Méta API
+
+Le resolver consomme la même API que le reste de mnemosyne :
+
+- `Engine.search(query, source_ids, limit)` pour les candidats ;
+- `/api/assets/...` si l'API HTTP est utilisée ;
+- les assets normalisés (`Asset`) avec `source_id`, `page_url`, `image_url`,
+  `license`, `rights`, `extra`.
+
+Il ne scrape pas les sites des fournisseurs : il utilise les connecteurs et
+les URLs canoniques.
+
+
 ## Non-objectifs
 
 - Ce n'est pas un générateur d'images.
@@ -103,6 +219,21 @@ golden_labels (
   segment_id TEXT PRIMARY KEY,
   status TEXT, images_json TEXT, hard_negatives_json TEXT,
   notes TEXT, annotator TEXT, updated_at TEXT
+)
+
+resolver_requests (
+  id INTEGER PRIMARY KEY,
+  resolver_task_id INTEGER NOT NULL,
+  sentence_id TEXT, source_id TEXT, source_name TEXT,
+  biagent_task_id INTEGER, status TEXT, created_at TEXT,
+  completed_at TEXT, note TEXT
+)
+
+resolver_reviews (
+  id INTEGER PRIMARY KEY,
+  resolver_task_id INTEGER, asset_id TEXT,
+  verdict TEXT,             -- valide|refuse|ambigu
+  reviewer TEXT, notes TEXT, reviewed_at TEXT
 )
 ```
 
@@ -246,14 +377,16 @@ Objectif : **maximiser les phrases correctement illustrées sans inventer**.
 
 ## Étapes d'implémentation
 
-1. Schéma DB + importeur golden JSONL/VTT/SRT.
-2. Ingestion des textes historiques + chunks/BM25.
-3. Extraction de claims + génération de requêtes.
-4. Récupération dans le catalogue existant (sans nouvelle source).
+1. Agent `resolver` + job `resolver` séparé (lease dédié) et `next_task(agents=...)`.
+2. Outils meta API (`catalog_search`, `asset_details`) + création d'une session
+   resolver par phrase.
+3. `request_source` + `resolver_requests` + réveil à la fermeture des tâches
+   biagent (dépendances).
+4. Revue humaine via `ask_operator` + `resolver_reviews` (et hard negatives).
 5. Panneau adversarial + juge + abstention.
-6. CLI `mnemosyne resolve ...` + rapport d'évaluation.
-7. Vue observatory : phrase, candidats, verdicts, golden label.
-8. Boucle de gaps → specs de sources.
+6. Ingestion des textes historiques + chunks/BM25.
+7. CLI `mnemosyne resolve ...` + rapport d'évaluation.
+8. Vue observatory : deux boucles, session resolver, demandes de sources.
 
 ## Questions ouvertes
 
