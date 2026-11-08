@@ -17,6 +17,9 @@ export const KIND_COLORS: Record<string, string> = {
   "activation.start": "#22d3ee",
   "activation.end": "#38bdf8",
   "mailbox.message": "#fbbf24",
+  "email.wait": "#fb923c",
+  "email.received": "#22c55e",
+  "email.timeout": "#ef4444",
   "llm.call": "#a78bfa",
   "tool.call": "#c084fc",
   "tool.result": "#f0abfc",
@@ -37,7 +40,9 @@ const ORCHESTRATOR_KINDS = new Set([
 
 /** The canvas step an event belongs to. */
 export function eventNode(event: ObsEvent): NodeId | null {
-  if (event.kind === "mailbox.message") return "mailbox";
+  if (event.kind === "mailbox.message" || event.kind.startsWith("email.")) {
+    return "mailbox";
+  }
   // the queue (Agency) opens the session / enqueues the mission
   if (event.kind === "session.created") return "agency";
   if (ORCHESTRATOR_KINDS.has(event.kind)) {
@@ -61,7 +66,9 @@ export function eventNode(event: ObsEvent): NodeId | null {
 
 /** Does an event belong to the given step? */
 export function matchesNode(event: ObsEvent, node: NodeId): boolean {
-  if (node === "mailbox") return event.kind === "mailbox.message";
+  if (node === "mailbox") {
+    return event.kind === "mailbox.message" || event.kind.startsWith("email.");
+  }
   if (node === "agency") return event.kind === "session.created";
   if (node === "orchestrator") {
     return (
@@ -127,6 +134,28 @@ export function summarize(event: ObsEvent): Summary {
       return {
         title: `${payload.from ?? "?"} → ${payload.to ?? "?"}`,
         detail: payload.body || payload.preview || null,
+      };
+    case "email.wait":
+      return {
+        title: `attente email #${payload.wait_id ?? "?"}`,
+        detail: [
+          payload.from ? `de ${payload.from}` : null,
+          payload.subject_contains ? `sujet ${payload.subject_contains}` : null,
+          payload.in_reply_to ? "fil de réponse" : null,
+          payload.timeout_s ? `timeout ${payload.timeout_s}s` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || null,
+      };
+    case "email.received":
+      return {
+        title: "email reçu",
+        detail: [payload.from, payload.subject].filter(Boolean).join(" · ") || null,
+      };
+    case "email.timeout":
+      return {
+        title: `attente email #${payload.wait_id ?? "?"} expirée`,
+        detail: payload.timeout_s ? `aucun email après ${payload.timeout_s}s` : null,
       };
     case "llm.call": {
       const tools =

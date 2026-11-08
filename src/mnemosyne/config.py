@@ -263,6 +263,26 @@ class OperatorConfig(BaseModel):
     )
 
 
+class EmailConfig(BaseModel):
+    """IMAP mailbox watched for the browser agent's `wait_for_email` tool.
+
+    The watcher is deliberately keyless at the app level: credentials come from
+    the environment (or the vault under the lowercased env name), never from
+    `config.yaml`. `enabled: false` keeps the heartbeat from opening a socket.
+    """
+
+    enabled: bool = False
+    imap_host: str = ""
+    imap_port: int = 993
+    imap_ssl: bool = True
+    folder: str = "INBOX"
+    poll_interval_s: int = 60
+    lookback_days: int = 14
+    max_body_chars: int = 4000
+    username_env: str = "MNEMOSYNE_EMAIL_USER"
+    password_env: str = "MNEMOSYNE_EMAIL_PASSWORD"
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
@@ -276,6 +296,7 @@ class Config(BaseModel):
     dev: DevConfig = Field(default_factory=DevConfig)
     notify: NotifyConfig = Field(default_factory=NotifyConfig)
     operator: OperatorConfig = Field(default_factory=OperatorConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
     sources_dir: str = "config/sources"
 
     #: absolute path to the repository root, set by the loader

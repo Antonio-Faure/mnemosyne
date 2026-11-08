@@ -39,7 +39,7 @@ from mnemosyne.dev.worktree import add_worktree
 from mnemosyne.identity import disclosure
 from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
-from mnemosyne.operator.models import AskOperatorParams
+from mnemosyne.operator.models import AskOperatorParams, WaitForEmailParams
 from mnemosyne.util import atomic_write_text, ensure_dir, finish_text, load_prompt
 from mnemosyne.vault import Vault
 
@@ -523,6 +523,31 @@ class BrowserAgentToolProvider(ToolProvider):
                 "tu seras réactivé avec sa réponse."
             )
 
+        async def wait_email_exec(p: WaitForEmailParams):
+            if self.task_id is None:
+                return _fail("aucune tâche ouverte : impossible d'attendre un email")
+            from mnemosyne.mailwatch import register_email_wait
+
+            try:
+                wait_id = register_email_wait(
+                    self.config,
+                    self._db,
+                    self.mailbox,
+                    agent="browser",
+                    task_id=self.task_id,
+                    params=p,
+                    vault_get=self.vault_get,
+                )
+            except ValueError as exc:
+                return _fail(str(exc))
+            except Exception as exc:  # noqa: BLE001 - never break the session
+                return _fail(f"attente email non enregistrée : {exc}")
+            return _ok(
+                f"attente email #{wait_id} enregistrée — arrête ton tour. "
+                "La session sera remise dans la file automatiquement quand un "
+                "email correspondant arrivera."
+            )
+
         return [
             Tool(name="browser", description="Run Python against Chrome via browser-harness.",
                  parameters=BrowserCodeParams, executor=browser_exec),
@@ -542,6 +567,11 @@ class BrowserAgentToolProvider(ToolProvider):
                  description=("Ask the human operator a multiple-choice question (only for "
                               "blockers no agent can solve). Ends your turn until the answer."),
                  parameters=AskOperatorParams, executor=ask_exec),
+            Tool(name="wait_for_email",
+                 description=("Park this task until a matching email arrives (expected sender "
+                              "and/or reply to the message you sent). Ends your turn; the "
+                              "session is re-queued automatically on receipt."),
+                 parameters=WaitForEmailParams, executor=wait_email_exec),
         ]
 
 async def run_browser_agent(

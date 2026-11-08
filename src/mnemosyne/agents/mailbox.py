@@ -17,7 +17,11 @@ AGENTS = ("coder", "browser")
 #: A question lives in the task's mailbox (never in the queue): it is an
 #: exchange inside a running task, not a new mission.
 OPERATOR = "operator"
-CORRESPONDENTS = (*AGENTS, OPERATOR)
+#: an IMAP watcher delivers a matching email as a normal mailbox message.
+EMAIL = "email"
+#: internal notices (e.g. an email wait timed out).
+SYSTEM = "system"
+CORRESPONDENTS = (*AGENTS, OPERATOR, EMAIL, SYSTEM)
 
 
 class Mailbox:

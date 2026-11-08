@@ -73,6 +73,23 @@ operator:
     bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN
     chat_id: ""
 
+# Email wait channel: the browser agent can park a task until a matching email
+# arrives (`wait_for_email`). The heartbeat polls this IMAP mailbox and puts the
+# task back in the run queue when the message is found.
+# Credentials: env var, else the vault under the lowercased name
+# (e.g. `mnemosyne vault set mnemosyne_email_password <app-password>`).
+email:
+  enabled: false
+  imap_host: imap.gmail.com
+  imap_port: 993
+  imap_ssl: true
+  folder: INBOX
+  poll_interval_s: 60
+  lookback_days: 14
+  max_body_chars: 4000
+  username_env: MNEMOSYNE_EMAIL_USER
+  password_env: MNEMOSYNE_EMAIL_PASSWORD
+
 # Public identity disclosed in every email / contact form (transparency).
 identity:
   name: mnemosyne
