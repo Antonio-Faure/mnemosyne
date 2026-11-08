@@ -95,6 +95,9 @@ class HttpClient:
                 continue
 
             resp.raise_for_status()
+            if self.governor is not None:
+                # the host is answering: relax its own penalty (AIMD recovery)
+                self.governor.report_success(domain)
             return resp
 
         raise last_exc or RuntimeError(f"GET failed: {url}")

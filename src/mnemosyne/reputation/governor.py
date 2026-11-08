@@ -4,7 +4,8 @@ Single place every rate-limited / sensitive action must pass through:
 
 * per-domain pacing and cooldown after a block (403 / 429 / captcha);
 * daily caps that follow the account **warmup** phases (account age driven);
-* an AIMD-style pressure multiplier applied globally when a domain fights back.
+* a per-domain AIMD pressure multiplier: one blocking host slows itself down,
+  never the whole catalog, and a served request halves the penalty back.
 
 This is what lets a brand-new agent account ramp up without getting banned.
 """
@@ -43,7 +44,9 @@ class Governor:
         self._last_call: dict[str, float] = {}
         self._cooldown_until: dict[str, float] = {}
         self._domain_intervals: dict[str, float] = {}
-        self._pressure = _MIN_PRESSURE
+        # Per-domain AIMD penalty. Kept per host: a Cloudflare 403 from one
+        # provider must not make every other provider 8x slower.
+        self._domain_pressure: dict[str, float] = {}
         self._in_flight = 0  # number of parallel requests currently holding an acquire
 
     # ── warmup ───────────────────────────────────────────────────────────
@@ -106,7 +109,7 @@ class Governor:
 
     def _wait_for(self, domain: str) -> float:
         base = max(self.config.domain_min_interval_s, self._domain_intervals.get(domain, 0.0))
-        return base * self._pressure
+        return base * self._domain_pressure.get(domain, _MIN_PRESSURE)
 
     async def acquire(self, domain: str) -> None:
         """Block until it is polite to call `domain`, or raise if cooling down."""
@@ -130,16 +133,39 @@ class Governor:
         now = time.monotonic()
         cooldown = retry_after if retry_after else self.config.block_cooldown_s
         self._cooldown_until[domain] = now + cooldown
-        self._pressure = min(self._pressure * 2, _MAX_PRESSURE)
-        log.warning(
-            "block on %s → cooldown %.0fs, pressure %.1f", domain, cooldown, self._pressure
+        pressure = min(
+            self._domain_pressure.get(domain, _MIN_PRESSURE) * 2, _MAX_PRESSURE
         )
+        self._domain_pressure[domain] = pressure
+        log.warning(
+            "block on %s → cooldown %.0fs, pressure %.1f", domain, cooldown, pressure
+        )
+
+    def report_success(self, domain: str) -> None:
+        """A served request halves this domain's penalty (AIMD recovery).
+
+        Without this, one 403 froze the whole catalog: the multiplier only ever
+        grew, so every later search paid for a host that had already blocked us.
+        """
+        current = self._domain_pressure.get(domain)
+        if current is None:
+            return
+        nxt = current / 2
+        if nxt <= _MIN_PRESSURE:
+            self._domain_pressure.pop(domain, None)
+        else:
+            self._domain_pressure[domain] = nxt
 
     def status(self) -> dict:
         phase = self.phase()
         return {
             "account_age_days": self.age_days(),
-            "pressure": round(self._pressure, 2),
+            "pressure": round(
+                max(self._domain_pressure.values(), default=_MIN_PRESSURE), 2
+            ),
+            "pressure_by_domain": {
+                d: round(p, 2) for d, p in sorted(self._domain_pressure.items())
+            },
             "warmup": {
                 "until_day": phase.until_day,
                 "harvest_per_day": phase.harvest_per_day,

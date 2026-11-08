@@ -734,6 +734,8 @@ def _cmd_status(args: argparse.Namespace) -> int:
             f"governor: age={gov['account_age_days']}d pressure={gov['pressure']} "
             f"harvest today={gov['today']['harvest']}/{gov['warmup']['harvest_per_day']}"
         )
+        for domain, pressure in (gov.get("pressure_by_domain") or {}).items():
+            print(f"  slow domain: {domain} ×{pressure}")
         for s in status["sources"]:
             print(f"  {s['id']:18} {s['state']:12} assets={s['asset_count']}")
         return 0
