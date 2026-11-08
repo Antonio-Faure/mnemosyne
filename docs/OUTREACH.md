@@ -87,6 +87,12 @@ rendez-vous.
 - Relire l'orthographe, les accents (référençons, hébergeons) et la ponctuation
   avant de cliquer sur Envoyer.
 
+- **Ne jamais composer via les paramètres d'URL** (`?body=`, `?su=`) : les
+  accents sont perdus (`a` au lieu de `à`, `Musee` au lieu de `Musée`). Toujours
+  taper dans la fenêtre de composition.
+- Relire le corps **réellement envoyé**, pas seulement la composition :
+  vérifier `a`/`à`, `é`/`è`/`ê`, `ç`, et l'objet.
+
 ## Après l'envoi
 
 1. Vérifier « Messages envoyés » (destinataire, objet, pièces jointes).
