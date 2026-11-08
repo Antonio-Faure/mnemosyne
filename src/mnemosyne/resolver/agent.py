@@ -271,6 +271,16 @@ class ResolverToolProvider(ToolProvider):
         async def record_result_exec(p: RecordResultParams):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
+            if p.status in ("match", "partial"):
+                pending = self.db.pending_asks_for(self.task_id)
+                if pending:
+                    # `ask_operator` ends the turn; a verdict that needs the
+                    # human cannot be self-validated while the ask is open.
+                    return _fail(
+                        "une question est en attente auprès de l'opérateur "
+                        f"(#{pending[0]['id']}) : attends sa réponse avant "
+                        "d'enregistrer un match/partial."
+                    )
             try:
                 self.db.record_resolver_result(
                     self.task_id,
