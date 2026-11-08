@@ -27,6 +27,8 @@ BYU = "https://contentdm.lib.byu.edu"
 ATLANTA = "https://album.atlantahistorycenter.com"
 NORTH_DAKOTA = "https://digitalhorizonsonline.org"
 PENN_STATE = "https://digital.libraries.psu.edu"
+HILLSBOROUGH = "https://digitalcollections.hcplc.org"
+HENNEPIN = "https://digitalcollections.hclib.org"
 
 _SENTINEL = object()
 
@@ -297,6 +299,102 @@ async def test_penn_state_public_domain_is_asset():
     )
     assert "!400,400" in asset.thumbnail_url
     assert asset.source_id == "penn_state"
+
+
+@pytest.mark.asyncio
+async def test_hillsborough_public_domain_portrait_is_asset():
+    alias, item_id = "p15140coll1", "42"
+    fields = [
+        _field("title", "Title", "Portrait of a Tampa family"),
+        _field("date", "Date", "1898"),
+        _field(
+            "rights",
+            "Rights",
+            "Public Domain. This item is in the public domain; credit: "
+            "Tampa-Hillsborough County Public Library.",
+        ),
+    ]
+    details = {
+        (alias, item_id): _detail(image_uri=_iiif(HILLSBOROUGH, alias, item_id), fields=fields)
+    }
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("hillsborough", HILLSBOROUGH, pages, details)
+
+    assets = await connector.search("portrait")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.license == "PDM-1.0"
+    assert "!1200,1200" in asset.image_url
+    assert "!400,400" in asset.thumbnail_url
+    assert asset.image_url.startswith(
+        f"{HILLSBOROUGH}/iiif/2/{alias}:{item_id}/full/!1200,1200/0/"
+    )
+    assert asset.source_id == "hillsborough"
+
+
+@pytest.mark.asyncio
+async def test_hennepin_noc_us_lake_is_asset():
+    alias, item_id = "p16094coll1", "7"
+    fields = [
+        _field("title", "Title", "Lake Calhoun, Minneapolis"),
+        _field("date", "Date", "1905"),
+        _field(
+            "rights",
+            "Rights",
+            "No Copyright - United States: http://rightsstatements.org/vocab/NoC-US/1.0/",
+        ),
+    ]
+    oclc_uri = f"{HENNEPIN}/api/singleitem/image/{alias}/{item_id}/default.jpg"
+    details = {(alias, item_id): _detail(image_uri=oclc_uri, fields=fields)}
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("hennepin", HENNEPIN, pages, details)
+
+    assets = await connector.search("lake")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.license == "PDM-1.0"
+    assert "api/singleitem/image/" not in asset.image_url
+    assert asset.image_url == (
+        f"{HENNEPIN}/digital/iiif/2/{alias}:{item_id}/full/!1200,1200/0/default.jpg"
+    )
+    assert asset.thumbnail_url == (
+        f"{HENNEPIN}/digital/iiif/2/{alias}:{item_id}/full/!400,400/0/default.jpg"
+    )
+    assert asset.source_id == "hennepin"
+
+
+@pytest.mark.asyncio
+async def test_hennepin_oclc_image_uri_is_rebuilt_as_iiif():
+    """Regression: Hennepin's /api/singleitem/image/ imageUri 403s -> rebuild IIIF."""
+    alias, item_id = "p1", "1"
+    fields = [
+        _field("title", "Title", "Hennepin lake"),
+        _field(
+            "rights",
+            "Rights",
+            "No Copyright - United States: http://rightsstatements.org/vocab/NoC-US/1.0/",
+        ),
+    ]
+    details = {
+        (alias, item_id): _detail(
+            image_uri="/api/singleitem/image/p1/1/default.jpg", fields=fields
+        )
+    }
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("hennepin", HENNEPIN, pages, details)
+
+    assets = await connector.search("lake")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.image_url == (
+        f"{HENNEPIN}/digital/iiif/2/p1:1/full/!1200,1200/0/default.jpg"
+    )
+    assert asset.thumbnail_url == (
+        f"{HENNEPIN}/digital/iiif/2/p1:1/full/!400,400/0/default.jpg"
+    )
 
 
 @pytest.mark.asyncio
@@ -586,6 +684,8 @@ async def test_page_url_from_item_link_and_fallback():
     [
         ("atlanta", ATLANTA),
         ("byu", BYU),
+        ("hennepin", HENNEPIN),
+        ("hillsborough", HILLSBOROUGH),
         ("north_dakota", NORTH_DAKOTA),
         ("penn_state", PENN_STATE),
         ("scdl", SCDL),
@@ -606,5 +706,14 @@ def test_descriptor_deserializes_and_is_registered(source_id, base_url):
 
 
 def test_all_contentdm_sources_registered():
-    for source_id in ("atlanta", "teva", "scdl", "byu", "north_dakota", "penn_state"):
+    for source_id in (
+        "atlanta",
+        "byu",
+        "hennepin",
+        "hillsborough",
+        "north_dakota",
+        "penn_state",
+        "scdl",
+        "teva",
+    ):
         assert CONNECTORS[source_id] is ContentDmConnector

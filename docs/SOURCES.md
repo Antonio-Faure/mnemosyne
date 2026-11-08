@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **59**
-- Sources actives : **48**
+- Sources déclarées : **61**
+- Sources actives : **50**
 - Sources désactivées : **11**
-## Sources actives (48)
+## Sources actives (50)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -42,6 +42,8 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | gbif | GBIF — Global Biodiversity Information Facility | GBIF | INTL | rest | none | varies (CC0-1.0 / CC-BY-4.0) | GBIF — API REST publique sans clé (api.gbif.org/v1/occurrence/search, mediaType=StillImage) ; une occurrence peut produire plusieurs Assets (un par média) ; conserver seulement les médias dont `media[].license` est CC0 1.0 ou CC BY 4.0 (revérifié côté connecteur, http(s) avec ou sans www) ; attribution par média (`rightsHolder`/`creator`) ; pagination par offset (limit ≤ 300, `count`, `endOfRecords`) ; aucun téléchargement (URLs seulement) |
 | hammer | Hammer Museum — Online Collections (IIIF) | Hammer Museum, University of California, Los Angeles (UCLA) | US | iiif | none | varies | Hammer Museum (UCLA) — droits par notice (CC0 / domaine public ou « In Copyright », rightsstatements.org) ; manifeste unique par objet (pas de Collection IIIF) |
 | harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
+| hennepin | Hennepin County Library — Digital Collections | Hennepin County Library | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Hennepin County Library — API CONTENTdm publique sans clé (digitalcollections.hclib.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette InC/CNE, droits réservés et CC BY-NC/ND) ; l'imageUri `/api/singleitem/image/...` (403 OCLC) est ignoré et reconstruit en IIIF `/digital/iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
+| hillsborough | Hillsborough County Public Library — Digital Collections | Tampa-Hillsborough County Public Library | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Hillsborough County Public Library — API CONTENTdm publique sans clé (digitalcollections.hcplc.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
 | inaturalist | iNaturalist — Observations | iNaturalist (California Academy of Sciences / National Geographic Society) | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | iNaturalist — API REST publique sans clé (api.inaturalist.org/v1/observations) ; une photo qualifiée = un Asset ; conserver seulement les photos dont le `license_code` au niveau photo est cc0 ou cc-by (revérifié côté connecteur) ; attribution par photo (`photo.attribution`) ; image principale = `square.jpg`→`large.jpg`, vignette = `square.jpg` ; pagination 1-based (`per_page` ≤ 200, `total_results`) ; aucun téléchargement (URLs seulement) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
 | kmska | KMSKA — Koninklijk Museum voor Schone Kunsten Antwerpen (Royal Museum of Fine Arts Antwerp) | Koninklijk Museum voor Schone Kunsten Antwerpen | BE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Royal Museum of Fine Arts Antwerp — Flemish Community (domaine public, CC0) ; Collection IIIF « Top Level Collection for Imagehub » (iiif/2/collection/manifest.json) |
@@ -91,10 +93,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 ## Raccourcis licence
 
 - **Domaine public / CC0** : `atlanta`, `artic`, `bsb`, `byu`, `cleveland`, `cooper_hewitt`,
-  `digital_commonwealth`, `kmska`, `llgc`, `met`, `nasa`,
-  `nb_no`, `ndl`, `north_dakota`, `penn_state`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
+  `digital_commonwealth`, `hennepin`, `hillsborough`, `kmska`, `llgc`, `met`, `nasa`, `nb_no`, `ndl`, `north_dakota`, `penn_state`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
   `wikidata` pour les données ; `nasa` = domaine public US, pas CC0 ; `atlanta`,
-  `byu`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
+  `byu`, `hennepin`, `hillsborough`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
   notice).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
   `eol`, `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1

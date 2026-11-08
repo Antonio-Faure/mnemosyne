@@ -1,0 +1,38 @@
+id: hennepin
+name: Hennepin County Library — Digital Collections
+institution: Hennepin County Library
+country: US
+protocol: rest
+base_url: https://digitalcollections.hclib.org
+auth: none
+license: "PDM-1.0 / CC0-1.0 / CC-BY-4.0"
+rights: "Droits explicites par notice (Public Domain / NoC-US / CC0 / CC BY) ; le connecteur CONTENTdm rejette InC, CNE, droits réservés et restrictions non commerciales."
+rate_limit_per_s: 1.0
+priority: 63
+tags: [library, minnesota, minneapolis, keyless, public-domain, contentdm]
+seeds:
+  - "steam"
+  - "railroad"
+  - "lake"
+  - "park"
+  - "map"
+  - "building"
+  - "portrait"
+  - "photograph"
+notes: >-
+  CONTENTdm (Hennepin County Library, Minneapolis) — API JSON officielle sans
+  clé. Recherche cross-collection : GET
+  {base}/digital/api/search/searchterm/<query url-encodé>?maxRecords=10&start=<offset>
+  (10 items par page ; pagination par `start`, arrêt sur limite / totalResults /
+  page vide ; max_pages défaut 3). Détail d'un item : GET
+  {base}/digital/api/singleitem/collection/<alias>/id/<id> pour lire
+  contentType/imageUri et la liste `fields`. Filtre image : ne garder que
+  contentType `image/*` avec imageUri non vide. Filtre droits explicite par
+  notice sur les champs rights/copyright (accepte Public Domain / NoC-US / CC0
+  / CC BY ; rejette InC/CNE, droits réservés et restrictions non commerciales).
+  Particularité : l'API renvoie un imageUri `/api/singleitem/image/<alias>/<id>/default.jpg`
+  qui redirige vers un 403 (OCLC) ; le connecteur n'utilise alors PAS cet imageUri
+  et reconstruit l'URL IIIF {base}/digital/iiif/2/<alias>:<id>/full/full/0/default.jpg,
+  puis applique /full/!1200,1200/0/ (image) et /full/!400,400/0/ (vignette).
+  Aucune image téléchargée, aucun scraping HTML, pas de clé, rate limit poli
+  1.0 req/s.

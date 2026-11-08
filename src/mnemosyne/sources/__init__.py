@@ -41,6 +41,8 @@ CONNECTORS: dict[str, type[Connector]] = {
     "europeana": EuropeanaConnector,
     "gallica": GallicaConnector,
     "gbif": GbifConnector,
+    "hennepin": ContentDmConnector,
+    "hillsborough": ContentDmConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
     "internet_archive": InternetArchiveConnector,

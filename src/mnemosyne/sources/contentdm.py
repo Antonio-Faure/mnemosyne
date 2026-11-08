@@ -63,6 +63,12 @@ _URL_RE = re.compile(r"https?://[^\s;]+")
 
 _DESCRIPTION_MAX = 600
 
+#: CONTENTdm hosts (e.g. Hennepin County Library) return an ``imageUri`` on the
+#: OCLC single-item image endpoint (``/api/singleitem/image/...``) that
+#: redirects to a 403. The IIIF image service under ``/digital/iiif/2/`` serves
+#: the same object, so the canonical URL is rebuilt from the alias and item id.
+_OCLC_SINGLEITEM = "/api/singleitem/image/"
+
 
 def _as_str(value: Any) -> str | None:
     if isinstance(value, list):
@@ -142,6 +148,18 @@ def _absolute(base: str, uri: str) -> str:
     if uri.startswith("/"):
         return base + uri
     return base + "/" + uri
+
+
+def _canonical_image_uri(base: str, alias: str, item_id: str, image_uri: str) -> str:
+    """Full-size image URL, rebuilding IIIF when ``imageUri`` targets OCLC.
+
+    Most CONTENTdm hosts already return a IIIF ``imageUri``. A few (Hennepin)
+    return an ``/api/singleitem/image/...`` URL that redirects to a 403; for
+    those we rebuild the IIIF image URL from the collection alias and item id.
+    """
+    if _OCLC_SINGLEITEM in image_uri:
+        return f"{base}/digital/iiif/2/{alias}:{item_id}/full/full/0/default.jpg"
+    return _absolute(base, image_uri)
 
 
 def _size_variant(image_url: str, size: str) -> str | None:
@@ -249,7 +267,7 @@ class ContentDmConnector(Connector):
         if not _is_open(fields):
             return None
 
-        image_full = _absolute(base, image_uri)
+        image_full = _canonical_image_uri(base, alias, item_id, image_uri)
         image_url = _size_variant(image_full, "!1200,1200") or image_full
         thumb_source = _as_str(detail.get("thumbnailUri")) or _as_str(item.get("thumbnailUri"))
         thumbnail_url = (
