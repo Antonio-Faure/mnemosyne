@@ -15,6 +15,10 @@ only fetched while the ``limit`` is not yet reached, and at most ``max_pages``
 search pages are walked. Images are never downloaded here — only URLs are
 recorded (the media ``mediaURL`` is used as both the image and the thumbnail,
 since no size variant is known).
+
+Transient Cloudflare/CDN hiccups (HTTP 5xx such as 520, or 429) are tolerated:
+the affected result set is dropped instead of degrading the whole source. A real
+access/rights error (401/403/404…) is *not* masked — it propagates to the engine.
 """
 
 from __future__ import annotations
@@ -22,8 +26,13 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlsplit
 
+import httpx
+
 from mnemosyne.connectors.base import Connector
+from mnemosyne.logger import get_logger
 from mnemosyne.models import Asset
+
+log = get_logger("sources.eol")
 
 #: EOL search page size (fixed by the API); used to bound pagination.
 _SEARCH_PAGE_SIZE = 50
@@ -37,6 +46,13 @@ _MAX_IMAGES_PER_PAGE = 50
 #: canonical licence name per recognized CC licence variant
 _LICENSE_CC0 = "CC0-1.0"
 _LICENSE_BY = {3: "CC-BY-3.0", 4: "CC-BY-4.0"}
+
+#: Transient CDN/server statuses: the HttpClient already retries 429/500/502/
+#: 503/504 with backoff; the rest of Cloudflare's 5xx family (520–527) is caught
+#: here and treated as a soft failure rather than a source error.
+_TRANSIENT_STATUS = frozenset(
+    {429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527}
+)
 
 
 def _normalize_license(value: str | None) -> str | None:
@@ -89,6 +105,27 @@ def _truncate(text: Any, length: int = 600) -> str:
 
 
 class EolConnector(Connector):
+    async def _get_json(self, url: str, *, params: dict[str, Any]) -> Any | None:
+        """GET JSON, tolerating transient CDN/server hiccups (return ``None``).
+
+        The shared :class:`HttpClient` already retries its ``RETRY_STATUS``
+        (429/500/502/503/504) with backoff. Cloudflare's remaining 5xx family
+        (520–527) is transient too but outside that set, so it is caught here as
+        a *soft* failure: the caller drops the affected result set instead of
+        degrading the whole source. A real access/rights error (401/403/404…) is
+        **not** masked — it propagates to the engine.
+        """
+        try:
+            return await self.http.get_json(url, params=params)
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if status in _TRANSIENT_STATUS:
+                log.warning(
+                    "eol: transient HTTP %s on %s; dropping result set", status, url
+                )
+                return None
+            raise
+
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
         if limit <= 0:
             return []
@@ -101,10 +138,12 @@ class EolConnector(Connector):
 
         page = 1
         while page <= max_pages:
-            data = await self.http.get_json(
+            data = await self._get_json(
                 f"{self.descriptor.base_url}/search/1.0.json",
                 params={"q": query, "page": page},
             )
+            if data is None:
+                break
             results = data.get("results") or []
             if not results:
                 break
@@ -120,7 +159,7 @@ class EolConnector(Connector):
                 page_id = result.get("id")
                 if page_id is None:
                     continue
-                page_data = await self.http.get_json(
+                page_data = await self._get_json(
                     f"{self.descriptor.base_url}/pages/1.0/{page_id}.json",
                     params={
                         "images_per_page": images_per_page,
@@ -128,6 +167,8 @@ class EolConnector(Connector):
                         "details": "true",
                     },
                 )
+                if page_data is None:
+                    continue
                 for asset in self._page_to_assets(page_id, result, page_data):
                     if asset.id in seen:
                         continue
@@ -180,16 +221,10 @@ class EolConnector(Connector):
         index: int,
     ) -> Asset:
         scientific_name = taxon.get("scientificName")
-        title = (
-            scientific_name
-            or result.get("title")
-            or f"EOL page {page_id}"
-        )
+        title = scientific_name or result.get("title") or f"EOL page {page_id}"
         rights_holder = media.get("rightsHolder")
         description = (
-            media.get("description")
-            or _truncate(result.get("content"))
-            or ""
+            media.get("description") or _truncate(result.get("content")) or ""
         )
         media_url = media["mediaURL"]
 

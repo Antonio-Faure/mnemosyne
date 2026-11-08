@@ -7,11 +7,17 @@ one by one via ``/public/collection/v1/objects/<id>``. Only records flagged
 ``isPublicDomain == true`` *and* carrying a non-empty ``primaryImage`` are kept,
 so every normalised :class:`Asset` is a public-domain (CC0) image. Images are
 never downloaded here — only their URLs are stored.
+
+A per-object look-up that returns HTTP 404 (the search can surface ids whose
+record was withdrawn) is skipped quietly instead of failing the whole source;
+any other status (401/403 access, 5xx outage) is a real error and propagates.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+import httpx
 
 from mnemosyne.connectors.base import Connector
 from mnemosyne.logger import get_logger
@@ -80,7 +86,16 @@ class MetConnector(Connector):
             if len(assets) >= limit or attempts >= max_attempts:
                 break
             attempts += 1
-            item = await self.http.get_json(self._object_url(object_id))
+            try:
+                item = await self.http.get_json(self._object_url(object_id))
+            except httpx.HTTPStatusError as exc:
+                # A withdrawn/absent object id (HTTP 404) is expected — skip it
+                # rather than surfacing it as a source error. Any other status
+                # (401/403 access, 5xx outage) is a real error: do not mask it.
+                if exc.response.status_code == 404:
+                    log.debug("met: object %s not found (404); skipping", object_id)
+                    continue
+                raise
             if not isinstance(item, dict):
                 continue
             asset = self._to_asset(item)

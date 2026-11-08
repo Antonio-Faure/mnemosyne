@@ -16,4 +16,13 @@ seeds:
   - "usine métallurgie"
   - "chemin de fer vapeur"
   - "mine charbon France"
-notes: "SRU returns Dublin Core records; images exposed via IIIF."
+notes: >-
+  SRU (Dublin Core) + images via IIIF ; accès 100 % programmatique (API
+  officielle, aucun scraping HTML). Constat 2026-11-08 (logs resolver #148 +
+  vérif `fetch_url`) : `https://gallica.bnf.fr/SRU` ET la variante
+  `https://gallica.bnf.fr/services/engine/search/sru` renvoient HTTP 403 avec la
+  page de blocage WAF Cloudflare (« Sorry, you have been blocked », ~5665 octets),
+  y compris avec un User-Agent navigateur. Diagnostic : blocage IP/ASN
+  (infrastructurel), PAS un bug de chemin/requête — le connecteur est correct.
+  Source laissée ACTIVE mais signalée « indisponible depuis cette IP (Cloudflare) » ;
+  ne pas modifier le code au hasard (voir docs/SOURCES.md).

@@ -95,11 +95,27 @@ async def test_search_normalizes_items(monkeypatch):
     assert second.extra["subjects"] == []
 
     url, kwargs = http.calls[0]
-    assert url == "https://api.dp.la/v2"
+    # regression: DPLA v2 search lives under /v2/items, not the bare /v2 root
+    assert url == "https://api.dp.la/v2/items"
     assert kwargs["params"]["api_key"] == "secret-key"
     assert kwargs["params"]["q"] == "derrick"
     assert kwargs["params"]["page_size"] == "10"
     assert kwargs["params"]["page"] == "1"
+
+
+async def test_search_targets_items_endpoint(monkeypatch):
+    """Regression (#149): the bare `/v2` root returns 404; search hits `/items`."""
+    monkeypatch.setenv("DPLA_API_KEY", "secret-key")
+    http = FakeHttp(SAMPLE)
+    connector = DplaConnector(_descriptor(), http)
+
+    await connector.search("derrick", limit=1)
+
+    url, kwargs = http.calls[0]
+    assert url == "https://api.dp.la/v2/items"
+    assert url.endswith("/items")
+    # the key is still read from the vault-provided DPLA_API_KEY env var
+    assert kwargs["params"]["api_key"] == "secret-key"
 
 
 async def test_search_without_key_returns_empty(monkeypatch):

@@ -26,6 +26,11 @@ notes: >-
   clients non-navigateur peuvent recevoir un 403 (le connecteur s'identifie par un
   User-Agent explicite). Source mono-objet : les `seeds` de recherche n'ont pas de
   sens ici — le connecteur lit l'unique manifeste déclaré dans `extra.manifest`.
+  Constat 2026-11-08 (vérif `fetch_url`) : le manifeste officiel (cultObj:id=395)
+  renvoie HTTP 403 depuis cette IP (WAF www.nga.gov, même famille que Gallica).
+  Le connecteur frappe bien l'API IIIF officielle (aucun scraping HTML) ; aucune
+  correction client possible côté connecteur. Source laissée ACTIVE mais signalée
+  « indisponible depuis cette IP (WAF/Cloudflare) » (voir docs/SOURCES.md).
 extra:
   manifest: "https://www.nga.gov/api/v1/iiif/presentation/manifest.json?cultObj:id=395"
   collection_id: "395"
