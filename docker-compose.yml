@@ -24,6 +24,9 @@ services:
     environment:
       MNEMOSYNE_CONFIG: /app/config/config.yaml
       OPENCODE_AUTH_PATH: /opencode-auth/auth.json
+      # import the live bind-mounted source instead of the immutable /app/src
+      # copy baked at build time: source edits then need only a restart.
+      PYTHONPATH: /repo/src
       # the coder agent works on the real (mounted) repo, so both agents live here
       MNEMOSYNE_DEV_REPO: /repo
     volumes:
@@ -57,6 +60,7 @@ services:
       - .env
     environment:
       MNEMOSYNE_CONFIG: /app/config/config.yaml
+      PYTHONPATH: /repo/src
     volumes:
       - ./:/repo
       - ./data:/app/data

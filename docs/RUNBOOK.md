@@ -23,6 +23,33 @@ Conteneur unique :
 Le conteneur `mnemosyne` lit aussi le token OpenCode caché (montage lecture seule
 de `~/.local/share/opencode` → `/opencode-auth`).
 
+### Boucle de dev — rebuild uniquement pour les dépendances
+
+Le code Python est monté depuis `./src` dans `/repo/src`, et les deux services
+ont `PYTHONPATH=/repo/src`. Ils importent donc **le code du dépôt**, pas la
+copie figée dans l'image.
+
+```bash
+# après un changement de connecteur / source / doc : PAS de build
+docker compose up -d            # recrée avec les nouveaux fichiers/env
+# ou, pour recharger un process déjà lancé :
+docker compose restart mnemosyne
+
+# rebuild réservé aux changements de Dockerfile / requirements.txt / dépendances
+docker compose build && docker compose up -d
+```
+
+Vérification :
+
+```bash
+docker compose exec mnemosyne python -c "import mnemosyne; print(mnemosyne.__file__)"
+# /repo/src/mnemosyne/__init__.py
+```
+
+Un nouveau processus `mnemosyne agency` lit immédiatement le code du dépôt ;
+le heartbeat déjà lancé doit être redémarré pour recharger ses modules.
+
+
 ### Mode local (dev)
 
 ```bash
