@@ -42,12 +42,16 @@ reputation:
     - until_day: 3
       outbound_per_day: 0
       harvest_per_day: 50
+      search_per_day: 1000
     - until_day: 10
       outbound_per_day: 3
       harvest_per_day: 150
+      search_per_day: 5000
     - until_day: null
       outbound_per_day: 20
       harvest_per_day: 1000
+      # recherches catalogue (lecture seule) : budget séparé du harvest
+      search_per_day: 50000
 
 llm:
   default: zen

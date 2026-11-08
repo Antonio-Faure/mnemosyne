@@ -26,6 +26,7 @@ log = get_logger("governor")
 _ACTION_CAPS = {
     "harvest": "harvest_per_day",
     "outbound": "outbound_per_day",
+    "search": "search_per_day",
 }
 
 _MAX_PRESSURE = 8.0
