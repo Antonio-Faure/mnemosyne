@@ -251,11 +251,44 @@ def _cmd_resolve_stats(args: argparse.Namespace) -> int:
     try:
         total = db.resolver_golden_count()
         stats = db.resolver_golden_stats()
+        corpus = db.resolver_corpus_count()
     finally:
         db.close()
+    print(f"corpus         : {corpus} phrase(s) à traiter")
     print(f"golden dataset : {total} phrase(s)")
     for status, count in sorted(stats.items()):
         print(f"  {status:<10} {count}")
+    return 0
+
+
+def _cmd_resolve_ingest(args: argparse.Namespace) -> int:
+    from mnemosyne.db import Database
+    from mnemosyne.resolver import CorpusFileError, load_corpus
+
+    try:
+        entries = load_corpus(args.path, prefix=args.prefix, min_words=args.min_words)
+    except CorpusFileError as exc:
+        print(f"corpus invalide : {exc}")
+        return 1
+    videos = {str((e.get("video") or {}).get("id") or "") for e in entries}
+    print(
+        f"{len(entries)} phrase(s) lues "
+        f"({len(videos - {''})} vidéo(s), min_words={args.min_words})"
+    )
+    if args.dry_run:
+        for entry in entries[:5]:
+            print(f"  {entry['id']:<24} {entry['text'][:90]}")
+        print("dry-run : rien n'a été écrit")
+        return 0
+
+    cfg = get_config()
+    db = Database(cfg.db_file())
+    try:
+        written = db.upsert_resolver_corpus(entries)
+        total = db.resolver_corpus_count()
+    finally:
+        db.close()
+    print(f"importées : {written} ; corpus en base : {total}")
     return 0
 
 
@@ -265,26 +298,52 @@ def _cmd_resolve_enqueue(args: argparse.Namespace) -> int:
     cfg = get_config()
     db = Database(cfg.db_file())
     try:
+        existing = db.open_resolver_task(args.segment_id)
+        if existing is not None:
+            print(f"phrase déjà en cours : tâche resolver #{existing}")
+            return 0
         label = db.get_resolver_golden(args.segment_id)
-        if label is None:
-            print(f"segment inconnu : {args.segment_id}")
-            return 1
-        text = (label.get("segment") or {}).get("text") or ""
+        corpus = None
+        if label is not None:
+            text = (label.get("segment") or {}).get("text") or ""
+            claim = label.get("claim") or {}
+            video = label.get("video") or {}
+            source = "golden"
+        else:
+            corpus = db.get_resolver_corpus(args.segment_id)
+            if corpus is None:
+                print(f"segment inconnu (ni golden, ni corpus) : {args.segment_id}")
+                return 1
+            text = corpus.get("text") or ""
+            claim = corpus.get("claim") or {}
+            video = corpus.get("video") or {}
+            source = "corpus"
         objective = (
             "Phrase historique à illustrer par le résolveur adversarial.\n"
             f"Segment : {args.segment_id}\n"
             f"Phrase : {text}\n"
+        )
+        if video.get("title") or video.get("url"):
+            objective += (
+                f"Vidéo : {video.get('title') or video.get('id') or ''}"
+                + (f" — {video['url']}" if video.get("url") else "")
+                + "\n"
+            )
+        if claim:
+            objective += f"Claim : {claim}\n"
+        objective += (
             "Cherche dans la meta API, fais valider le candidat par l'opérateur, "
             "et demande au biagent les sources manquantes si nécessaire."
         )
-        task_id = db.enqueue_task(
-            "resolver",
-            objective,
-            payload={"kind": "resolver", "segment_id": args.segment_id, "label": label},
-        )
+        payload = {"kind": "resolver", "segment_id": args.segment_id, "source": source}
+        if label is not None:
+            payload["label"] = label
+        if corpus is not None:
+            payload["corpus"] = corpus
+        task_id = db.enqueue_task("resolver", objective, payload=payload)
     finally:
         db.close()
-    print(f"tâche resolver #{task_id} en file pour {args.segment_id}")
+    print(f"tâche resolver #{task_id} en file pour {args.segment_id} ({source})")
     return 0
 
 
@@ -900,8 +959,14 @@ def build_parser() -> argparse.ArgumentParser:
     rig.set_defaults(func=_cmd_resolve_import_golden)
     rst = rsub.add_parser("stats", help="show the imported golden dataset")
     rst.set_defaults(func=_cmd_resolve_stats)
-    ren = rsub.add_parser("enqueue", help="enqueue one resolver task for a golden segment")
-    ren.add_argument("segment_id", help="golden segment id")
+    ring = rsub.add_parser("ingest", help="import a corpus of sentences to resolve")
+    ring.add_argument("path", help="JSONL / JSON array / transcript document")
+    ring.add_argument("--prefix", default=None, help="prefix for derived transcript ids")
+    ring.add_argument("--min-words", type=int, default=4, help="skip shorter fragments")
+    ring.add_argument("--dry-run", action="store_true")
+    ring.set_defaults(func=_cmd_resolve_ingest)
+    ren = rsub.add_parser("enqueue", help="enqueue one resolver task for a sentence")
+    ren.add_argument("segment_id", help="corpus or golden segment id")
     ren.set_defaults(func=_cmd_resolve_enqueue)
 
     pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")

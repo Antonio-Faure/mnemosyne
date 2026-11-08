@@ -1,10 +1,11 @@
 """Adversarial sentence-to-archive-image resolver.
 
-This package starts with the golden-dataset contract: labelled history-video
-sentences, their acceptable archive images, and hard negatives. Retrieval and
-the adversarial panel are layered on top in later stages.
+Two datasets, two jobs: `resolver_corpus` holds the sentences to process (any
+transcript segment), `resolver_golden` holds the *evaluated* pairs used to
+benchmark the resolver. Retrieval and the adversarial panel are layered on top.
 """
 
+from mnemosyne.resolver.corpus import CorpusFileError, load_corpus
 from mnemosyne.resolver.golden import GoldenFileError, load_golden
 from mnemosyne.resolver.models import (
     GoldenClaim,
@@ -17,6 +18,7 @@ from mnemosyne.resolver.models import (
 )
 
 __all__ = [
+    "CorpusFileError",
     "GoldenClaim",
     "GoldenFileError",
     "GoldenGold",
@@ -25,5 +27,6 @@ __all__ = [
     "GoldenSentence",
     "GoldenVideo",
     "HardNegative",
+    "load_corpus",
     "load_golden",
 ]
