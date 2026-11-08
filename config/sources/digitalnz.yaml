@@ -1,0 +1,52 @@
+id: digitalnz
+name: DigitalNZ — Te Puna Mātauranga o Aotearoa
+institution: National Library of New Zealand
+country: NZ
+protocol: rest
+base_url: https://api.digitalnz.org/v3/records.json
+auth: none
+license: varies
+rights: >-
+  Filtre explicite par notice : n'accepter que le domaine public (« no known
+  copyright restrictions » / « no copyright » / « out of copyright » / « public
+  domain »), CC0 ou CC BY ; rejeter « Some rights reserved », « All rights
+  reserved », « Copyright must be cleared » ainsi que CC BY-NC / CC BY-ND.
+  Exiger en plus l'usage commercial (`usage` contient « Use commercially ») ET
+  une URL d'image http(s) non vide ; une notice sans image est ignorée.
+rate_limit_per_s: 0.5
+priority: 40
+tags: [library, archive, museum, new-zealand, keyless, aggregator, pacific, public-domain]
+seeds:
+  - "1914"
+  - "Waitangi"
+  - "ANZAC"
+  - "Wellington harbour"
+  - "gold mining"
+notes: >-
+  DigitalNZ (Te Puna Mātauranga o Aotearoa, National Library of New Zealand) —
+  API REST officielle v3 publique, sans clé pour un usage raisonnable.
+  Endpoint de recherche :
+  GET https://api.digitalnz.org/v3/records.json?text=<query>
+  &and[category][]=Images&and[usage][]=Use commercially&per_page=<n>&page=<p>
+  — réponse {search: {results: [...]}}. per_page ≤ 100 (clampé), page 1-based.
+  Champs utiles par notice : id, title, description, creator/contributor,
+  date (liste ISO), display_date, rights (texte), rights_url, usage (liste :
+  Share / Modify / Use commercially / All rights reserved), is_commercial_use
+  (bool), thumbnail_url, large_thumbnail_url, object_url, landing_url,
+  display_content_partner, content_partner, category.
+  Filtres par notice :
+  1) usage commercial : accepter si `usage` contient « Use commercially » ;
+     l'API renvoie souvent `is_commercial_use: null` (même pour les notices
+     réutilisables) — seul un `false` explicite disqualifie.
+  2) droits : accepter domaine public / « No known copyright restrictions » /
+     « out of copyright » / CC0 / CC BY ; rejeter « Some rights reserved »,
+     « All rights reserved », « Copyright must be cleared » et CC BY-NC/ND.
+  3) image obligatoire : `large_thumbnail_url` sinon `thumbnail_url`, en http(s)
+     non vide ; beaucoup de notices n'ont que des métadonnées (sans image) et
+     sont ignorées. `display_url` est souvent vide : ne pas s'en servir.
+  Normalisation Asset : page_url = landing_url, image_url = grande vignette
+  (sinon vignette), thumbnail_url = vignette (sinon grande), year via parse_year,
+  extra = partenaire + rights_url + id DigitalNZ.
+  Quota : https://api.digitalnz.org/terms-of-use — une clé / un quota peut être
+  exigé au-delà d'un usage raisonnable ; rate limit poli 0.5 req/s, pagination
+  bornée, aucune image téléchargée, aucun scraping HTML.

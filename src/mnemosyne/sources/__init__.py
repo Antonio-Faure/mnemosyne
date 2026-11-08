@@ -10,6 +10,7 @@ from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.contentdm import ContentDmConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
 from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
+from mnemosyne.sources.digitalnz import DigitalNzConnector
 from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.eol import EolConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
@@ -40,6 +41,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,
+    "digitalnz": DigitalNzConnector,
     "dpla": DplaConnector,
     "eol": EolConnector,
     "europeana": EuropeanaConnector,
