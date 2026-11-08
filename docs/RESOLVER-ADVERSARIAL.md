@@ -39,13 +39,37 @@ Les deux jobs tournent en parallèle avec des leases séparés :
 `max_workers > 1`, donc les deux boucles avancent en même temps.
 
 Une tâche resolver est créée **par phrase** (ou par petit lot) à partir du
-golden dataset / transcript. Elle porte `sentence_id`, la phrase, le claim et
+corpus / golden dataset. Elle porte `sentence_id`, la phrase, le claim et
 les critères. Elle peut :
 
 1. interroger la **meta API du biagent** (`Engine.search`, le catalogue) ;
 2. demander une revue humaine ;
 3. demander l'ajout d'une ou plusieurs sources au biagent ;
 4. se parquer en attendant ces sources, puis être réveillée.
+
+### La boucle s'alimente elle-même
+
+`resolver.auto_feed: true` : quand une activation ne trouve aucune tâche
+resolver à faire, le job enfile la **phrase suivante du corpus** (première
+`resolver_corpus` qui n'a jamais eu de tâche). Aucun humain n'est nécessaire
+pour maintenir le flux ; l'opérateur n'intervient que sur les verdicts.
+
+### Deux garde-fous de validation
+
+- **Pas d'auto-validation** : `record_result(match|partial)` est refusé tant
+  qu'une question `ask_operator` de la tâche est `pending`. L'abstention
+  (`no_match`/`ambiguous`) reste possible sans personne.
+- **Titre ≠ sujet** : les grands fonds titrent une *série* (« The German
+  Invasion of Belgium ») dont l'image montre parfois autre chose (des troupes
+  belges à Ostend). La description tranche ; un titre trompeur est un négatif
+  dur dans le golden dataset.
+
+### Réveil par une source
+
+Quand une tâche biagent liée à une `resolver_requests` se ferme, le
+superviseur marque la demande `done`/`failed` et poste `[SOURCES READY]` au
+résolveur dès qu'il n'attend plus aucune source. Le résolveur reprend alors la
+phrase avec la meta API à jour.
 
 ## Agent resolver
 
