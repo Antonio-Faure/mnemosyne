@@ -206,8 +206,15 @@ class Heartbeat:
 
         Compose sends SIGTERM and SIGKILLs ~10 s later: releasing here lets the
         next container generation start immediately instead of waiting for the
-        renewed TTL to lapse.
+        renewed TTL to lapse. Running jobs are requeued for the same reason —
+        leaving them RUNNING would park both loops until the stale recovery.
         """
+        try:
+            requeued = self.engine.db.requeue_own_jobs()
+            if requeued:
+                log.info("requeued %d running job(s) before shutdown", requeued)
+        except Exception as exc:  # noqa: BLE001 - shutdown must never raise
+            log.debug("cannot requeue running jobs: %s", exc)
         self.release_own_leases()
         self.stop()
 

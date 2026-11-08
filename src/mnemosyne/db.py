@@ -1712,6 +1712,24 @@ class Database:
         for name in ("agency", "browser", "resolver"):
             self.renew_own_lease(name)
 
+    def requeue_own_jobs(self) -> int:
+        """Hand OUR running jobs back to the queue (graceful shutdown).
+
+        A SIGTERM'd container that left its jobs RUNNING made the next one wait
+        for the stale-lock window (~10 min) before the biagent and the resolver
+        could run again. Requeueing keeps the loops immediate across restarts.
+        """
+        pattern = f'%"instance": "{_INSTANCE}"%'
+        with self._lock:
+            cur = self._conn.execute(
+                """UPDATE jobs SET state = ?, locked_at = NULL, locked_by = NULL,
+                       run_at = ?
+                   WHERE state = ? AND locked_by LIKE ?""",
+                (JobState.PENDING.value, utcnow_iso(), JobState.RUNNING.value, pattern),
+            )
+            self._conn.commit()
+            return cur.rowcount
+
     def list_messages(self, status: str | None = None, limit: int = 50) -> list[dict]:
         with self._lock:
             if status:
