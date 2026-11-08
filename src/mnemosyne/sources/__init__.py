@@ -16,6 +16,8 @@ from mnemosyne.sources.eol import EolConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.gbif import GbifConnector
+from mnemosyne.sources.ia_esso_petrole import IaEssoPetroleConnector
+from mnemosyne.sources.ifpen_petrole import IfpenPetroleConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.inaturalist import INaturalistConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
@@ -56,6 +58,8 @@ CONNECTORS: dict[str, type[Connector]] = {
     "wikimedia": WikimediaConnector,
     "wikimedia_commons_photos": WikimediaCommonsPhotosConnector,
     "internet_archive": InternetArchiveConnector,
+    "ia_esso_petrole": IaEssoPetroleConnector,
+    "ifpen_petrole": IfpenPetroleConnector,
     "japan_search": JapanSearchConnector,
     "loc_wwi_photos": LocWwiPhotosConnector,
     "inaturalist": INaturalistConnector,
