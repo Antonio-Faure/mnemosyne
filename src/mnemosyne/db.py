@@ -1541,6 +1541,15 @@ class Database:
                 ).fetchall()
         return [dict(r) for r in rows]
 
+    def pending_asks_for(self, task_id: int) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT * FROM operator_asks
+                   WHERE task_id = ? AND status = 'pending' ORDER BY created_at""",
+                (task_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def task_waiting_on_operator(self, task_id: int) -> bool:
         with self._lock:
             row = self._conn.execute(

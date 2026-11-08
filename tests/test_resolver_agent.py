@@ -254,3 +254,40 @@ def test_closing_a_biagent_task_wakes_the_parked_resolver(config, monkeypatch):
         assert wake[0]["sender"] == "system"
     finally:
         db.close()
+
+
+def test_record_result_cannot_self_validate_while_a_question_is_open(config):
+    """match/partial need the answer: never record the verdict you asked about."""
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        db.create_ask(
+            "ask-1",
+            task_id,
+            "resolver",
+            "Valide ce candidat ?",
+            [{"label": "Valide"}, {"label": "Refuse"}],
+        )
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+        blocked = asyncio.run(
+            by_name["record_result"].executor(
+                RecordResultParams(status="match", asset_id="a1", evidence="looks right")
+            )
+        )
+        assert blocked.success is False
+        assert "en attente" in blocked.content
+        assert db.get_resolver_result(task_id) is None
+
+        db.answer_ask("ask-1", "Valide")
+        allowed = asyncio.run(
+            by_name["record_result"].executor(
+                RecordResultParams(status="match", asset_id="a1", evidence="validé")
+            )
+        )
+        assert allowed.success is True
+        assert db.get_resolver_result(task_id)["status"] == "match"
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
