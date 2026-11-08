@@ -179,3 +179,44 @@ async def test_one_hung_source_cannot_hold_the_whole_search(
 
     assert [a.source_id for a in assets] == ["gallica"]
     assert elapsed < 5, f"search took {elapsed:.1f}s despite the per-source cap"
+
+
+@pytest.mark.asyncio
+async def test_search_does_not_consume_the_harvest_budget(config, monkeypatch):
+    """A read-only catalog search must not starve the harvest cap (task #154).
+
+    The resolver's ~50 queries per sentence used to be counted as `harvest`;
+    once 1000 was reached, every provider was skipped and the meta API answered
+    "nothing" for the rest of the day.
+    """
+    monkeypatch.setattr(
+        "mnemosyne.engine.build_connector",
+        lambda descriptor, http: FakeConnector(descriptor, http),
+    )
+    engine = Engine(config)
+    engine.catalog.sync()
+    try:
+        engine.governor.record("harvest", 10**6)  # harvest budget exhausted
+        assets = await engine.search("puits de Lacq")
+    finally:
+        await engine.aclose()
+
+    assert len(assets) == 2, "the harvest cap must not block a search"
+    assert engine.governor.daily_count("search") >= 1
+    assert engine.governor.daily_count("harvest") == 10**6
+
+
+@pytest.mark.asyncio
+async def test_the_daily_search_cap_is_its_own_ceiling(config, monkeypatch):
+    monkeypatch.setattr(
+        "mnemosyne.engine.build_connector",
+        lambda descriptor, http: FakeConnector(descriptor, http),
+    )
+    engine = Engine(config)
+    engine.catalog.sync()
+    try:
+        engine.governor.record("search", 10**6)
+        assets = await engine.search("puits de Lacq")
+    finally:
+        await engine.aclose()
+    assert assets == []

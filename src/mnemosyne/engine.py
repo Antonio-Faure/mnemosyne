@@ -53,6 +53,12 @@ class Engine:
         ]
         if not descriptors:
             return []
+        if not self.governor.allowed("search"):
+            log.warning(
+                "daily catalog-search cap reached (%d); no provider queried",
+                self.governor.cap("search") or 0,
+            )
+            return []
 
         results = await asyncio.gather(
             *(self._search_one(d, query, limit) for d in descriptors),
@@ -79,8 +85,10 @@ class Engine:
                 descriptor.protocol,
             )
             return []
-        if not self.governor.allowed("harvest"):
-            log.info("harvest cap reached for today; skipping %s", descriptor.id)
+        if not self.governor.allowed("search"):
+            # read-only query: it must never eat the harvest budget (stored
+            # assets). The per-domain pacing is the politeness guard here.
+            log.debug("search cap reached for today; skipping %s", descriptor.id)
             return []
         rate = descriptor.rate_limit_per_s
         if rate and rate > 0 and self.governor is not None:
@@ -105,7 +113,7 @@ class Engine:
             log.warning("%s search error: %s", descriptor.id, exc)
             await self._degrade(descriptor.id, str(exc))
             return []
-        self.governor.record("harvest")
+        self.governor.record("search")
         fresh = [a for a in normalize(assets) if not index.is_duplicate(a)]
         for a in fresh:
             index.add(a)
