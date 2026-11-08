@@ -104,3 +104,19 @@ async def test_running_agent_session_does_not_block_the_other_loop(cfg, monkeypa
     assert ran == ["agency", "resolver"]
     await hb.aclose()
 
+
+
+async def test_shutdown_requeues_running_jobs_instead_of_parking_them(cfg, monkeypatch):
+    """SIGTERM must not park the loops for the 10-minute stale-lock window."""
+    hb = Heartbeat(cfg)
+    job_id = hb.engine.db.enqueue(Job(kind="verify", payload={"source_id": "x"}, priority=1))
+    claimed = hb.engine.db.claim_due_jobs("2999-01-01T00:00:00+00:00", 1)
+    assert [j.id for j in claimed] == [job_id]
+    assert hb.engine.db.get_job(job_id).state is JobState.RUNNING
+
+    hb.request_stop()
+
+    job = hb.engine.db.get_job(job_id)
+    assert job is not None and job.state is JobState.PENDING, job
+    assert job.locked_at is None
+    await hb.aclose()

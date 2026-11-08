@@ -54,3 +54,25 @@ def test_per_source_rate_limit_sets_the_pacing_floor(config):
     assert gov._wait_for("slow.example.org") == 5.0
     assert gov._wait_for("other.example.org") == 1.0
     db.close()
+
+
+def test_pressure_is_per_domain_and_recovers(config):
+    """One blocked host slows itself down; the rest of the catalog keeps pace."""
+    import asyncio
+
+    db = Database(config.db_file())
+    gov = Governor(ReputationConfig(domain_min_interval_s=1.0, block_cooldown_s=300), db)
+
+    asyncio.run(gov.report_block("gallica.bnf.fr"))
+    assert gov._wait_for("gallica.bnf.fr") == 2.0
+    assert gov._wait_for("other.example.org") == 1.0, "a global penalty would slow everything"
+
+    gov.report_success("gallica.bnf.fr")
+    assert gov._wait_for("gallica.bnf.fr") == 1.0, "a served request halves the penalty"
+
+    asyncio.run(gov.report_block("gallica.bnf.fr"))
+    asyncio.run(gov.report_block("gallica.bnf.fr"))
+    assert gov.status()["pressure"] == 4.0
+    assert gov.status()["pressure"] == 4.0
+    assert gov.status()["pressure_by_domain"] == {"gallica.bnf.fr": 4.0}
+    db.close()
