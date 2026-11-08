@@ -13,6 +13,9 @@ from mnemosyne.logger import get_logger
 log = get_logger("mailbox")
 
 AGENTS = ("coder", "browser")
+#: the resolver is a third agent (one session per sentence) but it is driven by
+#: its own loop, not by the agency job yet.
+RESOLVER = "resolver"
 #: the operator is the third correspondent: agents ASK, the operator ANSWERS.
 #: A question lives in the task's mailbox (never in the queue): it is an
 #: exchange inside a running task, not a new mission.
@@ -21,7 +24,7 @@ OPERATOR = "operator"
 EMAIL = "email"
 #: internal notices (e.g. an email wait timed out).
 SYSTEM = "system"
-CORRESPONDENTS = (*AGENTS, OPERATOR, EMAIL, SYSTEM)
+CORRESPONDENTS = (*AGENTS, RESOLVER, OPERATOR, EMAIL, SYSTEM)
 
 
 class Mailbox:

@@ -66,6 +66,12 @@ propres :
 Le resolver n'écrit pas dans le catalogue : il lit la meta API et produit des
 candidats, des verdicts et des demandes de sources.
 
+Comme le biagent, il peut poser une question à l'opérateur (`ask_operator`) :
+questionnaire à boutons + réponse libre, attaché à sa session resolver. La
+réponse le réveille au tick suivant. Il peut aussi utiliser `wait_for_email`
+pour une réponse externe.
+
+
 ## Demandes de sources et réveil
 
 ```text

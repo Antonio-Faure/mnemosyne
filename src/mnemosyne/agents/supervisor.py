@@ -386,7 +386,11 @@ async def _activate_session(
                 # then the orchestrator closes the task (logical order)
                 "close_status": "failed", "close_note": error[:NOTE_MAX_CHARS]}
 
-    if mailbox.pending_count(task_id) == 0 and not db.task_waiting_on_email(task_id):
+    if (
+        mailbox.pending_count(task_id) == 0
+        and not db.task_waiting_on_email(task_id)
+        and not db.task_waiting_on_sources(task_id)
+    ):
         status = "done" if finish else "review"
         close_note = finish[:NOTE_MAX_CHARS] or None
         db.delete_kv(f"transient:{task_id}")
@@ -405,6 +409,38 @@ async def _activate_session(
                 "close_status": status, "close_note": close_note}
     return {"agent": agent, "task_id": task_id, "finish": finish, "turns": _turns_of(outcome),
             "branch": getattr(outcome, "branch", None), "error": None}
+
+
+def _complete_resolver_dependencies(
+    db: Database,
+    mailbox: Mailbox,
+    task_id: int,
+    status: str,
+    note: str | None,
+) -> None:
+    """Wake resolver sessions whose requested sources just became terminal."""
+    resolver_ids = db.complete_resolver_requests_for_biagent(
+        task_id, status=status, note=note
+    )
+    for resolver_id in resolver_ids:
+        if db.task_waiting_on_sources(resolver_id):
+            continue
+        resolver = db.get_task(resolver_id)
+        if resolver is None or resolver["status"] != "running":
+            continue
+        requests = db.resolver_requests(resolver_id)
+        lines = [
+            "[SOURCES READY]",
+            f"Les {len(requests)} source(s) demandée(s) sont terminales.",
+        ]
+        for request in requests:
+            label = request.get("source_name") or request.get("source_id") or "source"
+            lines.append(
+                f"- {label}: {request.get('status')}"
+                + (f" ({request.get('note')})" if request.get("note") else "")
+            )
+        lines.append("Relance le test de la phrase avec la meta API à jour.")
+        mailbox.post("system", "resolver", "\n".join(lines), resolver_id)
 
 
 async def _renew_own_loop(db: Database, interval_s: float = 60.0) -> None:

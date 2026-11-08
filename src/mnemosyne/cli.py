@@ -282,6 +282,7 @@ def _cmd_queue_list(args: argparse.Namespace) -> int:
     tasks = db.list_tasks(status=args.status)
     waiting = {t["id"] for t in tasks if db.task_waiting_on_operator(t["id"])}
     email_waiting = {t["id"] for t in tasks if db.task_waiting_on_email(t["id"])}
+    sources_waiting = {t["id"] for t in tasks if db.task_waiting_on_sources(t["id"])}
     db.close()
     for task in tasks:
         started = task.get("started_at") or ""
@@ -291,6 +292,8 @@ def _cmd_queue_list(args: argparse.Namespace) -> int:
             suffix += "  ⏳ attend ta réponse"
         if task["id"] in email_waiting:
             suffix += "  📧 attend un email"
+        if task["id"] in sources_waiting:
+            suffix += "  🧩 attend des sources"
         print(
             f"#{task['id']:<4} {task['status']:<10} départ={task['start_agent']:<7} "
             f"{started[:16]} {objective}{suffix}"
@@ -345,8 +348,15 @@ def _cmd_queue_cancel(args: argparse.Namespace) -> int:
         return 1
     db.set_task_status(args.task_id, "cancelled", note="annulée par l'opérateur")
     drop_session_cache(cfg, task)
+    from mnemosyne.agents.mailbox import Mailbox
+    from mnemosyne.agents.supervisor import _complete_resolver_dependencies
+
+    _complete_resolver_dependencies(
+        db, Mailbox(db), args.task_id, "failed", "annulée par l'opérateur"
+    )
     db.delete_task_messages(args.task_id)
     db.delete_task_email_waits(args.task_id)
+    db.delete_task_resolver_requests(args.task_id)
     db.close()
     print(f"tâche #{args.task_id} annulée (boîte et sessions jetées)")
     return 0
