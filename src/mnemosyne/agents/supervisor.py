@@ -407,6 +407,38 @@ async def _activate_session(
             "branch": getattr(outcome, "branch", None), "error": None}
 
 
+def _complete_resolver_dependencies(
+    db: Database,
+    mailbox: Mailbox,
+    task_id: int,
+    status: str,
+    note: str | None,
+) -> None:
+    """Wake resolver sessions whose requested sources just became terminal."""
+    resolver_ids = db.complete_resolver_requests_for_biagent(
+        task_id, status=status, note=note
+    )
+    for resolver_id in resolver_ids:
+        if db.task_waiting_on_sources(resolver_id):
+            continue
+        resolver = db.get_task(resolver_id)
+        if resolver is None or resolver["status"] != "running":
+            continue
+        requests = db.resolver_requests(resolver_id)
+        lines = [
+            "[SOURCES READY]",
+            f"Les {len(requests)} source(s) demandée(s) sont terminales.",
+        ]
+        for request in requests:
+            label = request.get("source_name") or request.get("source_id") or "source"
+            lines.append(
+                f"- {label}: {request.get('status')}"
+                + (f" ({request.get('note')})" if request.get("note") else "")
+            )
+        lines.append("Relance le test de la phrase avec la meta API à jour.")
+        mailbox.post("system", "resolver", "\n".join(lines), resolver_id)
+
+
 async def _renew_own_loop(db: Database, interval_s: float = 60.0) -> None:
     """Keep our leases and job locks fresh for the whole activation.
 

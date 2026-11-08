@@ -187,6 +187,24 @@ CREATE TABLE IF NOT EXISTS resolver_golden (
 CREATE INDEX IF NOT EXISTS idx_resolver_golden_status
     ON resolver_golden(status, segment_id);
 
+-- Resolver -> biagent source dependencies: one row per source request.
+CREATE TABLE IF NOT EXISTS resolver_requests (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    resolver_task_id  INTEGER NOT NULL,
+    sentence_id       TEXT,
+    source_id         TEXT,
+    source_name       TEXT,
+    biagent_task_id   INTEGER,
+    status            TEXT NOT NULL DEFAULT 'pending',
+    created_at        TEXT NOT NULL,
+    completed_at      TEXT,
+    note              TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_resolver_requests_resolver
+    ON resolver_requests(resolver_task_id, status);
+CREATE INDEX IF NOT EXISTS idx_resolver_requests_biagent
+    ON resolver_requests(biagent_task_id, status);
+
 """
 
 
@@ -493,6 +511,89 @@ class Database:
             ).fetchall()
         return [json.loads(row["payload"]) for row in rows]
 
+    # ── resolver source requests (resolver -> biagent dependencies) ───────
+    def create_resolver_request(
+        self,
+        resolver_task_id: int,
+        *,
+        sentence_id: str | None = None,
+        source_id: str | None = None,
+        source_name: str | None = None,
+        biagent_task_id: int | None = None,
+    ) -> int:
+        with self._lock:
+            cur = self._conn.execute(
+                """INSERT INTO resolver_requests
+                   (resolver_task_id, sentence_id, source_id, source_name,
+                    biagent_task_id, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, 'pending', ?)""",
+                (
+                    resolver_task_id,
+                    sentence_id,
+                    source_id,
+                    source_name,
+                    biagent_task_id,
+                    utcnow_iso(),
+                ),
+            )
+            self._conn.commit()
+            return int(cur.lastrowid)
+
+    def resolver_requests(self, resolver_task_id: int) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM resolver_requests WHERE resolver_task_id = ? "
+                "ORDER BY id ASC",
+                (resolver_task_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def pending_resolver_requests(self, resolver_task_id: int) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM resolver_requests WHERE resolver_task_id = ? "
+                "AND status IN ('pending', 'running') ORDER BY id ASC",
+                (resolver_task_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def task_waiting_on_sources(self, resolver_task_id: int) -> bool:
+        return bool(self.pending_resolver_requests(resolver_task_id))
+
+    def complete_resolver_requests_for_biagent(
+        self,
+        biagent_task_id: int,
+        *,
+        status: str = "done",
+        note: str | None = None,
+    ) -> list[int]:
+        """Mark the requests tied to one biagent task; return affected resolver ids."""
+        if status not in ("done", "failed"):
+            raise ValueError("resolver request status must be done or failed")
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT DISTINCT resolver_task_id FROM resolver_requests "
+                "WHERE biagent_task_id = ? AND status IN ('pending', 'running')",
+                (biagent_task_id,),
+            ).fetchall()
+            resolver_ids = [int(row["resolver_task_id"]) for row in rows]
+            self._conn.execute(
+                """UPDATE resolver_requests
+                   SET status = ?, completed_at = ?, note = ?
+                   WHERE biagent_task_id = ? AND status IN ('pending', 'running')""",
+                (status, utcnow_iso(), note, biagent_task_id),
+            )
+            self._conn.commit()
+        return resolver_ids
+
+    def delete_task_resolver_requests(self, task_id: int) -> int:
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM resolver_requests WHERE resolver_task_id = ?", (task_id,)
+            )
+            self._conn.commit()
+            return cur.rowcount
+
     # ── jobs ─────────────────────────────────────────────────────────────
     def enqueue(self, job: Job) -> int:
         with self._lock:
@@ -791,34 +892,53 @@ class Database:
         )
         return session_id
 
-    def next_task(self) -> dict | None:
+    def next_task(self, agents: tuple[str, ...] | None = None) -> dict | None:
         """The task to work on.
 
         Priority: the task worked on most recently continues (its session is
         warm); then running tasks with a pending answer/agent-message (oldest
         activation first); then new pending tasks (FIFO). Tasks waiting on the
-        operator are SKIPPED — a parked task costs nothing and never blocks the
-        queue; its answer wakes it back into the running set.
+        operator, an email or resolver source-requests are SKIPPED — a parked
+        task costs nothing and never blocks the queue; its answer wakes it back
+        into the running set.
+
+        ``agents`` restricts the selection to a family (e.g. the agency job
+        passes coder/browser, the resolver job passes resolver).
         """
         parked = (
             "(EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
             "AND m.status = 'pending' AND m.recipient = 'operator') "
             "OR EXISTS (SELECT 1 FROM email_waits w WHERE w.task_id = t.id "
-            "AND w.status = 'pending')) "
+            "AND w.status = 'pending') "
+            "OR EXISTS (SELECT 1 FROM resolver_requests r "
+            "WHERE r.resolver_task_id = t.id "
+            "AND r.status IN ('pending', 'running'))) "
             "AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.task_id = t.id "
-            "AND m.status = 'pending' AND m.recipient IN ('coder', 'browser'))"
+            "AND m.status = 'pending' "
+            "AND m.recipient IN ('coder', 'browser', 'resolver'))"
         )
+        agent_clause = ""
+        params: list[str] = []
+        if agents:
+            placeholders = ",".join("?" for _ in agents)
+            agent_clause = f"AND t.start_agent IN ({placeholders})"
+            params = list(agents)
         with self._lock:
             row = self._conn.execute(
                 f"""SELECT * FROM tasks t WHERE t.status = 'running'
                     AND NOT ({parked})
+                    {agent_clause}
                     ORDER BY COALESCE(t.last_activation_at, t.created_at) DESC,
                              t.id ASC
-                    LIMIT 1"""
+                    LIMIT 1""",
+                params,
             ).fetchone()
             if row is None:
                 row = self._conn.execute(
-                    """SELECT * FROM tasks WHERE status = 'pending' ORDER BY id ASC LIMIT 1"""
+                    f"""SELECT * FROM tasks t WHERE t.status = 'pending'
+                        {agent_clause}
+                        ORDER BY t.id ASC LIMIT 1""",
+                    params,
                 ).fetchone()
         return dict(row) if row else None
 
