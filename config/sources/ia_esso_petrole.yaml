@@ -1,0 +1,43 @@
+id: ia_esso_petrole
+name: ESSO France — ESSO REVUE & pétrole des Landes / Parentis (Internet Archive)
+institution: Internet Archive — corpus ESSO France (matériel ESSO, non IFPEN)
+country: FR
+protocol: iiif
+base_url: https://archive.org/advancedsearch.php
+auth: none
+license: unknown
+rights: "Droits inconnus (ni rights ni licenceurl sur les items) — référence et lien uniquement, aucun ré-hébergement"
+rate_limit_per_s: 1.0
+priority: 125
+tags: [france, petroleum, parentis, landes, lacq, esso, internet-archive, iiif, unknown-license]
+seeds:
+  - "pétrole Parentis"
+  - "pétrole des Landes"
+  - "forage pétrolier"
+  - "Lacq"
+  - "ESSO REVUE"
+enabled: true
+notes: >-
+  Imagerie pétrolière française réelle et réellement adressable, en complément
+  d'IFPEN (qui n'expose aucune archive publique — voir `ifpen_petrole`).
+  Corpus ESSO France de l'Internet Archive : 31 numéros ESSO REVUE
+  (jan 1950 – nov 1952) + « Histoire de Parentis ESSO 1955 » + « Le pétrole des
+  Landes ESSO 1957 » = 33 items, >1000 pages scannées (exploitation pétrolière
+  landaise : Parentis-en-Born, Landes, Lacq, forages, chevalements/derricks,
+  torchères, figures). ATTENTION : matériel ESSO (pétrolier privé), PAS IFPEN —
+  libellé honnête. Accès 100 % programmatique (aucun scraping HTML) : découverte
+  via l'API JSON advancedsearch (q = extra.search_query) puis, par item,
+  manifeste IIIF Presentation v3 et image de la 1re page via IIIF Image API v3
+  (image /full/!400,400, vignette /full/!200,200 ; jamais /full/max, lent et
+  lourd). Droits : ni rights ni licenceurl sur les items => licence INCONNUE =>
+  référence et lien seulement, aucun ré-hébergement. Connecteur :
+  src/mnemosyne/sources/ia_esso_petrole.py (sous-classe du connecteur IIIF
+  générique, réutilise la normalisation manifeste -> Asset).
+extra:
+  search_query: 'title:"ESSO REVUE" OR identifier:"histoire-de-parentis-esso-1955_202502" OR identifier:"petrole-des-landes-esso-1957"'
+  manifest_template: "https://iiif.archive.org/iiif/{identifier}/manifest.json"
+  rows: 80
+  collection_id: ia-esso-petrole
+  item_count: 33
+  image_size: "!400,400"
+  thumb_size: "!200,200"

@@ -1,0 +1,44 @@
+id: ifpen_petrole
+name: IFPEN / Institut français du pétrole — archives photographiques
+institution: IFP Energies nouvelles (IFPEN) — ex-Institut français du pétrole (IFP)
+country: FR
+protocol: rest
+base_url: https://www.ifpenergiesnouvelles.fr/
+auth: none
+license: unknown
+rights: "Aucune archive photographique publique — source non exploitable en l'état"
+rate_limit_per_s: 0.2
+priority: 130
+tags: [france, petroleum, ifpen, ifp, industrial-heritage, no-public-archive]
+seeds:
+  - "Parentis pétrole"
+  - "Lacq pétrole"
+  - "forage pétrolier"
+  - "carottage Schlumberger"
+enabled: false
+notes: >-
+  Archives photographiques de l'Institut français du pétrole (fondé 1944) :
+  exploitation pétrolière en France (Parentis-en-Born, Lacq, bassin parisien)
+  et services mobiles de forage/carottage type Schlumberger. Recon du
+  2026-11-08 : IFPEN n'expose AUCUNE archive photographique publique ni API.
+  Site officiel ifpenergiesnouvelles.fr = CMS Drupal corporate ; /phototheque,
+  /mediatheque, /medias, /phototheque-historique, /notre-histoire, /histoire,
+  /patrimoine, /galerie-photos renvoient tous 404 ; seule « archive » = HAL-IFP
+  (publications scientifiques, pas de photos) ; surfaces média = /tags/videos,
+  /tags/communiques-presse (corporate). Pas de IIIF, pas d'API JSON.
+  FranceArchives (fiche autorité IFP, agent/794087623) ne renvoie que du
+  bâti/urbanisme (CAPA « Immeubles de bureaux et laboratoires pour l'IFP ») ;
+  POP (« pétrole »=lampes, « Lacq »=usines à gaz) et ANMT Roubaix (charbon /
+  finance) n'ont pas de fonds d'exploitation pétrolière. DÉSACTIVÉE : aucune
+  matière à normaliser ; le connecteur (sources/ifpen_petrole.py) est inerte et
+  ne fait aucun appel réseau. L'imagerie pétrolière française réellement
+  disponible est servie par la source sœur `ia_esso_petrole` (corpus ESSO
+  France, Internet Archive). Réactiver IFPEN = changement d'une ligne dès qu'un
+  endpoint public ou une autorisation écrite de réutilisation de la photothèque
+  historique est obtenu (voir docs/OUTREACH.md).
+extra:
+  recon_date: "2026-11-08"
+  related_source: ia_esso_petrole
+  authorization_request:
+    sender: archivist.mnemosyne@gmail.com
+    status: not_sent
