@@ -18,6 +18,7 @@ from mnemosyne.sources.gbif import GbifConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.inaturalist import INaturalistConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
+from mnemosyne.sources.iwm_ww1 import IwmWw1Connector
 from mnemosyne.sources.japan_search import JapanSearchConnector
 from mnemosyne.sources.mai_saint_etienne import MAISaintEtienneConnector
 from mnemosyne.sources.met import MetConnector
@@ -50,6 +51,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "wikimedia": WikimediaConnector,
     "wikimedia_commons_photos": WikimediaCommonsPhotosConnector,
     "internet_archive": InternetArchiveConnector,
+    "iwm_ww1": IwmWw1Connector,
     "japan_search": JapanSearchConnector,
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,

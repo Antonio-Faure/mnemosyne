@@ -1,0 +1,39 @@
+id: iwm_ww1
+name: Imperial War Museums — WW1 official photography (Q series, via Wikimedia Commons)
+institution: Imperial War Museums (IWM), London
+country: GB
+protocol: rest
+base_url: https://commons.wikimedia.org/w/api.php
+auth: none
+license: "Public domain"
+rights: "© IWM — WW1 Q-series scans are Public Domain (via Wikimedia Commons); attribute « © IWM (Q xxxx) » and link the Commons file page (source_page)"
+rate_limit_per_s: 0.5
+priority: 25
+tags: [ww1, photography, museum, britain, keyless, wikimedia-commons]
+seeds:
+  - "trench Western Front"
+  - "Belgian refugees 1914"
+  - "Battle of the Somme 1916"
+  - "Ypres 1917"
+  - "Western Front soldiers"
+notes: >-
+  IWM holds the largest British First World War photography collection (the Q
+  series). Its own Q-series official photography was donated to Wikimedia
+  Commons and is Public Domain there, so this connector uses the keyless
+  MediaWiki API. The IWM site is NOT scraped: www.iwm.org.uk/robots.txt
+  disallows /collections/search and exposes no usable public JSON API, while its
+  item images are "© IWM" (licensing required). The search unions the WW1
+  official-photography categories on Commons (the core "Ministry of Information
+  First World War Official Collection" = Q series, plus Western Front visits,
+  women's war work, aerial and panorama collections), deduplicated on pageid.
+  Each hit is normalised to an Asset and keeps its Q-series reference (e.g.
+  Q9848) in extra.catalog_ref. Only open licences (Public domain / CC0 / CC BY /
+  PD-*) with Copyrighted != True are kept. Reuse attribution: « © IWM (Q xxxx) »
+  + the Commons file page. No HTML scraping, no image download (URLs only).
+extra:
+  categories:
+    - "Ministry of Information First World War Official Collection"
+    - "The Official Visits To the Western Front, 1914-1918"
+    - "IWM First World War Women's War Work Collection photographs"
+    - "First World War Aerial Photographs Collection"
+    - "First World War Official Panoramas Collection"

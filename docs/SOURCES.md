@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **64**
-- Sources actives : **53**
+- Sources déclarées : **65**
+- Sources actives : **54**
 - Sources désactivées : **11**
-## Sources actives (53)
+## Sources actives (54)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -47,6 +47,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | hillsborough | Hillsborough County Public Library — Digital Collections | Tampa-Hillsborough County Public Library | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Hillsborough County Public Library — API CONTENTdm publique sans clé (digitalcollections.hcplc.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
 | inaturalist | iNaturalist — Observations | iNaturalist (California Academy of Sciences / National Geographic Society) | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | iNaturalist — API REST publique sans clé (api.inaturalist.org/v1/observations) ; une photo qualifiée = un Asset ; conserver seulement les photos dont le `license_code` au niveau photo est cc0 ou cc-by (revérifié côté connecteur) ; attribution par photo (`photo.attribution`) ; image principale = `square.jpg`→`large.jpg`, vignette = `square.jpg` ; pagination 1-based (`per_page` ≤ 200, `total_results`) ; aucun téléchargement (URLs seulement) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
+| iwm_ww1 | Imperial War Museums — WW1 official photography (Q series, via Wikimedia Commons) | Imperial War Museums (IWM), London | GB | rest | none | Public domain | IWM — série Q (photographie officielle britannique 1914-1918) versée au domaine public sur Wikimedia Commons ; API MediaWiki publique sans clé (commons.wikimedia.org/w/api.php), pas de scraping de www.iwm.org.uk (`/collections/search` interdit par robots.txt, images « © IWM » sous licence) ; union des catégories WW1 (série Q + visites du front ouest, travail des femmes, aérien, panoramas) dédupliquée par pageid ; normalisation en Asset avec référence Q (`Q9848`) dans `extra.catalog_ref` ; seules licences ouvertes (Public domain / CC0 / CC BY / PD-*) avec `Copyrighted != True` conservées ; attribution « © IWM (Q xxxx) » + page du fichier Commons ; aucun téléchargement (URLs seulement) |
 | japan_search | Japan Search — ジャパンサーチ | Japan Search (National Diet Library) | JP | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Japan Search — agrégateur national japonais, API REST publique sans clé (jpsearch.go.jp/api/item/search/jps-cross) ; filtres f-contents=image, f-caccess=internet, f-rights répété (+pdm/+cc0/+ccby) ; pagination from/size (size clamp 100) ; images via contentsUrl[0] sinon thumbnailUrl[0] ; licences pdm→PDM-1.0, cc0→CC0-1.0, ccby→CC-BY-4.0 ; vérifier par notice ; aucun téléchargement (URLs seulement), aucun scraping HTML |
 | kmska | KMSKA — Koninklijk Museum voor Schone Kunsten Antwerpen (Royal Museum of Fine Arts Antwerp) | Koninklijk Museum voor Schone Kunsten Antwerpen | BE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Royal Museum of Fine Arts Antwerp — Flemish Community (domaine public, CC0) ; Collection IIIF « Top Level Collection for Imagehub » (iiif/2/collection/manifest.json) |
 | leiden | Leiden University Libraries Digital Collections | Leiden University Libraries (Universiteitsbibliotheek Leiden) | NL | iiif | none | varies | Leiden University Libraries — vérifier par notice (domaine public / sous licence) |
@@ -110,7 +111,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   média. `inaturalist` : uniquement les photos sous CC0 ou CC BY 4.0.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
-  `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
+  `internet_archive`, `iwm_ww1`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
   `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
   `wikimedia_commons_photos`, `yale`, `yale_lux` — la licence est décidée au
   niveau de l'`Asset` à la frontière du connecteur, pas de la source.
@@ -128,7 +129,7 @@ Cette table est maintenue en accord avec les descripteurs : voir
 
 Constat issu de la tâche resolver #148 (`catalog_search` sur tout le catalogue),
 ensuite reproduit/vérifié via `fetch_url` le **2026-11-08** (tâche #149). Aucune
-source n'est activée ni désactivée ici : les compteurs ci-dessus (64 / 53 / 11)
+source n'est activée ni désactivée ici : les compteurs ci-dessus (65 / 54 / 11)
 restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
 **actifs** mais leur état est documenté (`notes:` des descripteurs + ce tableau).
 
