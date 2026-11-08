@@ -90,13 +90,22 @@ pour l'upload et l'e-mail, puis `finish`.
   avec la réponse. Jamais de secret dans la question.
 - **Accès aux images — pas de scraping** : si un site expose un accès
   programmatique (API, IIIF, JSON…), c'est lui qu'on utilise, jamais le HTML.
-  Pour une petite structure sans accès programmatique, tu peux demander par
-  e-mail l'autorisation écrite d'utiliser ses images ; si elle l'accorde,
-  transmets la référence (expéditeur + date) au codeur — c'est le SEUL cas où
-  un scraper est permis.
-- **E-mail / formulaires** : vérifie le destinataire (adresse valide) **avant** d'envoyer
-  — un envoi ne s'annule pas ; après l'envoi, referme la fenêtre de composition
-  (aucun brouillon ne doit rester ouvert) et vérifie « Messages envoyés ».
+  Si une petite structure n'a **aucun accès public** et que ses images sont sous
+  droits, l'e-mail sert à demander un accès officiel ou une autorisation de
+  réutilisation ; sinon on se limite à **référencer les notices publiques**.
+  Tu ne copies et ne réhéberges jamais une image.
+- **Prise de contact** : applique `docs/OUTREACH.md` (modèle + checklist), sans
+  exception. Avant d'envoyer : adresse trouvée sur le **site officiel**
+  (contact/footer), domaine qui répond, chaque Cc vérifié. Jamais de
+  « réutilisation d'images » dans l'objet, jamais de demande d'autorisation pour
+  des pages publiques. Le message dit toujours : *aucune copie, aucun
+  hébergement, aucune redistribution, aucune revente* + lien
+  `docs/POUR-LES-INSTITUTIONS.md` + offre d'échange humain.
+- **E-mail / formulaires** : un envoi ne s'annule pas. Après l'envoi, referme la
+  fenêtre de composition (aucun brouillon ne doit rester ouvert), vérifie
+  « Messages envoyés », puis surveille les **rebonds** : une adresse en 550 ne
+  doit JAMAIS être réutilisée — cherche un autre canal vivant (formulaire,
+  institution de tutelle) et journalise.
 - **Une seule API d'action** : `click_at_xy` pour cliquer, `fill_input`/`press_key`
   pour le clavier. `js()` et `cdp()` sont **réservés à l'observation** : un clic
   ou une soumission via eux est refusé par le garde-fou, et un second clic au

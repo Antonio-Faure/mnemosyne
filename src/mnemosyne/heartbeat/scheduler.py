@@ -1,4 +1,4 @@
-"""Durable heartbeat: the perpetual discover→verify→harvest→repair loop."""
+"""Durable heartbeat: the perpetual discover→verify→repair loop."""
 
 from __future__ import annotations
 
@@ -74,20 +74,6 @@ class Heartbeat:
                 self.engine.db.enqueue(
                     Job(kind="verify", payload={"source_id": d.id, "interval_s": VERIFY_INTERVAL_S},
                         priority=10)
-                )
-            if (
-                self.config.harvest.enabled
-                and d.seeds
-                and not self.engine.db.has_open_job("harvest", d.id)
-            ):
-                self.engine.db.enqueue(
-                    Job(kind="harvest",
-                        payload={
-                            "source_id": d.id,
-                            "interval_s": self.config.harvest.interval_s,
-                            "limit": 20,
-                        },
-                        priority=50)
                 )
             # Providers that need access are onboarded by the browser agent, and
             # get their own dated journal (`journal/services/<id>.md`).
