@@ -1,0 +1,47 @@
+id: auc
+name: American University in Cairo — Rare Books & Special Collections
+institution: The American University in Cairo
+country: EG
+protocol: rest
+base_url: https://digitalcollections.aucegypt.edu
+auth: none
+license: "PDM-1.0 / CC0-1.0 / CC-BY-4.0"
+rights: "Droits explicites par notice (« This item is in the public domain. » / NoC-US / CC0 / CC BY) ; le connecteur CONTENTdm rejette « Copyright the American University in Cairo » + contact permissions, InC, droits réservés et restrictions non commerciales des collections photographiques récentes."
+rate_limit_per_s: 1.0
+priority: 64
+tags: [library, egypt, cairo, middle-east, napoleonic, keyless, public-domain, contentdm]
+seeds:
+  - "Egypt"
+  - "Cairo"
+  - "Nile"
+  - "Napoleon"
+  - "pyramids"
+  - "Sphinx"
+  - "Alexandria"
+  - "Thebes"
+  - "map"
+  - "plan"
+  - "portrait"
+  - "mosque"
+notes: >-
+  CONTENTdm (American University in Cairo, Rare Books & Special Collections
+  Library) — API JSON officielle sans clé. Institution CONTENTdm en Égypte /
+  Moyen-Orient, zone géographique prioritaire absente du catalogue (très
+  US/Europe de l'Ouest). Recherche cross-collection : GET
+  {base}/digital/api/search/searchterm/<query url-encodé>?maxRecords=10&start=<offset>
+  (10 items par page ; pagination par `start`, arrêt sur limite / totalResults /
+  page vide ; max_pages défaut 3). Détail d'un item : GET
+  {base}/digital/api/singleitem/collection/<alias>/id/<id> pour lire
+  contentType/imageUri/thumbnailUri et la liste `fields` (titre, date, droits).
+  Filtre image : ne garder que contentType `image/*` avec imageUri non vide
+  (les volumes composés `cpd`/`application/octet-stream` sont écartés). Filtre
+  droits explicite par notice sur les champs rights/copyright/access : accepte
+  « This item is in the public domain. » / NoC-US / CC0 / CC BY ; rejette
+  « Copyright the American University in Cairo » + contact permissions, InC,
+  droits réservés et restrictions non commerciales. Exemple PD confirmé :
+  collection p15795coll2, item 3790 « [Mediterranean Battle of Abu Kir, 1 August
+  1798] » (image/jp2, rights « This item is in the public domain. »). imageUri
+  IIIF {base}/iiif/2/<alias>:<id>/full/full/0/default.jpg rehaussé http→https
+  puis décliné en /full/!1200,1200/0/ (image) et /full/!400,400/0/ (vignette).
+  Aucune image téléchargée, aucun scraping HTML, pas de clé, rate limit poli
+  1.0 req/s.

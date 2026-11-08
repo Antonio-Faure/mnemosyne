@@ -19,15 +19,16 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **65**
-- Sources actives : **53**
+- Sources déclarées : **66**
+- Sources actives : **54**
 - Sources désactivées : **12**
-## Sources actives (53)
+## Sources actives (54)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
 | atlanta | Atlanta History Center — Album | Atlanta History Center | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Atlanta History Center — API CONTENTdm publique sans clé (album.atlantahistorycenter.com/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites (PD/NoC-US/CC0/CC BY ; rejette droits réservés, non évalués et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
 | artic | Art Institute of Chicago | Art Institute of Chicago (AIC) | US | iiif | none | Public Domain (CC0-1.0) | Domaine public — *The Bedroom*, Vincent van Gogh (1888) |
+| auc | American University in Cairo — Rare Books & Special Collections | The American University in Cairo | EG | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | The American University in Cairo, Rare Books & Special Collections — API CONTENTdm publique sans clé (digitalcollections.aucegypt.edu/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide (volumes composés `cpd`/octet-stream écartés) ; filtre droits explicites par notice (« This item is in the public domain. » / NoC-US / CC0 / CC BY ; rejette « Copyright the American University in Cairo » + contact permissions, InC et restrictions non commerciales) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette), http→https ; Égypte / Moyen-Orient (zone prioritaire) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
 | bsb_collection | Bavarian State Library — digital collections (IIIF) | Bayerische Staatsbibliothek, München | DE | iiif | none | varies | Bayerische Staatsbibliothek — vérifier par notice (domaine public pour une grande partie) ; Collection IIIF « top » (iiif/presentation/v2/collection/top) |
 | byu | BYU Digital Collections | Brigham Young University | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Brigham Young University — API CONTENTdm publique sans clé (contentdm.lib.byu.edu/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` commençant par `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « not evaluated », « undetermined », « all rights reserved », « In Copyright », CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
@@ -96,10 +97,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 ## Raccourcis licence
 
-- **Domaine public / CC0** : `atlanta`, `artic`, `bsb`, `byu`, `carli`, `cleveland`, `cooper_hewitt`,
+- **Domaine public / CC0** : `atlanta`, `artic`, `auc`, `bsb`, `byu`, `carli`, `cleveland`, `cooper_hewitt`,
   `digital_commonwealth`, `hennepin`, `hillsborough`, `japan_search`, `kmska`, `llgc`, `met`, `nasa`, `nb_no`, `ndl`, `north_dakota`, `penn_state`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
   `wikidata` pour les données ; `nasa` = domaine public US, pas CC0 ; `atlanta`,
-  `byu`, `carli`, `hennepin`, `hillsborough`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
+  `auc`, `byu`, `carli`, `hennepin`, `hillsborough`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
   notice ; `japan_search` — filtre pdm/cc0/ccby par notice).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
   `eol`, `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1
