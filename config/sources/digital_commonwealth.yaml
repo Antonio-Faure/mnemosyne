@@ -1,0 +1,46 @@
+id: digital_commonwealth
+name: Digital Commonwealth — Massachusetts Collections
+institution: Digital Commonwealth (Massachusetts)
+country: US
+protocol: rest
+base_url: https://www.digitalcommonwealth.org
+auth: none
+license: PDM-1.0
+rights: >-
+  No known copyright restrictions — uniquement les notices dont
+  reuse_allowed_ssi == 'no restrictions' (insensible à la casse) / rights_ss
+  commençant par « No known copyright restrictions » / license_ss commençant par
+  « No known restrictions » / CC0 explicite dans license_ss ; vérifier par notice.
+rate_limit_per_s: 1.0
+priority: 50
+tags: [museum, library, archive, united-states, keyless, public-domain, massachusetts]
+seeds:
+  - "steam engine"
+  - "railroad"
+  - "whaling"
+  - "textile mill"
+  - "boston harbor"
+  - "civil war"
+  - "postcard"
+  - "agriculture"
+notes: >-
+  API Blacklight JSON publique sans clé (agrégateur du patrimoine du
+  Massachusetts). Endpoint de recherche :
+  GET https://www.digitalcommonwealth.org/search.json?q=<query>&per_page=20&page=1
+  — réponse {links, meta.pages {current_page,total_pages,total_count,limit_value},
+  data [{id,type,attributes}]}.
+  Filtre licence par notice : ne garder QUE les notices dont reuse_allowed_ssi
+  vaut 'no restrictions' (insensible à la casse), ou rights_ss commençant par
+  'No known copyright restrictions', ou license_ss commençant par
+  'No known restrictions', ou CC0 explicite dans license_ss ; toutes les autres
+  (« contact host », « Rights status not evaluated », …) sont ignorées.
+  Images via IIIF : exemplary_image_key_base_ss ressemble à
+  'images/commonwealth:qj72pd28f' — retirer le préfixe 'images/' puis construire
+  image_url = https://iiif.digitalcommonwealth.org/iiif/2/<id>/full/!1200,1200/0/default.jpg
+  et thumbnail_url = .../full/!400,400/0/default.jpg ; les clés 'metadata/...'
+  n'ont pas d'image et la notice est ignorée. page_url = identifier_uri_ss
+  (ark.digitalcommonwealth.org) sinon https://www.digitalcommonwealth.org/search/<id>.
+  Pagination page 1-based, per_page ≤ 100 (clampé), arrêt sur meta.pages.total_pages
+  / total_count ou limite atteinte. Rate limit poli 1.0 req/s, aucun scraping HTML,
+  aucune image téléchargée. Licence des assets retenus : PDM-1.0 (Public Domain
+  Mark) ; rights = rights_ss de la notice.
