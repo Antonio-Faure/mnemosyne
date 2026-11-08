@@ -12,6 +12,7 @@ import {
   Inbox,
   MessageSquare,
   Network,
+  ScanSearch,
   Sparkles,
   Wrench,
   X,
@@ -51,6 +52,7 @@ interface Props {
 
 const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> = {
   agency: { label: "Agency · file", color: "#f59e0b", icon: Cog },
+  resolver: { label: "Résolveur", color: "#f472b6", icon: ScanSearch },
   orchestrator: { label: "Orchestrateur", color: "#60a5fa", icon: Network },
   browser: { label: "Navigateur", color: "#38bdf8", icon: Globe },
   coder: { label: "Codeur", color: "#818cf8", icon: Code2 },
@@ -787,9 +789,21 @@ export function ActivityPanel({
                 >
                   <Block
                     {...common}
-                    label={event.actor === "coder" ? "Codeur" : "Navigateur"}
+                    label={
+                      event.actor === "coder"
+                        ? "Codeur"
+                        : event.actor === "resolver"
+                          ? "Résolveur"
+                          : "Navigateur"
+                    }
                     icon={Sparkles}
-                    color={event.actor === "coder" ? "#818cf8" : "#38bdf8"}
+                    color={
+                      event.actor === "coder"
+                        ? "#818cf8"
+                        : event.actor === "resolver"
+                          ? "#f472b6"
+                          : "#38bdf8"
+                    }
                   >
                     {payload.text ? (
                       <Markdown text={String(payload.text)} />
