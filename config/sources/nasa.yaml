@@ -1,0 +1,20 @@
+id: nasa
+name: NASA Image and Video Library
+institution: NASA
+country: US
+protocol: rest
+base_url: https://images-api.nasa.gov
+auth: none
+license: "Public Domain (NASA)"
+rights: "NASA content generally not copyrighted; some items may be third-party — verify per item"
+rate_limit_per_s: 1.0
+priority: 40
+tags: [space, science, united-states, keyless, public-domain, nasa]
+seeds:
+  - apollo
+  - space shuttle
+  - earth from space
+  - nebula
+  - mars rover
+  - launch
+notes: "REST /search?q=<query>&media_type=image&page_size (<=100)&page (1-based) on images-api.nasa.gov ; total via collection.metadata.total_hits ; ignorer items sans links ou media_type != image ; image via links[].href (~large > ~medium > ~orig), vignette ~thumb ; page_url images.nasa.gov/details/<nasa_id> ; URLs seulement, aucun téléchargement d'image."

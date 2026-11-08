@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **47**
-- Sources actives : **36**
+- Sources déclarées : **48**
+- Sources actives : **37**
 - Sources désactivées : **11**
-## Sources actives (36)
+## Sources actives (37)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -44,6 +44,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | llgc | National Library of Wales — Digital Collections (IIIF) | Llyfrgell Genedlaethol Cymru – The National Library of Wales | GB | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — National Library of Wales (vérifier par notice) ; manifeste unique par notice (pas de Collection IIIF) |
 | met | Metropolitan Museum of Art — Open Access | The Metropolitan Museum of Art, New York | US | rest | none | CC0-1.0 | Met Open Access — images du domaine public sous CC0 1.0 Universal ; vérifier par notice (`isPublicDomain`, `primaryImage`) ; recherche v1.1 (l'ancien v1 retiré le 2026-10-01) ; ne conserver que `isPublicDomain == true` et `primaryImage` non vide |
 | nationalmuseum_se | Nationalmuseum Sweden — IIIF (iiifhosting.com) | Nationalmuseum (Sweden) | SE | iiif | none | varies | Nationalmuseum (Sweden) — vérifier par notice (domaine public / CC) ; manifeste unique par objet (pas de Collection IIIF) |
+| nasa | NASA Image and Video Library | NASA | US | rest | none | Public Domain (NASA) | NASA content generally not copyrighted; some items may be third-party — verify per item ; API REST publique sans clé (images-api.nasa.gov/search) ; pagination 1-based (`page_size` ≤ 100, `collection.metadata.total_hits`) ; ignorer items sans `links` ou `media_type != image` ; URLs d'images via `links[].href` (~large / ~medium / ~orig, vignette ~thumb) ; page_url images.nasa.gov/details/<nasa_id> ; aucun téléchargement (URLs seulement) |
 | ndl | National Diet Library Digital Collections (IIIF) | National Diet Library (国立国会図書館), Tokyo | JP | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | 国立国会図書館 National Diet Library, JAPAN — Public Domain Mark (PDM) ; manifeste unique par notice (pas de Collection IIIF) |
 | nga | National Gallery of Art (Washington, DC) | National Gallery of Art | US | iiif | none | varies | National Gallery of Art — Open Access (images du domaine public libres, y compris usage commercial ; métadonnées CC0) ; vérifier les droits par notice ; manifeste unique par objet (pas de Collection IIIF) |
 | openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
@@ -79,8 +80,8 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 ## Raccourcis licence
 
 - **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `cooper_hewitt`, `kmska`,
-  `llgc`, `met`, `ndl`, `rijksmuseum`, `smk`, `smithsonian` (plus `wikidata` pour
-  les données).
+  `llgc`, `met`, `nasa`, `ndl`, `rijksmuseum`, `smk`, `smithsonian` (plus `wikidata` pour
+  les données ; `nasa` = domaine public US, pas CC0).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`
   — décision du 21 août 2017 (art. L.213-1 du code du patrimoine) ; certaines
   vues restent « non affichables » par notice et sont ignorées.
