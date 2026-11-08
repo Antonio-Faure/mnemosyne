@@ -25,6 +25,7 @@ SCDL = "https://digital.tcl.sc.edu"
 INDIANA = "https://indianamemory.contentdm.oclc.org"
 BYU = "https://contentdm.lib.byu.edu"
 ATLANTA = "https://album.atlantahistorycenter.com"
+NORTH_DAKOTA = "https://digitalhorizonsonline.org"
 
 _SENTINEL = object()
 
@@ -239,6 +240,30 @@ async def test_byu_public_domain_is_asset():
 
     assert len(assets) == 1
     assert assets[0].license == "PDM-1.0"
+
+
+@pytest.mark.asyncio
+async def test_north_dakota_in_public_domain_is_asset():
+    alias, item_id = "ndsu-npl", "60"
+    fields = [
+        _field("title", "Title", "Speaking of Steam Rollers"),
+        _field("rights", "Rights", "In public domain."),
+    ]
+    details = {
+        (alias, item_id): _detail(image_uri=_iiif(NORTH_DAKOTA, alias, item_id), fields=fields)
+    }
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("north_dakota", NORTH_DAKOTA, pages, details)
+
+    assets = await connector.search("steam")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.license == "PDM-1.0"
+    assert asset.title == "Speaking of Steam Rollers"
+    assert "!1200,1200" in asset.image_url
+    assert asset.image_url.startswith(f"{NORTH_DAKOTA}/iiif/2/{alias}:{item_id}/full/!1200,1200/0/")
+    assert asset.source_id == "north_dakota"
 
 
 @pytest.mark.asyncio
@@ -528,6 +553,7 @@ async def test_page_url_from_item_link_and_fallback():
     [
         ("atlanta", ATLANTA),
         ("byu", BYU),
+        ("north_dakota", NORTH_DAKOTA),
         ("scdl", SCDL),
         ("teva", TEVA),
     ],
@@ -546,5 +572,5 @@ def test_descriptor_deserializes_and_is_registered(source_id, base_url):
 
 
 def test_all_contentdm_sources_registered():
-    for source_id in ("atlanta", "teva", "scdl", "byu"):
+    for source_id in ("atlanta", "teva", "scdl", "byu", "north_dakota"):
         assert CONNECTORS[source_id] is ContentDmConnector
