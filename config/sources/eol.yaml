@@ -1,0 +1,22 @@
+id: eol
+name: Encyclopedia of Life
+institution: Encyclopedia of Life
+country: INTL
+protocol: rest
+base_url: https://eol.org/api
+auth: none
+license: "CC0-1.0 / CC-BY-4.0"
+rights: "Médias conservés uniquement si dataObjects[].license est CC0 1.0 ou CC BY (3.0/4.0) ; attribution stockée par média (rightsHolder)."
+rate_limit_per_s: 1.0
+priority: 65
+tags: [biodiversity, encyclopedia, science, keyless, cc0, cc-by]
+seeds:
+  - "monarch butterfly"
+  - "orchid"
+  - "fern"
+  - "mushroom"
+  - "bird"
+  - "beetle"
+  - "coral"
+  - "fossil"
+notes: "API REST publique sans clé. Recherche : GET /search/1.0.json?q=<query>&page=<n> (1-based, itemsPerPage 50, borner via totalResults). Détail d'une espèce : GET /pages/1.0/<id>.json?images_per_page=<n>&common_names=false&details=true → taxonConcept.dataObjects[]. Filtre média-level : ne garder que les dataObjects dont mimeType commence par « image/ » ET dont license est CC0 1.0 ou CC BY (3.0/4.0, http ou https, avec ou sans www) ET dont mediaURL est une URL http(s) non vide ; ignorer CC BY-NC, CC BY-SA, CC BY-ND, None, etc. Une image qualifiée = un Asset ; la page détail n'est récupérée que tant que la limite n'est pas atteinte ; max_pages (défaut 3) pages de recherche. page_url = https://eol.org/pages/<id> ; aucun téléchargement (URLs seulement), aucun scraping HTML."
