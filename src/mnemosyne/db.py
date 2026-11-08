@@ -176,6 +176,17 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id, id);
 
+-- Resolver: labeled golden sentences for the adversarial phrase -> image system.
+CREATE TABLE IF NOT EXISTS resolver_golden (
+    segment_id TEXT PRIMARY KEY,
+    video_id   TEXT NOT NULL,
+    status     TEXT NOT NULL,
+    payload    TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_resolver_golden_status
+    ON resolver_golden(status, segment_id);
+
 """
 
 
@@ -424,6 +435,63 @@ class Database:
             else:
                 row = self._conn.execute("SELECT COUNT(*) AS n FROM assets").fetchone()
         return int(row["n"]) if row else 0
+
+    # ── resolver golden dataset ───────────────────────────────────────────
+    def upsert_resolver_golden(self, labels: list[Any]) -> int:
+        """Insert/replace validated GoldenSentence labels (returns the count)."""
+        written = 0
+        with self._lock:
+            for label in labels:
+                payload = (
+                    label.model_dump()
+                    if hasattr(label, "model_dump")
+                    else dict(label)
+                )
+                segment_id = str(payload.get("id") or "")
+                video = payload.get("video") or {}
+                gold = payload.get("gold") or {}
+                if not segment_id:
+                    continue
+                self._conn.execute(
+                    """INSERT INTO resolver_golden
+                       (segment_id, video_id, status, payload, updated_at)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(segment_id) DO UPDATE SET
+                           video_id = excluded.video_id,
+                           status = excluded.status,
+                           payload = excluded.payload,
+                           updated_at = excluded.updated_at""",
+                    (
+                        segment_id,
+                        str(video.get("id") or ""),
+                        str(gold.get("status") or ""),
+                        json.dumps(payload, ensure_ascii=False),
+                        utcnow_iso(),
+                    ),
+                )
+                written += 1
+            self._conn.commit()
+        return written
+
+    def resolver_golden_stats(self) -> dict[str, int]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT status, COUNT(*) AS n FROM resolver_golden GROUP BY status"
+            ).fetchall()
+        return {str(row["status"]): int(row["n"]) for row in rows}
+
+    def resolver_golden_count(self) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM resolver_golden").fetchone()
+        return int(row["n"]) if row else 0
+
+    def list_resolver_golden(self, limit: int = 50) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT payload FROM resolver_golden ORDER BY segment_id LIMIT ?",
+                (max(0, int(limit)),),
+            ).fetchall()
+        return [json.loads(row["payload"]) for row in rows]
 
     # ── jobs ─────────────────────────────────────────────────────────────
     def enqueue(self, job: Job) -> int:
