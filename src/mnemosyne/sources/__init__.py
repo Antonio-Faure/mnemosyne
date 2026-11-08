@@ -16,6 +16,7 @@ from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.gbif import GbifConnector
 from mnemosyne.sources.iiif import IIIFConnector
+from mnemosyne.sources.ina import InaConnector
 from mnemosyne.sources.inaturalist import INaturalistConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
 from mnemosyne.sources.japan_search import JapanSearchConnector
@@ -46,6 +47,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "gbif": GbifConnector,
     "hennepin": ContentDmConnector,
     "hillsborough": ContentDmConnector,
+    "ina": InaConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
     "wikimedia_commons_photos": WikimediaCommonsPhotosConnector,

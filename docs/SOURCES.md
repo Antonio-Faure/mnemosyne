@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **64**
-- Sources actives : **53**
+- Sources déclarées : **65**
+- Sources actives : **54**
 - Sources désactivées : **11**
-## Sources actives (53)
+## Sources actives (54)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -45,6 +45,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | harvard_art_museums | Harvard Art Museums (IIIF) | Harvard Art Museums, Cambridge, MA | US | iiif | none | varies | Harvard Art Museums — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
 | hennepin | Hennepin County Library — Digital Collections | Hennepin County Library | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Hennepin County Library — API CONTENTdm publique sans clé (digitalcollections.hclib.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette InC/CNE, droits réservés et CC BY-NC/ND) ; l'imageUri `/api/singleitem/image/...` (403 OCLC) est ignoré et reconstruit en IIIF `/digital/iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
 | hillsborough | Hillsborough County Public Library — Digital Collections | Tampa-Hillsborough County Public Library | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Hillsborough County Public Library — API CONTENTdm publique sans clé (digitalcollections.hcplc.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement) |
+| ina | INA — Institut national de l'audiovisuel | Institut national de l'audiovisuel (INA) | FR | html | none | Tous droits réservés © INA | INA — catalogue de dépôt légal `catalogue.ina.fr` (Inathèque / OPSIS) : **notices de métadonnées + lien profond uniquement, aucun média/image téléchargé, aucune réutilisation** (droits réservés INA, réutilisation via mediaclip.ina.fr) ; robots.txt permissif, Crawl-delay 5 s, sans clé ; actualités filmées/documentaires sur Lacq, Parentis-en-Born, Pechelbronn ; surface publique `www.ina.fr` (clips/vignettes) **désactivée** (robots `/*q=`, CGU streaming seul) ; voir `docs/sources/ina.md` |
 | inaturalist | iNaturalist — Observations | iNaturalist (California Academy of Sciences / National Geographic Society) | INTL | rest | none | CC0-1.0 / CC-BY-4.0 | iNaturalist — API REST publique sans clé (api.inaturalist.org/v1/observations) ; une photo qualifiée = un Asset ; conserver seulement les photos dont le `license_code` au niveau photo est cc0 ou cc-by (revérifié côté connecteur) ; attribution par photo (`photo.attribution`) ; image principale = `square.jpg`→`large.jpg`, vignette = `square.jpg` ; pagination 1-based (`per_page` ≤ 200, `total_results`) ; aucun téléchargement (URLs seulement) |
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
 | japan_search | Japan Search — ジャパンサーチ | Japan Search (National Diet Library) | JP | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Japan Search — agrégateur national japonais, API REST publique sans clé (jpsearch.go.jp/api/item/search/jps-cross) ; filtres f-contents=image, f-caccess=internet, f-rights répété (+pdm/+cc0/+ccby) ; pagination from/size (size clamp 100) ; images via contentsUrl[0] sinon thumbnailUrl[0] ; licences pdm→PDM-1.0, cc0→CC0-1.0, ccby→CC-BY-4.0 ; vérifier par notice ; aucun téléchargement (URLs seulement), aucun scraping HTML |
@@ -120,6 +121,12 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 - **Métadonnées libres, images restrictives** : `pop` — métadonnées sous Licence
   Ouverte 2.0 (etalab) ; images soumises à autorisation par notice (DIFF/DIFFU),
   donc la source est désactivée pour ne pas republier d'images restreintes.
+- **Notice de métadonnées, droits réservés (activée)** : `ina` — notices
+  (métadonnées + lien profond) du dépôt légal `catalogue.ina.fr`, aucun média/image,
+  aucune réutilisation (droits réservés INA ; réutilisation/commande via
+  `mediaclip.ina.fr`) ; la surface publique `www.ina.fr` (clips/vignettes, endpoint
+  `/ajax/recherche`) reste désactivée (robots `/*q=`, CGU streaming seul). Voir
+  `docs/sources/ina.md`.
 
 Cette table est maintenue en accord avec les descripteurs : voir
 `tests/test_sources_inventory.py`.
@@ -128,12 +135,12 @@ Cette table est maintenue en accord avec les descripteurs : voir
 
 Constat issu de la tâche resolver #148 (`catalog_search` sur tout le catalogue),
 ensuite reproduit/vérifié via `fetch_url` le **2026-11-08** (tâche #149). Aucune
-source n'est activée ni désactivée ici : les compteurs ci-dessus (64 / 53 / 11)
+source n'est activée ni désactivée ici : les compteurs ci-dessus (65 / 54 / 11)
 restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
 **actifs** mais leur état est documenté (`notes:` des descripteurs + ce tableau).
 
 | source | URL testée | code/erreur avant | diagnostic | correctif / test | statut final |
-|--------|-----------|-------------------|-----------|------------------|--------------|
+|--------|-----------|-------------------|-----------|------------------|------|
 | dpla | `https://api.dp.la/v2` | HTTP 404 | segment `/items` manquant : l'API v2 est servie sous `/v2/items` | `dpla.py` : URL = `base_url + /items` (clé toujours lue depuis le vault, `DPLA_API_KEY`) ; tests `test_dpla.py` | **corrigé** (`/v2` → 404 confirmé, `/v2/items` → 403 auth = bon chemin) |
 | met | `https://collectionapi.metmuseum.org/public/collection/v1/objects/294856` | HTTP 404 | id d'objet absent/retiré : le 404 remontait comme erreur de source et dégradait tout le Met | `met.py` : 404 sur un objet = ignoré proprement (`continue`) ; 401/403/5xx re-levés (non masqués) ; tests `test_met.py` | **corrigé** (404 objet toléré hors ligne) |
 | eol | `https://eol.org/api/search/1.0.json` | HTTP 520 (Cloudflare, transitoire) | 5xx transitoire du CDN ; `520` n'est pas dans les statuts retentés par le client HTTP | `eol.py` : les 5xx/429 transitoires (dont 520–527) sont tolérés (result set abandonné, pas d'erreur de source) ; 4xx (droits/accès) non masqués ; test `test_eol_transient.py` | **vérifié transitoire** (revérifié à 200 le 2026-11-08) + tolérance ajoutée |

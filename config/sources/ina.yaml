@@ -1,0 +1,52 @@
+id: ina
+name: "INA — Institut national de l'audiovisuel"
+institution: Institut national de l'audiovisuel (INA)
+country: FR
+protocol: html
+base_url: https://catalogue.ina.fr
+auth: none
+license: "Tous droits réservés © INA"
+rights: >-
+  Tous droits réservés © INA — notice de métadonnées + lien profond uniquement ;
+  aucun média/image téléchargé, aucune réutilisation. Réutilisation/commande sur
+  https://mediaclip.ina.fr/.
+rate_limit_per_s: 0.2
+priority: 30
+tags: [audiovisual-archive, france, ina, legal-deposit, oil, keyless, notice-only]
+seeds:
+  - "Lacq pétrole"
+  - "Parentis-en-Born pétrole"
+  - "Pechelbronn pétrole"
+enabled: true
+notes: >-
+  INA (Institut national de l'audiovisuel) — surface légale A uniquement :
+  le catalogue de dépôt légal https://catalogue.ina.fr (Inathèque / OPSIS).
+  Le connecteur renvoie des NOTICES de métadonnées + un lien profond vers la
+  notice ; aucun média, aucune image, aucune réutilisation (droits réservés INA).
+  robots.txt du catalogue permissif (seuls GPTBot/ChatGPT-User bloqués),
+  Crawl-delay 5 s, pas de clé d'API. La surface publique B (www.ina.fr,
+  clips/vignettes via l'endpoint AJAX /ajax/recherche) est restreinte par
+  robots.txt (Disallow: /*q=) et les CGU (streaming seul, pas de réutilisation) :
+  désactivée, gardée par public_search_allowed()==False (lève PermissionError),
+  activable seulement après autorisation écrite (mediaclip / INA mediapro).
+  Voir docs/sources/ina.md.
+extra:
+  type: audiovisual-archive-notice
+  reuse_allowed: false
+  media_download: false
+  attribution_required: true
+  attribution_text: "Source : INA — Institut national de l'audiovisuel"
+  reuse_contact: https://mediaclip.ina.fr/
+  homepage: https://catalogue.ina.fr
+  api_key: none
+  section: TV-RADIO
+  bases: TVNAT,RADIO,TVSAT,PUBTV,TVREG,CLIPTV,DLDON
+  sort: score1
+  crawl_delay_s: 5
+  public_surface_enabled: false
+  public_search_endpoint: "https://www.ina.fr/ajax/recherche?q={query}&media=2&espace=1&offset={offset}"
+  scraping_consent: >-
+    autorisation de l'agent navigateur (message SPEC #160) du 2026-11-08 — accès
+    à catalogue.ina.fr limité aux notices de métadonnées (robots.txt permissif,
+    Crawl-delay 5 s), aucun média téléchargé, aucune réutilisation ; la surface B
+    www.ina.fr reste désactivée. Cf. docs/sources/ina.md.
