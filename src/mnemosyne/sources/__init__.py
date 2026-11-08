@@ -37,6 +37,7 @@ from mnemosyne.sources.wikimedia_commons_photos import WikimediaCommonsPhotosCon
 CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
     "atlanta": ContentDmConnector,
+    "auc": ContentDmConnector,
     "byu": ContentDmConnector,
     "carli": ContentDmConnector,
     "cleveland": ClevelandConnector,
