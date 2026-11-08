@@ -32,9 +32,16 @@ from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.operator.models import AskOperatorParams
 from mnemosyne.operator.telegram import ask_operator
+from mnemosyne.resolver.ranking import rank as rank_assets
 from mnemosyne.util import ensure_dir, finish_text, load_prompt
 
 log = get_logger("resolver.agent")
+
+#: Context budget for one search answer. A 52-source query returns hundreds of
+#: rows: the tool ranks them, keeps the best and *never* cuts JSON mid-record
+#: (the model used to receive a truncated, unparsable blob).
+_RESULT_BUDGET = 12000
+_MAX_ROWS = 40
 
 _FALLBACK = (
     "You are {name}, the adversarial resolver. MISSION: {task}. "
@@ -74,6 +81,31 @@ class RecordResultParams(BaseModel):
     evidence: str = Field(
         default="", description="Evidence, source links, why this match is defendable"
     )
+
+
+def _compact_row(asset) -> dict[str, Any]:
+    row = {
+        "asset_id": asset.id,
+        "source_id": asset.source_id,
+        "title": (asset.title or "")[:200],
+        "creator": asset.creator,
+        "year": asset.year,
+        "date_text": asset.date_text,
+        "license": asset.license,
+        "page_url": asset.page_url,
+        "image_url": asset.image_url,
+    }
+    if asset.description:
+        row["description"] = asset.description[:240]
+    return {key: value for key, value in row.items() if value not in (None, "")}
+
+
+def _fit_rows(rows: list[dict[str, Any]], budget: int = _RESULT_BUDGET) -> list[dict[str, Any]]:
+    """Longest prefix that still serialises inside `budget` (never mid-JSON)."""
+    shown = rows
+    while len(shown) > 1 and len(json.dumps(shown, ensure_ascii=False)) > budget:
+        shown = shown[: max(1, len(shown) * 2 // 3)]
+    return shown
 
 
 class ResolverToolProvider(ToolProvider):
@@ -126,25 +158,20 @@ class ResolverToolProvider(ToolProvider):
             finally:
                 await engine.aclose()
                 engine.db.close()
-            rows = [
-                {
-                    "asset_id": asset.id,
-                    "source_id": asset.source_id,
-                    "source_asset_id": asset.source_asset_id,
-                    "title": asset.title,
-                    "creator": asset.creator,
-                    "year": asset.year,
-                    "date_text": asset.date_text,
-                    "license": asset.license,
-                    "rights": asset.rights,
-                    "page_url": asset.page_url,
-                    "image_url": asset.image_url,
-                    "thumbnail_url": asset.thumbnail_url,
-                    "extra": asset.extra,
-                }
-                for asset in assets
-            ]
-            return _ok(json.dumps(rows, ensure_ascii=False)[:12000])
+            if not assets:
+                return _ok(f"aucun résultat pour {p.query!r} dans la meta API.")
+            ranked = rank_assets(p.query, assets)
+            rows = [_compact_row(asset) for asset in ranked[:_MAX_ROWS]]
+            shown = _fit_rows(rows)
+            header = (
+                f"{len(assets)} résultat(s) — {len(shown)} meilleurs candidats par "
+                f"pertinence (titres/dates), sources du catalogue."
+            )
+            payload = header + "\n" + json.dumps(shown, ensure_ascii=False)
+            hidden = len(ranked) - len(shown)
+            if hidden > 0:
+                payload += f"\n… {hidden} autre(s) candidat(s) non affiché(s)."
+            return _ok(payload)
 
         async def request_source_exec(p: RequestSourceParams):
             if self.task_id is None:
@@ -243,7 +270,11 @@ class ResolverToolProvider(ToolProvider):
         return [
             Tool(
                 name="catalog_search",
-                description="Search the biagent meta API (catalog connectors).",
+                description=(
+                    "Search the biagent meta API (catalog connectors). Results are "
+                    "relevance-ranked best-first and truncated: use source_ids to "
+                    "drill into one provider, and vary the query wording."
+                ),
                 parameters=CatalogSearchParams,
                 executor=catalog_search_exec,
             ),
