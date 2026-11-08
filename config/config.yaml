@@ -22,15 +22,6 @@ heartbeat:
   job_timeout_s: 3600
   stale_lock_s: 600     # les jobs vivants renouvellent leur verrou (60 s) ; un runner mort est repris après 10 min
 
-harvest:
-  # Moissonnage des métadonnées (un job par source). Désactivé sur décision
-  # opérateur : plus aucun job harvest n'est planifié. Les commandes manuelles
-  # `mnemosyne search` / `harvest` restent disponibles.
-  enabled: false
-  interval_s: 21600        # 6 h — source qui a produit des assets
-  empty_interval_s: 86400  # 24 h — dernier passage vide
-  no_seed_interval_s: 604800  # source sans seed : parquée 7 jours
-
 reputation:
   # ISO date the agent's own Google account was created — enables the warmup
   # phases (0 outbound for the first 3 days, then a gentle ramp-up).
@@ -109,8 +100,8 @@ resolver:
 identity:
   name: mnemosyne
   purpose: >-
-    a free and open research project that aggregates public historical image
-    archives so they are easier to find and reuse
+    a free and open source project that makes public historical image archives
+    easier to discover, pointing back to the institutions that hold them
   repo_url: https://github.com/Antonio-Faure/mnemosyne
   agent_email: archivist.mnemosyne@gmail.com
   language: fr

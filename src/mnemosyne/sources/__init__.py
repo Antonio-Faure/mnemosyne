@@ -10,6 +10,7 @@ from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.contentdm import ContentDmConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
 from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
+from mnemosyne.sources.digitalnz import DigitalNzConnector
 from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.eol import EolConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
@@ -22,6 +23,7 @@ from mnemosyne.sources.japan_search import JapanSearchConnector
 from mnemosyne.sources.loc_wwi_photos import LocWwiPhotosConnector
 from mnemosyne.sources.mai_saint_etienne import MAISaintEtienneConnector
 from mnemosyne.sources.met import MetConnector
+from mnemosyne.sources.musee_petrole_pechelbronn import MuseePetrolePechelbronnConnector
 from mnemosyne.sources.nasa import NasaConnector
 from mnemosyne.sources.nb_no import NbNoConnector
 from mnemosyne.sources.openverse import OpenverseConnector
@@ -36,11 +38,13 @@ from mnemosyne.sources.wikimedia_commons_photos import WikimediaCommonsPhotosCon
 CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
     "atlanta": ContentDmConnector,
+    "auc": ContentDmConnector,
     "byu": ContentDmConnector,
     "carli": ContentDmConnector,
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,
+    "digitalnz": DigitalNzConnector,
     "dpla": DplaConnector,
     "eol": EolConnector,
     "europeana": EuropeanaConnector,
@@ -62,6 +66,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "teva": ContentDmConnector,
     "mai_saint_etienne": MAISaintEtienneConnector,
     "met": MetConnector,
+    "musee_petrole_pechelbronn": MuseePetrolePechelbronnConnector,
     "nasa": NasaConnector,
     "nb_no": NbNoConnector,
     "north_dakota": ContentDmConnector,

@@ -1,180 +1,374 @@
+**English below** — [jump to the English version ↓](#english)
+
 # mnemosyne
 
-> Autonomous, resilient agent that discovers, connects and aggregates hundreds of
-> historical image archive providers into a single unified API.
+> **Le meilleur accès possible aux images d'archives historiques du monde.**
+>
+> Un projet libre et open source, en développement actif, que je développe seul —
+> sans copier, héberger ni revendre les images des institutions.
 
-Named after Mnemosyne, the Greek goddess of memory and the mother of the Muses —
-the archives.
+Je développe Mnemosyne, un projet de recherche documentaire libre et open source.
+Mon objectif est simple à dire : rendre les photographies historiques **plus
+faciles à trouver**, où qu'elles soient conservées.
 
-## Why
+## Le problème
 
-Finding *the best* historical images for a topic is not a search problem, it is an
-**access** problem. The sources that matter (national libraries, Europeana, company
-archives, regional and departmental collections, local historical associations) are
-extremely heterogeneous: some expose IIIF or OAI-PMH, some only a web portal, some
-only a contact address. Onboarding them (accounts, API keys, access requests by
-email) is a long human task.
+Les photographies qui racontent l'histoire sont dispersées dans des milliers de
+musées, bibliothèques, archives et sociétés savantes. Chacun a son catalogue, ses
+formats, ses règles d'accès. Pour trouver une image précise, il faut connaître
+l'institution, son portail, parfois écrire un e-mail et attendre une réponse.
 
-`mnemosyne` delegates that work to a perpetual agent with a **heartbeat**:
+Les moteurs de recherche classiques ne savent pas interroger ces catalogues. Les
+agrégateurs existants se limitent souvent aux institutions qui disposent déjà
+d'une API moderne. Les autres — les plus nombreuses — restent invisibles.
 
-```
-discover → warmup → onboard → verify → harvest → repair → retry
-```
+## Mon ambition
 
-It is never "finished": it keeps extending the catalog and repairing connectors on
-its own. The end product is a **unified search API** over the aggregated corpus,
-with provenance and license attached to every asset.
+Rendre interrogeables, depuis un seul point d'entrée, les collections
+photographiques dispersées dans le monde entier, **y compris celles qui n'ont
+jamais été conçues pour être interrogées automatiquement**.
 
-## Architecture
+**Mon projet se veut exhaustif sur les sources.** Je ne veux pas seulement les
+grandes institutions qui ont déjà une API : je veux aussi les petites structures,
+les catalogues anciens, les sites sans accès programmatique. C'est là que le
+travail est difficile, et c'est là qu'il a de la valeur.
 
-```
-src/mnemosyne/
-├── heartbeat/    durable scheduler + job store (SQLite) + workers
-├── reputation/   adaptive governor + account warmup phases
-├── catalog/      source registry, state machine, provenance
-├── connectors/   protocol adapters: IIIF / SRU / OAI-PMH / SPARQL / REST / HTML
-├── sources/      one connector per provider
-├── agents/       bi-agent (mailbox + supervisor + coder/browser) + warmup
-├── browser/      dedicated real Chrome over CDP (Xvfb + VNC), anti-detect profile
-├── email/        Gmail via the dedicated browser (account verification) + fallback forms
-├── vault/        encrypted credentials (API keys, logins, sessions) — never in git
-├── normalize/    canonical Asset, dedup, license & provenance
-├── api/          FastAPI aggregation service
-└── notify/       Telegram alerts (human-in-the-loop)
-```
+**Le nombre de sources est amené à exploser.** Le projet est en développement
+actif : les chiffres, les sources et l'API bougent encore. Ce que vous lisez ici
+est un état daté, pas une promesse figée.
 
-### The heartbeat
+Ce n'est pas un moteur de recherche de plus : c'est une **infrastructure
+d'accès**. Elle ne copie pas les images. Elle apporte la notice, les métadonnées,
+les droits connus et le lien vers l'institution qui conserve l'original.
 
-Every provider is a durable job in a persisted state machine:
+## Ce que fait Mnemosyne
 
-```
-DISCOVERED → CONNECTED → DEGRADED
-```
+- **Découvre** les institutions et leurs catalogues.
+- **Connecte** des systèmes très différents : API, IIIF, OAI-PMH, catalogues
+  propriétaires, sites anciens.
+- **Interroge en direct** : une recherche interroge les sources au moment de la
+  demande. Il n'y a pas de copie locale des collections.
+- **Normalise** les résultats : titre, auteur, date, lieu, licence, provenance,
+  lien vers la notice.
+- **Maintient** les connexions : détection des pannes, réparation, mise à jour.
+- **Renvoie** vers l'institution : crédit, lien vers le catalogue d'origine.
 
-The scheduler survives crashes and restarts (SQLite WAL). On any 403/429/captcha
-the **governor** slows the whole system down automatically, and hard blockers are
-escalated to a human over Telegram while the agent keeps working elsewhere.
+## Ce que ça change pour une institution
 
-## Quickstart
+- Vos collections sont **plus faciles à découvrir**, sans changer votre système
+  informatique.
+- Chaque résultat **cite votre institution** et renvoie vers votre catalogue.
+- **Aucune installation**, aucun développement de votre côté.
+- Vous pouvez **demander le retrait** d'une notice à tout moment.
+- Vous pouvez **demander un échange humain**, sans connaissance technique.
 
-```bash
-cp .env.example .env          # fill in keys
-python -m venv .venv && . .venv/bin/activate
-pip install -e .
+## Ce que je ne fais pas
 
-# encrypted vault (stores API keys / sessions)
-mnemosyne vault init
+- Je ne télécharge pas les images.
+- Je ne les héberge pas.
+- Je ne les redistribue pas.
+- Je ne les revends pas.
+- Je ne donne aucun droit sur les images.
+- Je ne remplace pas votre catalogue.
 
-# list configured providers
-mnemosyne sources
+**Mnemosyne donne accès aux sources, pas aux droits qu'elles contiennent.** Une
+image trouvée via Mnemosyne n'est pas libre pour autant : les conditions de
+consultation, de reproduction et de réutilisation dépendent de l'institution, de
+l'auteur, des ayants droit et de la législation applicable. Mnemosyne affiche les
+informations de droits disponibles et renvoie vers la source ; les démarches
+restent à la charge de l'utilisateur final.
 
-# one-shot live search across keyless providers
-mnemosyne search "puits de Lacq 1950"
+## Comment ça marche, sans jargon
 
-# run the aggregation API
-mnemosyne serve
+1. Vous cherchez « puits de pétrole en Alsace vers 1920 ».
+2. Mnemosyne interroge en direct les catalogues connectés.
+3. Il rassemble les notices comparables et affiche, pour chacune : le titre, la
+   date, l'institution, les droits connus et le lien.
+4. Vous cliquez : vous arrivez sur le site de l'institution, qui vous donne accès
+   à l'image et à ses conditions.
 
-# run the perpetual heartbeat (harvest + verify)
-mnemosyne run
-```
+## Parlons-en
 
-## Docker
+Vous avez reçu un message de ma part ? Vous vous demandez ce que je fais de vos
+collections ?
 
-```bash
-docker compose up -d          # mnemosyne + dedicated Chrome (Xvfb + VNC + CDP 9222)
-```
+- Lisez [la page pour les institutions](docs/POUR-LES-INSTITUTIONS.md).
+- Écrivez-moi : **archivist.mnemosyne@gmail.com**
+- **Pour un échange téléphonique ou une visioconférence, contactez-moi par
+  e-mail.** C'est par e-mail que je fixerai le rendez-vous ; aucune
+  connaissance technique n'est nécessaire.
+- Vous voulez que votre institution soit retirée ? Dites-le : c'est immédiat.
 
-- API: http://localhost:8080
-- noVNC (human intervention): http://localhost:6080
-- Chrome CDP (browser-harness) is internal: `mnemosyne` shares Chrome's network
-  namespace and reaches it at `127.0.0.1:9222`.
+Je préfère rester anonyme. Le projet, lui, est public :
+code source, documentation et historique sont ouverts.
 
-The Chrome profile (holding the agent's own Google account) persists in a volume.
-Sign the profile into **Chrome** once over VNC: Gmail then logs in automatically
-and Chrome's **password manager** can create/store credentials. See `docs/RUNBOOK.md`.
+## Pour les développeurs
 
-## Monitoring & steering
+### API
 
-The agent keeps a **daily markdown journal** (`journal/YYYY-MM-DD.md`) and can be
-steered at any time:
-
-```bash
-mnemosyne journal                    # today's journal
-mnemosyne journal --services         # list per-service journals
-mnemosyne journal --service acme     # one md per provider, dated actions
-mnemosyne say "priorise Lacq"        # one-off note → control/inbox.md (journal)
-mnemosyne agency "Add Europeana"     # run the bi-agent (coder + browser)
-mnemosyne messages                   # inter-agent mailbox
-mnemosyne connect-next               # connect the next discovery (bi-agent → PR)
-mnemosyne status                     # providers, assets, governor pressure
-mnemosyne doctor                     # config, vault, LLM auth, Chrome health
-```
-
-Besides the daily journal, the agent keeps **one markdown file per service it wants
-to access** (`journal/services/<id>.md`), each entry timestamped
-(`YYYY-MM-DD HH:MM:SS`): access attempts, API key obtained, email sent, blocks,
-escalations.
-
-Edit `control/directives.md` for standing instructions (re-read on start). Telegram
-is a **two-way** channel: the agent alerts *and asks questions* on hard blockers
-(captcha, phone verify, refusal, risky actions), and **your replies on Telegram**
-are read by the heartbeat and handled like operator messages. Set the bot token +
-your chat id in `.env` and send `/start` to the bot once. See `docs/RUNBOOK.md`.
-
-### Observatory (read-only UI)
-
-A local web panel shows every session live (queue tasks **and** system job runs)
-and replays finished ones: a sidebar colored by type, a Make-style canvas
-(orchestrator, browser, mailbox, coder, LLM), an activity panel and a timeline.
-It never launches an agent.
+L'API est une fédération en temps réel : elle interroge les fournisseurs au
+moment de la requête, puis normalise et déduplique les résultats.
 
 ```bash
-cd web && npm install && npm run build && cd ..   # build the SPA once
-docker compose up -d --build                      # heartbeat + observatory service
-xdg-open http://127.0.0.1:8090
+mnemosyne serve                 # API locale (127.0.0.1:8080)
+GET /search?q=puits+de+Lacq&limit=20
+GET /sources                    # catalogue des institutions connectées
+GET /sources/status             # état, latence, erreurs par source
 ```
 
-See `docs/OBSERVATORY.md` for the session model, the event pipeline and the
-`mnemosyne obs-backfill` history import.
+Chaque résultat porte sa provenance (`source_id`, `page_url`, `image_url`,
+`thumbnail_url`, licence, droits) et un identifiant stable. Les images ne sont
+jamais téléchargées : seules leurs URL sont transmises.
 
-## LLM auth (OpenCode Go)
+### Afficher les images dans un frontend
 
-The agent uses your OpenCode Go subscription by reading the token **opencode
-already caches** at `~/.local/share/opencode/auth.json` (entry `opencode-go`).
-Resolution order: `OPENCODE_API_KEY` → mnemosyne vault (`opencode_api_key`) →
-opencode auth store. No separate key needed if you are logged in.
+Oui, un frontend peut afficher l'image **depuis l'URL fournie par l'API**
+(`image_url` ou `thumbnail_url`), sans la télécharger ni la stocker : c'est le
+navigateur du visiteur qui va la chercher chez l'institution.
+
+Conditions à respecter :
+
+- afficher le **crédit** et un **lien vers la notice** de l'institution ;
+- ne pas ré-héberger l'image, ne pas la mettre en cache sur ton serveur, ne pas
+  la proxyfier ;
+- préférer `thumbnail_url` pour les vignettes ;
+- prévoir un **fallback** si l'institution bloque le hotlinking (403/Referer) ou
+  si l'URL expire : afficher alors un lien « voir sur le site de l'institution » ;
+- les conditions de l'institution priment toujours ; si elle demande le retrait,
+  on retire.
+
+Afficher n'est pas réutiliser : l'image reste chez l'institution, et ses
+conditions s'appliquent.
+
+### CLI
 
 ```bash
-mnemosyne doctor       # shows auth_source
-mnemosyne llm test     # one round-trip
+mnemosyne search "puits de Lacq 1950"   # recherche live multi-sources
+mnemosyne status                        # sources + gouverneur
+mnemosyne run                           # heartbeat (moteur permanent)
+mnemosyne agency "..."                  # bi-agent (codeur + navigateur)
+mnemosyne resolve enqueue <segment_id>  # résolveur phrase → image
 ```
 
-## Cost & transparency
+### Architecture
 
-- **Bounded context**: an agent turn is a bounded Stirrup session (`agents.max_turns`),
-  tool outputs are truncated, and turns go through the durable mailbox instead of
-  replaying unbounded history. Cache usage is recorded on every session.
-- **Output ceiling**: Stirrup requires an explicit cap (`agents.max_tokens`, kept
-  high at 32k) so reasoning models are never truncated into empty answers; the
-  returned `usage` is recorded to follow the cost.
-- **Transparency**: every outbound email / contact form carries a one-line identity
-  disclosure and the repository URL, generated from `config.identity`
-  (`src/mnemosyne/identity.py`).
+```
+heartbeat      ordonnanceur durable (jobs SQLite), reprise après crash
+catalog        registre des sources + machine à états
+connectors     adaptateurs de protocoles (IIIF, SRU, REST, SPARQL…)
+sources        un connecteur par institution (config/sources/*.yaml)
+api            service FastAPI de recherche fédérée
+agents         bi-agent (codeur + navigateur) et résolveur adversarial
+observatory    interface locale de lecture (sessions, jobs, événements)
+```
 
-## Milestone status
+Deux boucles permanentes travaillent en parallèle : le **bi-agent** maintient le
+catalogue et les connecteurs ; le **résolveur** met à l'épreuve la relation
+phrase → image (candidats, validation humaine, trous de couverture).
 
-- **P0+P1 (this repo)**: heartbeat, catalog, governor, 5 keyless providers
-  (Gallica, Wikidata, Wikimedia Commons, Internet Archive, Openverse),
-  normalization/dedup/provenance, unified API.
-- **P2 (done)**: bi-agent Stirrup (coder + browser) over CDP via browser-harness,
-  task queue + persistent sessions, warmup and source connections governed.
-  See `docs/VISION-BIAGENT.md`.
-- **P3 (started)**: autonomous provider discovery via Wikidata IIIF manifests →
-  hosts, stored as candidates (`discover` job, `mnemosyne discover`).
-- **P4**: connector self-repair, dashboard, scale to hundreds of sources.
+### État du projet
 
-See `docs/` and `AGENTS.md` for details.
+- **66 sources déclarées, 53 actives** (novembre 2026) — et le nombre de sources
+  est amené à exploser.
+- Sources réparties entre bibliothèques nationales, musées, archives régionales
+  et agrégateurs (Europe, Amériques, Asie, Océanie).
+- Quelques sources sont momentanément bloquées depuis mon infrastructure
+  (Cloudflare / Akamai : Gallica, NGA, Library of Congress). Elles restent
+  documentées et seront réactivées dès que l'accès sera rétabli.
+- Le détail est dans [`docs/SOURCES.md`](docs/SOURCES.md).
 
-## License
+### Contribuer
+
+Le code est sous licence MIT. Les contributions sont bienvenues, en particulier
+les connecteurs vers des institutions peu couvertes et les corrections de
+métadonnées. Ouvrez une issue ou une pull request :
+<https://github.com/Antonio-Faure/mnemosyne>.
+
+## Licence
+
+MIT.
+
+---
+
+## English
+
+> **The broadest possible access to the world's historical archive images.**
+>
+> A free and open source project, under active development, built by one person —
+> without copying, hosting or reselling the institutions' images.
+
+I am building Mnemosyne, a free and open source documentary research project. My
+goal is simple: make historical photographs **easier to find**, wherever they are
+kept.
+
+### The problem
+
+The photographs that tell history are scattered across thousands of museums,
+libraries, archives and learned societies. Each has its own catalogue, formats
+and access rules. To find a precise image you must know the institution, its
+portal, sometimes write an email and wait for an answer.
+
+General search engines cannot query these catalogues. Existing aggregators often
+stop at the institutions that already have a modern API. The others — the
+majority — remain invisible.
+
+### My ambition
+
+Make the photographic collections scattered around the world queryable from a
+single entry point, **including those never designed to be queried
+automatically**.
+
+**My project aims to be exhaustive about sources.** Not only the large
+institutions with an API, but also small organisations, old catalogues and sites
+without programmatic access. That is where the work is hard, and where it
+matters.
+
+**The number of sources is going to explode.** The project is under active
+development: figures, sources and the API still move. What you read here is a
+dated snapshot, not a frozen promise.
+
+This is not another search engine: it is an **access infrastructure**. It does
+not copy images. It brings the record, the metadata, the known rights and the
+link to the institution that holds the original.
+
+### What Mnemosyne does
+
+- **Discovers** institutions and their catalogues.
+- **Connects** very different systems: APIs, IIIF, OAI-PMH, proprietary
+  catalogues, older websites.
+- **Queries live**: a search queries the sources at request time. There is no
+  local copy of the collections.
+- **Normalises** results: title, creator, date, place, licence, provenance, link
+  to the record.
+- **Maintains** connections: failure detection, repair, updates.
+- **Points back** to the institution: credit, link to the original catalogue.
+
+### What this changes for an institution
+
+- Your collections become **easier to discover**, without changing your systems.
+- Every result **credits your institution** and links to your catalogue.
+- **No installation**, no development on your side.
+- You can **ask for a record to be removed** at any time.
+- You can **ask for a human exchange**, with no technical knowledge required.
+
+### What I do not do
+
+- I do not download the images.
+- I do not host them.
+- I do not redistribute them.
+- I do not resell them.
+- I grant no rights over the images.
+- I do not replace your catalogue.
+
+**Mnemosyne gives access to the sources, not to the rights they contain.** An
+image found through Mnemosyne is not free for all that: consultation,
+reproduction and reuse conditions depend on the institution, the author, the
+rights holders and applicable law. Mnemosyne displays the available rights
+information and points to the source; the final user remains responsible for the
+necessary steps.
+
+### How it works, without jargon
+
+1. You search for "oil wells in Alsace around 1920".
+2. Mnemosyne queries the connected catalogues live.
+3. It gathers comparable records and shows, for each: title, date, institution,
+   known rights and the link.
+4. You click: you land on the institution's site, which gives you access to the
+   image and its conditions.
+
+### Let's talk
+
+Did you receive a message from me? Are you wondering what I do with your
+collections?
+
+- Read [the page for institutions](docs/POUR-LES-INSTITUTIONS.md) (in French).
+- Write to me: **archivist.mnemosyne@gmail.com**
+- **For a phone call or a video call, contact me by email.** We will arrange the
+  appointment by email; no technical knowledge is needed.
+- Want your institution removed? Say so: it is immediate.
+
+I prefer to remain anonymous. The project itself is public: source code,
+documentation and history are open.
+
+### For developers
+
+#### API
+
+The API is a real-time federation: it queries the providers at request time,
+then normalises and deduplicates the results.
+
+```bash
+mnemosyne serve                 # local API (127.0.0.1:8080)
+GET /search?q=puits+de+Lacq&limit=20
+GET /sources                    # connected institutions
+GET /sources/status             # per-source state, latency, errors
+```
+
+Each result carries its provenance (`source_id`, `page_url`, `image_url`,
+`thumbnail_url`, licence, rights) and a stable identifier. Images are never
+downloaded: only their URLs are returned.
+
+#### Displaying images in a frontend
+
+Yes: a frontend can display the image **from the URL returned by the API**
+(`image_url` or `thumbnail_url`) without downloading or storing it — the
+visitor's browser fetches it from the institution.
+
+Conditions:
+
+- display the **credit** and a **link to the institution's record**;
+- never re-host the image, never cache it on your server, never proxy it;
+- prefer `thumbnail_url` for grids;
+- provide a **fallback** when the institution blocks hotlinking (403/Referer) or
+  the URL expires: show a "view on the institution's site" link;
+- the institution's conditions always prevail; if it asks for removal, remove.
+
+Display is not reuse: the image stays with the institution, and its conditions
+apply.
+
+#### CLI
+
+```bash
+mnemosyne search "puits de Lacq 1950"   # live multi-source search
+mnemosyne status                        # sources + governor
+mnemosyne run                           # heartbeat (permanent engine)
+mnemosyne agency "..."                  # bi-agent (coder + browser)
+mnemosyne resolve enqueue <segment_id>  # sentence → image resolver
+```
+
+#### Architecture
+
+```
+heartbeat      durable scheduler (SQLite jobs), crash recovery
+catalog        source registry + state machine
+connectors     protocol adapters (IIIF, SRU, REST, SPARQL…)
+sources        one connector per institution (config/sources/*.yaml)
+api            FastAPI federated search service
+agents         bi-agent (coder + browser) and adversarial resolver
+observatory    local read-only UI (sessions, jobs, events)
+```
+
+Two permanent loops run in parallel: the **bi-agent** maintains the catalogue and
+the connectors; the **resolver** tests the sentence → image relation
+(candidates, human validation, coverage gaps).
+
+#### Project status
+
+- **66 declared sources, 53 active** (November 2026) — and the number of sources
+  is going to explode.
+- Sources range from national libraries and museums to regional archives and
+  aggregators (Europe, the Americas, Asia, Oceania).
+- A few sources are temporarily blocked from my infrastructure
+  (Cloudflare / Akamai: Gallica, NGA, Library of Congress). They stay documented
+  and will be re-enabled when access returns.
+- Details in [`docs/SOURCES.md`](docs/SOURCES.md).
+
+#### Contributing
+
+The code is MIT-licensed. Contributions are welcome, especially connectors to
+under-covered institutions and metadata fixes. Open an issue or a pull request:
+<https://github.com/Antonio-Faure/mnemosyne>.
+
+### Licence
 
 MIT.
