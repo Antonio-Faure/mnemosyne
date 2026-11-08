@@ -5,6 +5,7 @@ import type { ObsEvent } from "./types";
  * (its calls are shown in that step's panel). */
 export type NodeId =
   | "agency"
+  | "resolver"
   | "orchestrator"
   | "browser"
   | "coder"
@@ -54,11 +55,17 @@ export function eventNode(event: ObsEvent): NodeId | null {
     event.kind === "tool.call" ||
     event.kind === "tool.result"
   ) {
-    return event.actor === "browser" || event.actor === "coder"
+    return event.actor === "browser" ||
+      event.actor === "coder" ||
+      event.actor === "resolver"
       ? (event.actor as NodeId)
       : "orchestrator";
   }
-  if (event.actor === "browser" || event.actor === "coder") {
+  if (
+    event.actor === "browser" ||
+    event.actor === "coder" ||
+    event.actor === "resolver"
+  ) {
     return event.actor as NodeId;
   }
   return null;
@@ -277,7 +284,7 @@ export function isRenderable(event: ObsEvent): boolean {
 /** Aggregate the visible timeline into per-step state (canvas highlighting). */
 export function computeState(visible: ObsEvent[]): TimelineState {
   const openAgents = new Set<string>();
-  const eventsByAgent: Record<string, number> = { browser: 0, coder: 0 };
+  const eventsByAgent: Record<string, number> = { browser: 0, coder: 0, resolver: 0 };
   const state: TimelineState = {
     openAgents,
     jobActive: false,

@@ -17,6 +17,7 @@ import {
   Globe,
   Inbox,
   Network,
+  ScanSearch,
 } from "lucide-react";
 
 import type { ObsEvent, Session } from "../lib/types";
@@ -39,6 +40,7 @@ interface Props {
 
 const COLORS = {
   agency: "#f59e0b",
+  resolver: "#f472b6",
   orchestrator: "#60a5fa",
   browser: "#38bdf8",
   coder: "#818cf8",
@@ -128,6 +130,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
     const last = state.lastNode;
     const browserActive = state.openAgents.has("browser");
     const coderActive = state.openAgents.has("coder");
+    const resolverActive = state.openAgents.has("resolver");
     const list: AgentNodeType[] = [
       {
         id: "agency",
@@ -135,7 +138,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         initialWidth: NODE_WIDTH,
         initialHeight: NODE_HEIGHT,
         handles: NODE_HANDLES,
-        position: { x: 400, y: -120 },
+        position: { x: 240, y: -120 },
         data: {
           label: "Agency",
           subtitle: isAgency
@@ -148,6 +151,24 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
           active:
             last === "agency" ||
             (isAgency && (state.jobActive || last === "job")),
+        },
+      },
+      {
+        id: "resolver",
+        type: "agent",
+        initialWidth: NODE_WIDTH,
+        initialHeight: NODE_HEIGHT,
+        handles: NODE_HANDLES,
+        position: { x: 560, y: -120 },
+        data: {
+          label: "Résolveur",
+          subtitle: resolverActive
+            ? "session de phrase en cours"
+            : `${state.eventsByAgent.resolver ?? 0} événements`,
+          color: COLORS.resolver,
+          icon: ScanSearch,
+          active: last === "resolver",
+          muted: isJob && session?.type !== "resolver",
         },
       },
       {
@@ -275,6 +296,8 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
     const fromBrowser = handoff?.agent === "browser" && handoff.direction === "from";
     const toCoder = handoff?.agent === "coder" && handoff.direction === "to";
     const fromCoder = handoff?.agent === "coder" && handoff.direction === "from";
+    // the resolver is its own permanent loop: its session lights the r→o link
+    const resolverActive = state.openAgents.has("resolver");
 
     // Mailbox: only the segments the message actually crosses are lit.
     const mail = state.mailRoute;
@@ -316,6 +339,16 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         isJob,
         fromCoder,
       ),
+      make(
+        "r-o",
+        "resolver",
+        "orchestrator",
+        "b",
+        "t",
+        COLORS.resolver,
+        resolverActive,
+        false,
+      ),
       make("b-m", "browser", "mailbox", "sr", "l", COLORS.mailbox, mailFromBrowser, isJob),
       make("m-c", "mailbox", "coder", "sr", "l", COLORS.mailbox, mailToCoder, isJob),
       make("c-m", "coder", "mailbox", "sl", "r", COLORS.mailbox, mailFromCoder, isJob),
@@ -342,6 +375,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
     state.jobActive,
     state.handoff,
     state.mailRoute,
+    state.openAgents,
   ]);
 
   return (
