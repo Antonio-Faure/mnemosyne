@@ -25,7 +25,7 @@ from pathlib import Path
 
 import httpx
 
-from mnemosyne.agents.mailbox import AGENTS, Mailbox
+from mnemosyne.agents.mailbox import WORKERS, Mailbox
 from mnemosyne.agents.session_cache import (
     drop_session_cache,
     inject_reply,
@@ -150,6 +150,31 @@ async def _run_browser(
 
 
 _RUNNERS = {"coder": _run_coder, "browser": _run_browser}
+
+
+async def _run_resolver(
+    config: Config,
+    task: str,
+    mailbox: Mailbox,
+    journal,
+    vault_get,
+    task_id: int,
+    max_turns: int | None = None,
+):
+    from mnemosyne.resolver.agent import run_resolver_agent
+
+    return await run_resolver_agent(
+        config,
+        task,
+        mailbox=mailbox,
+        journal=journal,
+        vault_get=vault_get,
+        task_id=task_id,
+        max_turns=max_turns,
+    )
+
+
+_RUNNERS["resolver"] = _run_resolver
 
 #: a browser session may run long (up to 400 turns); the HOLDER renews the
 #: lease every minute while it works (`db.renew_own`), so a crashed generation
@@ -457,7 +482,14 @@ async def _renew_own_loop(db: Database, interval_s: float = 60.0) -> None:
             log.warning("lease renewal failed: %s", exc)
 
 
-async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> dict | None:
+async def run_pending_once(
+    config: Config,
+    *,
+    journal=None,
+    vault_get=None,
+    agents: tuple[str, ...] = ("coder", "browser"),
+    lease: str = "agency",
+) -> dict | None:
     """Background activation: the running task continues first, else the oldest
     pending task starts. Called by the heartbeat. Idle => no agent, no cost.
 
@@ -470,21 +502,21 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
     """
     db = Database(config.db_file())
     mailbox = Mailbox(db)
-    if not db.try_lease("agency", ttl_s=AGENCY_LEASE_S, owner=f"heartbeat:{os.getpid()}"):
+    if not db.try_lease(lease, ttl_s=AGENCY_LEASE_S, owner=f"heartbeat:{os.getpid()}"):
         return None
     held_browser: bool | None = False
     renew: asyncio.Task | None = None
     try:
-        task = db.next_task()
+        task = db.next_task(agents=agents)
         if task is None:
             return None
         if task["status"] == "pending":
             agent = task["start_agent"]
-            recipients = [r for r in mailbox.recipients(task["id"]) if r in AGENTS]
+            recipients = [r for r in mailbox.recipients(task["id"]) if r in WORKERS]
             agent = recipients[0] if recipients else agent
             messages = mailbox.pending_for(task["id"], agent)
         else:
-            recipients = [r for r in mailbox.recipients(task["id"]) if r in AGENTS]
+            recipients = [r for r in mailbox.recipients(task["id"]) if r in WORKERS]
             if not recipients:
                 # no reply waiting: either the last activation ended cleanly and
                 # is about to close, or the process died mid-activation — either
@@ -605,7 +637,7 @@ async def run_pending_once(config: Config, *, journal=None, vault_get=None) -> d
                 await renew
         if held_browser:
             db.release_own_lease("browser")
-        db.release_own_lease("agency")
+        db.release_own_lease(lease)
         db.close()
 
 

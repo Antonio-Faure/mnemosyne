@@ -205,6 +205,15 @@ CREATE INDEX IF NOT EXISTS idx_resolver_requests_resolver
 CREATE INDEX IF NOT EXISTS idx_resolver_requests_biagent
     ON resolver_requests(biagent_task_id, status);
 
+CREATE TABLE IF NOT EXISTS resolver_results (
+    resolver_task_id INTEGER PRIMARY KEY,
+    segment_id       TEXT,
+    status           TEXT NOT NULL,
+    asset_id         TEXT,
+    evidence         TEXT,
+    updated_at       TEXT NOT NULL
+);
+
 """
 
 
@@ -593,6 +602,48 @@ class Database:
             )
             self._conn.commit()
             return cur.rowcount
+
+    def get_resolver_golden(self, segment_id: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT payload FROM resolver_golden WHERE segment_id = ?",
+                (segment_id,),
+            ).fetchone()
+        return json.loads(row["payload"]) if row else None
+
+    def record_resolver_result(
+        self,
+        resolver_task_id: int,
+        *,
+        segment_id: str | None,
+        status: str,
+        asset_id: str | None = None,
+        evidence: str | None = None,
+    ) -> None:
+        if status not in ("match", "partial", "no_match", "ambiguous"):
+            raise ValueError("invalid resolver result status")
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO resolver_results
+                   (resolver_task_id, segment_id, status, asset_id, evidence, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(resolver_task_id) DO UPDATE SET
+                       segment_id = excluded.segment_id,
+                       status = excluded.status,
+                       asset_id = excluded.asset_id,
+                       evidence = excluded.evidence,
+                       updated_at = excluded.updated_at""",
+                (resolver_task_id, segment_id, status, asset_id, evidence, utcnow_iso()),
+            )
+            self._conn.commit()
+
+    def get_resolver_result(self, resolver_task_id: int) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM resolver_results WHERE resolver_task_id = ?",
+                (resolver_task_id,),
+            ).fetchone()
+        return dict(row) if row else None
 
     # ── jobs ─────────────────────────────────────────────────────────────
     def enqueue(self, job: Job) -> int:

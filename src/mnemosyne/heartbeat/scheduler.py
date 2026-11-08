@@ -29,7 +29,7 @@ OPERATOR_INTERVAL_S = 30  # poll the operator bots (answers wake parked tasks)
 
 #: Job runs whose real trace is the task session: keep them out of the sidebar
 #: by default (visible with "inclure les runs silencieux").
-SILENT_JOB_KINDS = frozenset({"agency", "warmup"})
+SILENT_JOB_KINDS = frozenset({"agency", "warmup", "resolver"})
 
 
 class Heartbeat:
@@ -127,6 +127,14 @@ class Heartbeat:
         if not self.engine.db.has_open_job("agency"):
             self.engine.db.enqueue(
                 Job(kind="agency", payload={"interval_s": AGENCY_INTERVAL_S}, priority=30)
+            )
+        if self.config.resolver.enabled and not self.engine.db.has_open_job("resolver"):
+            self.engine.db.enqueue(
+                Job(
+                    kind="resolver",
+                    payload={"interval_s": max(30, self.config.resolver.interval_s)},
+                    priority=35,
+                )
             )
         if self.config.discovery.enabled and not self.engine.db.has_open_job("discover"):
             self.engine.db.enqueue(

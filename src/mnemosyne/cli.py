@@ -259,6 +259,35 @@ def _cmd_resolve_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_resolve_enqueue(args: argparse.Namespace) -> int:
+    from mnemosyne.db import Database
+
+    cfg = get_config()
+    db = Database(cfg.db_file())
+    try:
+        label = db.get_resolver_golden(args.segment_id)
+        if label is None:
+            print(f"segment inconnu : {args.segment_id}")
+            return 1
+        text = (label.get("segment") or {}).get("text") or ""
+        objective = (
+            "Phrase historique à illustrer par le résolveur adversarial.\n"
+            f"Segment : {args.segment_id}\n"
+            f"Phrase : {text}\n"
+            "Cherche dans la meta API, fais valider le candidat par l'opérateur, "
+            "et demande au biagent les sources manquantes si nécessaire."
+        )
+        task_id = db.enqueue_task(
+            "resolver",
+            objective,
+            payload={"kind": "resolver", "segment_id": args.segment_id, "label": label},
+        )
+    finally:
+        db.close()
+    print(f"tâche resolver #{task_id} en file pour {args.segment_id}")
+    return 0
+
+
 def _cmd_queue_add(args: argparse.Namespace) -> int:
     cfg = get_config()
     from mnemosyne.agents.supervisor import pick_agent
@@ -830,7 +859,7 @@ def build_parser() -> argparse.ArgumentParser:
     qsub = pq.add_subparsers(dest="queue_cmd", required=True)
     qa = qsub.add_parser("add", help="enqueue a task: starting agent + objective")
     qa.add_argument("objective", help="the task's objective (first message)")
-    qa.add_argument("--agent", choices=["coder", "browser"], default=None,
+    qa.add_argument("--agent", choices=["coder", "browser", "resolver"], default=None,
                     help="force the starting agent (default: auto-routing)")
     qa.add_argument("--cap", type=int, default=None, help="max turns for the task")
     qa.set_defaults(func=_cmd_queue_add)
@@ -869,6 +898,9 @@ def build_parser() -> argparse.ArgumentParser:
     rig.set_defaults(func=_cmd_resolve_import_golden)
     rst = rsub.add_parser("stats", help="show the imported golden dataset")
     rst.set_defaults(func=_cmd_resolve_stats)
+    ren = rsub.add_parser("enqueue", help="enqueue one resolver task for a golden segment")
+    ren.add_argument("segment_id", help="golden segment id")
+    ren.set_defaults(func=_cmd_resolve_enqueue)
 
     pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")
     pdis.add_argument("--limit", type=int, default=100)

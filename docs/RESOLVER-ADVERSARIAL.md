@@ -315,6 +315,9 @@ mnemosyne resolve import-golden data/golden.jsonl
 
 # état du dataset importé
 mnemosyne resolve stats
+
+# mettre une phrase dans la boucle resolver (une session par segment)
+mnemosyne resolve enqueue yt_<video_id>_<sentence_index>
 ```
 
 

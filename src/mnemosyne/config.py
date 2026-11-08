@@ -283,6 +283,15 @@ class EmailConfig(BaseModel):
     password_env: str = "MNEMOSYNE_EMAIL_PASSWORD"
 
 
+class ResolverConfig(BaseModel):
+    """Adversarial sentence -> archive-image resolver (second permanent loop)."""
+
+    enabled: bool = True
+    model: str = "deepseek-v4.1-flash"
+    max_turns: int = 120
+    interval_s: int = 60
+
+
 class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
@@ -297,6 +306,7 @@ class Config(BaseModel):
     notify: NotifyConfig = Field(default_factory=NotifyConfig)
     operator: OperatorConfig = Field(default_factory=OperatorConfig)
     email: EmailConfig = Field(default_factory=EmailConfig)
+    resolver: ResolverConfig = Field(default_factory=ResolverConfig)
     sources_dir: str = "config/sources"
 
     #: absolute path to the repository root, set by the loader
