@@ -386,7 +386,11 @@ async def _activate_session(
                 # then the orchestrator closes the task (logical order)
                 "close_status": "failed", "close_note": error[:NOTE_MAX_CHARS]}
 
-    if mailbox.pending_count(task_id) == 0 and not db.task_waiting_on_email(task_id):
+    if (
+        mailbox.pending_count(task_id) == 0
+        and not db.task_waiting_on_email(task_id)
+        and not db.task_waiting_on_sources(task_id)
+    ):
         status = "done" if finish else "review"
         close_note = finish[:NOTE_MAX_CHARS] or None
         db.delete_kv(f"transient:{task_id}")
