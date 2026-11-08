@@ -222,6 +222,12 @@ class ResolverToolProvider(ToolProvider):
         async def request_source_exec(p: RequestSourceParams):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
+            if self.config.dev.sources_freeze:
+                return _fail(
+                    "l'onboarding des sources est gelé (dev.sources_freeze) : "
+                    "n'en demande pas, enregistre ton résultat avec les sources "
+                    "actuelles."
+                )
             known = self._known_sources()
             wanted = _name_tokens(p.source_id, p.source_name)
             if p.source_id in known:
