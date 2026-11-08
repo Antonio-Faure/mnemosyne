@@ -32,7 +32,10 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="mnemosyne",
         version="0.1.0",
-        description="Federated live search over historical image archive providers — no image copies.",
+        description=(
+            "Federated live search over historical image archive providers — "
+            "no image copies."
+        ),
         lifespan=lifespan,
     )
     app.include_router(observatory_router)
