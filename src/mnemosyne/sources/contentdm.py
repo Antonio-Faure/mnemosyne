@@ -34,6 +34,8 @@ _OPEN_MARKERS = (
     "no known copyright restrictions",
     "cc0",
     "creativecommons.org/publicdomain/zero",
+    "creativecommons.org/publicdomain/mark",
+    "public domain mark",
     "cc by",
     "creativecommons.org/licenses/by/",
 )
