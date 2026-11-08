@@ -8,6 +8,7 @@ from mnemosyne.models import Protocol, SourceDescriptor
 from mnemosyne.sources.anmt import AnmtConnector
 from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
+from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
 from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
@@ -28,6 +29,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
+    "digital_commonwealth": DigitalCommonwealthConnector,
     "gallica": GallicaConnector,
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,

@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **49**
-- Sources actives : **38**
+- Sources déclarées : **50**
+- Sources actives : **39**
 - Sources désactivées : **11**
-## Sources actives (38)
+## Sources actives (39)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -33,6 +33,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries | US | iiif | none | varies | University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright) ; manifeste unique par notice (pas de Collection IIIF) |
 | cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Par notice ; agrégateur US (équivalent d'Européana), vérifier `rights` et le fournisseur |
+| digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les notices explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
 | europeana | Europeana | Europeana Foundation | EU | rest | api_key | varies | Par notice ; *rights statements* Europeana (domaine public / CC / droits réservés) |
 | gallica | Gallica (BnF) | Bibliothèque nationale de France | FR | sru | none | varies | BnF — vérifier par notice (domaine public / sous licence) |
 | hammer | Hammer Museum — Online Collections (IIIF) | Hammer Museum, University of California, Los Angeles (UCLA) | US | iiif | none | varies | Hammer Museum (UCLA) — droits par notice (CC0 / domaine public ou « In Copyright », rightsstatements.org) ; manifeste unique par objet (pas de Collection IIIF) |
@@ -80,9 +81,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 ## Raccourcis licence
 
-- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `cooper_hewitt`, `kmska`,
-  `llgc`, `met`, `nasa`, `ndl`, `rijksmuseum`, `smk`, `smithsonian` (plus `wikidata` pour
-  les données ; `nasa` = domaine public US, pas CC0).
+- **Domaine public / CC0** : `artic`, `bsb`, `cleveland`, `cooper_hewitt`,
+  `digital_commonwealth`, `kmska`, `llgc`, `met`, `nasa`, `ndl`, `rijksmuseum`,
+  `smk`, `smithsonian` (plus `wikidata` pour les données ; `nasa` = domaine public
+  US, pas CC0).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
   `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1 du code du
   patrimoine) ; certaines vues restent « non affichables » par notice et sont
