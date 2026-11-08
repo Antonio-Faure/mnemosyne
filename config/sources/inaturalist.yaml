@@ -1,0 +1,22 @@
+id: inaturalist
+name: iNaturalist — Observations
+institution: iNaturalist (California Academy of Sciences / National Geographic Society)
+country: INTL
+protocol: rest
+base_url: https://api.inaturalist.org/v1
+auth: none
+license: "CC0-1.0 / CC-BY-4.0"
+rights: "Photos conservées uniquement si la licence au niveau photo est cc0 ou cc-by ; attribution stockée par photo (photo.attribution)."
+rate_limit_per_s: 1.0
+priority: 45
+tags: [biodiversity, nature, citizen-science, keyless, cc0, cc-by]
+seeds:
+  - "monarch butterfly"
+  - "wildflower"
+  - "bird"
+  - "mushroom"
+  - "fern"
+  - "tide pool"
+  - "dragonfly"
+  - "orchid"
+notes: "API REST publique sans clé : GET /observations (q, photos=true, photo_license=cc0,cc-by, quality_grade=research). Pagination 1-based (per_page ≤ 200, total_results) ; revérifier photo.license_code (cc0|cc-by) côté connecteur ; une photo qualifiée = un Asset. Image principale = URL square.jpg remplacée par large.jpg ; vignette = square.jpg. Rate limit poli (~60/min, 10k/jour) ; aucun téléchargement (URLs seulement)."

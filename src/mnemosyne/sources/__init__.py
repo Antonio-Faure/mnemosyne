@@ -12,6 +12,7 @@ from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.iiif import IIIFConnector
+from mnemosyne.sources.inaturalist import INaturalistConnector
 from mnemosyne.sources.internet_archive import InternetArchiveConnector
 from mnemosyne.sources.mai_saint_etienne import MAISaintEtienneConnector
 from mnemosyne.sources.met import MetConnector
@@ -31,6 +32,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "wikidata": WikidataConnector,
     "wikimedia": WikimediaConnector,
     "internet_archive": InternetArchiveConnector,
+    "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
     "europeana": EuropeanaConnector,
     "dpla": DplaConnector,
