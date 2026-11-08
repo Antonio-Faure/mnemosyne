@@ -1,0 +1,58 @@
+id: texas_history
+name: The Portal to Texas History (UNT Libraries)
+institution: University of North Texas Libraries
+country: US
+protocol: iiif
+base_url: https://texashistory.unt.edu
+auth: none
+license: >-
+  Terms vary per item (many UT/UNT items are public domain; others are rights-
+  restricted and flagged rights.access = restricted). The connector propagates
+  the per-item rights/rights.license metadata and skips restricted items;
+  consult the item page (ARK) for the authoritative reuse statement.
+rights: >-
+  The Portal to Texas History (University of North Texas Libraries) — credit
+  the contributing institution and the Portal. Reuse is governed by each item's
+  rights statement.
+rate_limit_per_s: 1.0
+priority: 60
+tags: [photographs, press-photography, oil-industry, petroleum, spindletop, permian-basin, texas, iiif, keyless]
+seeds:
+  # Oil-well fires / firefighting (Myron Kinley theme) — most relevant first
+  - metapth221870
+  - metapth191283
+  - metapth531528
+  - metapth531609
+  - metapth104960
+  - metapth87459
+  # Gushers / well blowouts
+  - metapth41398
+  - metapth586765
+  - metapth223731
+  - metapth531556
+  - metapth427218
+  - metapth1128954
+  # Spindletop / derricks / oil-field scenes
+  - metapth41397
+  - metapth202771
+  - metapth202335
+  - metapth50108
+  - metapth1556330
+notes: >-
+  UNT's statewide digital library; strong in Texas oil-industry photography
+  (Spindletop 1901, East Texas and Permian Basin booms, press photographs, well
+  fires). The public keyword search (`/search/?q=…`) is fronted by an "Altcha"
+  proof-of-work anti-bot; conforming to the "no scraping without written
+  consent" policy, the connector relies solely on a curated `seeds` list of ARKs
+  resolved through the programmatic IIIF Presentation v2 manifest path (one
+  manifest per ARK, an IIIF Image API service per canvas). Each seed yields a
+  single record (the item's first displayable canvas). Items flagged
+  `rights.access = restricted` are skipped. See
+  `src/mnemosyne/sources/texas_history.py`.
+extra:
+  ark_naan: "67531"
+  manifest_pattern: "https://texashistory.unt.edu/ark:/67531/{ark}/manifest/"
+  notice_pattern: "https://texashistory.unt.edu/ark:/67531/{ark}/"
+  attribution: The Portal to Texas History, University of North Texas Libraries
+  image_size: "!1200,1200"
+  thumbnail_size: "!400,400"
