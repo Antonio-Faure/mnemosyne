@@ -320,6 +320,30 @@ mnemosyne resolve stats
 mnemosyne resolve enqueue yt_<video_id>_<sentence_index>
 ```
 
+### Corpus vs golden
+
+Deux jeux distincts, deux usages :
+
+| Table | Contenu | Usage |
+|---|---|---|
+| `resolver_corpus` | phrases **à traiter** (transcript, JSONL, claim) — aucun label requis | flux de travail du resolver |
+| `resolver_golden` | paires **évaluées** `match/partial/no_match/ambiguous` + images acceptables + négatifs durs | benchmark (précision, abstention) |
+
+```bash
+# importer un transcript (un segment = une phrase, ids yt_<video_id>_<index>)
+mnemosyne resolve ingest data/transcript.json --dry-run
+mnemosyne resolve ingest data/transcript.json --prefix nb_
+
+# JSONL minimal ou tableau JSON
+mnemosyne resolve ingest data/sentences.jsonl --min-words 5
+
+# enfiler une phrase du corpus (le golden est prioritaire si l'id existe des deux côtés)
+mnemosyne resolve enqueue yt_<video_id>_<index>
+```
+
+`resolve enqueue` refuse d'ouvrir une deuxième session pour une phrase déjà
+`pending`/`running`, et rappelle la vidéo + le claim quand ils sont connus.
+
 
 ## Panneau adversarial
 

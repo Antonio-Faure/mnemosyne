@@ -187,6 +187,18 @@ CREATE TABLE IF NOT EXISTS resolver_golden (
 CREATE INDEX IF NOT EXISTS idx_resolver_golden_status
     ON resolver_golden(status, segment_id);
 
+-- Resolver corpus: sentences to process (no gold label required). The golden
+-- table stays the *evaluated* benchmark; the corpus is the work stream.
+CREATE TABLE IF NOT EXISTS resolver_corpus (
+    segment_id TEXT PRIMARY KEY,
+    video_id   TEXT NOT NULL,
+    text       TEXT NOT NULL,
+    payload    TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_resolver_corpus_video
+    ON resolver_corpus(video_id);
+
 -- Resolver -> biagent source dependencies: one row per source request.
 CREATE TABLE IF NOT EXISTS resolver_requests (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -610,6 +622,73 @@ class Database:
                 (segment_id,),
             ).fetchone()
         return json.loads(row["payload"]) if row else None
+
+    # ── resolver corpus (sentences to process, no gold label required) ────
+    def upsert_resolver_corpus(self, entries: list[dict]) -> int:
+        written = 0
+        with self._lock:
+            for entry in entries:
+                segment_id = str(entry.get("id") or "").strip()
+                if not segment_id:
+                    continue
+                video = entry.get("video") or {}
+                self._conn.execute(
+                    """INSERT INTO resolver_corpus
+                       (segment_id, video_id, text, payload, updated_at)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(segment_id) DO UPDATE SET
+                           video_id = excluded.video_id,
+                           text = excluded.text,
+                           payload = excluded.payload,
+                           updated_at = excluded.updated_at""",
+                    (
+                        segment_id,
+                        str(video.get("id") or ""),
+                        str(entry.get("text") or ""),
+                        json.dumps(entry, ensure_ascii=False),
+                        utcnow_iso(),
+                    ),
+                )
+                written += 1
+            self._conn.commit()
+        return written
+
+    def get_resolver_corpus(self, segment_id: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT payload FROM resolver_corpus WHERE segment_id = ?",
+                (segment_id,),
+            ).fetchone()
+        return json.loads(row["payload"]) if row else None
+
+    def resolver_corpus_count(self) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) AS n FROM resolver_corpus").fetchone()
+        return int(row["n"]) if row else 0
+
+    def list_resolver_corpus(self, limit: int = 50) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT payload FROM resolver_corpus ORDER BY segment_id LIMIT ?",
+                (max(0, int(limit)),),
+            ).fetchall()
+        return [json.loads(row["payload"]) for row in rows]
+
+    def open_resolver_task(self, segment_id: str) -> int | None:
+        """Id of a pending/running resolver task for this sentence, if any."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT id, payload FROM tasks
+                   WHERE start_agent = 'resolver' AND status IN ('pending', 'running')"""
+            ).fetchall()
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"] or "{}")
+            except ValueError:
+                continue
+            if payload.get("segment_id") == segment_id:
+                return int(row["id"])
+        return None
 
     def record_resolver_result(
         self,
