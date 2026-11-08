@@ -24,6 +24,7 @@ TEVA = "https://teva.contentdm.oclc.org"
 SCDL = "https://digital.tcl.sc.edu"
 INDIANA = "https://indianamemory.contentdm.oclc.org"
 BYU = "https://contentdm.lib.byu.edu"
+ATLANTA = "https://album.atlantahistorycenter.com"
 
 _SENTINEL = object()
 
@@ -154,6 +155,38 @@ async def test_teva_noc_us_image_is_asset():
     assert asset.extra["content_type"] == "image/jp2"
     assert asset.extra["rights_uri"] == "http://rightsstatements.org/vocab/NoC-US/1.0/"
     assert asset.source_id == "teva"
+
+
+@pytest.mark.asyncio
+async def test_atlanta_noc_us_image_is_asset():
+    alias, item_id = "p16828coll1", "0"
+    fields = [
+        _field("title", "Title", "Steam locomotive, Atlanta"),
+        _field("date", "Date", "1905"),
+        _field(
+            "rights",
+            "Copyright",
+            "No copyright - United States: http://rightsstatements.org/vocab/NoC-US/1.0/",
+        ),
+    ]
+    details = {(alias, item_id): _detail(image_uri=_iiif(ATLANTA, alias, item_id), fields=fields)}
+    pages = {0: _search_page([_search_item(alias, item_id)])}
+    connector, _ = _run("atlanta", ATLANTA, pages, details)
+
+    assets = await connector.search("steam engine")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.license == "PDM-1.0"
+    assert asset.title == "Steam locomotive, Atlanta"
+    assert asset.year == 1905
+    assert "!1200,1200" in asset.image_url
+    assert "!400,400" in asset.thumbnail_url
+    assert asset.image_url.startswith(f"{ATLANTA}/iiif/2/{alias}:{item_id}/full/!1200,1200/0/")
+    assert asset.extra["alias"] == alias
+    assert asset.extra["item_id"] == item_id
+    assert asset.extra["content_type"] == "image/jp2"
+    assert asset.source_id == "atlanta"
 
 
 @pytest.mark.asyncio
@@ -493,6 +526,7 @@ async def test_page_url_from_item_link_and_fallback():
 @pytest.mark.parametrize(
     ("source_id", "base_url"),
     [
+        ("atlanta", ATLANTA),
         ("byu", BYU),
         ("scdl", SCDL),
         ("teva", TEVA),
@@ -511,6 +545,6 @@ def test_descriptor_deserializes_and_is_registered(source_id, base_url):
     assert CONNECTORS[source_id] is ContentDmConnector
 
 
-def test_all_three_sources_registered():
-    for source_id in ("teva", "scdl", "byu"):
+def test_all_contentdm_sources_registered():
+    for source_id in ("atlanta", "teva", "scdl", "byu"):
         assert CONNECTORS[source_id] is ContentDmConnector
