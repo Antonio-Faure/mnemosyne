@@ -596,6 +596,17 @@ async def run_pending_once(
                     note=result.get("close_note"),
                     agent=agent,
                 )
+                if task["start_agent"] in ("coder", "browser"):
+                    # a biagent task may be the source another resolver session
+                    # is parked on: mark the request and wake it (the missing
+                    # half of the resolver cycle — only `queue cancel` did this).
+                    _complete_resolver_dependencies(
+                        db,
+                        mailbox,
+                        task["id"],
+                        "done" if close_status == "done" else "failed",
+                        result.get("close_note"),
+                    )
             task_now = db.get_task(task["id"])
             events.record(
                 "activation.returned",

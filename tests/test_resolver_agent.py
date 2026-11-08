@@ -205,3 +205,52 @@ def test_request_source_allows_a_same_host_specialisation(config):
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def test_closing_a_biagent_task_wakes_the_parked_resolver(config, monkeypatch):
+    """The half that was missing: a finished source task must free the resolver."""
+    from mnemosyne.agents import supervisor
+    from mnemosyne.agents.outcome import AgentOutcome
+
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        return AgentOutcome(finish="source added")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+
+    db = _db(config)
+    try:
+        resolver_id = db.enqueue_task("resolver", "illustrate a sentence")
+        db.set_task_status(resolver_id, "running", agent="resolver")
+        biagent_id = db.enqueue_task(
+            "browser", "add the missing source", payload={"kind": "resolver_source"}
+        )
+        db.create_resolver_request(
+            resolver_id,
+            sentence_id="yt_demo_1",
+            source_id="loc_wwi_photos",
+            source_name="Library of Congress photos",
+            biagent_task_id=biagent_id,
+        )
+        assert db.task_waiting_on_sources(resolver_id) is True
+    finally:
+        db.close()
+
+    info = asyncio.run(
+        supervisor.run_pending_once(config, agents=("browser",), lease="agency")
+    )
+    assert info is not None and info["task_id"] == biagent_id
+
+    db = _db(config)
+    try:
+        request = db.resolver_requests(resolver_id)[0]
+        assert request["status"] == "done"
+        assert db.task_waiting_on_sources(resolver_id) is False
+        wake = [
+            message
+            for message in db.list_messages()
+            if message["task_id"] == resolver_id and "[SOURCES READY]" in message["body"]
+        ]
+        assert wake, "the resolver must receive a [SOURCES READY] message"
+        assert wake[0]["sender"] == "system"
+    finally:
+        db.close()
