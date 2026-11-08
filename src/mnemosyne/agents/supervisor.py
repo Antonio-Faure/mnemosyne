@@ -216,7 +216,7 @@ def _onboarding_task(task: dict) -> bool:
         payload = json.loads(task.get("payload") or "{}")
     except ValueError:
         return False
-    return payload.get("kind") in ("connect", "connexion")
+    return payload.get("kind") in ("connect", "connexion", "resolver_source")
 
 
 def _settle_discovery(config: Config, db: Database, task: dict, branch: str | None) -> None:

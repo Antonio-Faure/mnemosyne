@@ -342,3 +342,30 @@ def test_request_source_refuses_a_source_already_requested(config):
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def test_request_source_is_refused_while_onboarding_is_frozen(config):
+    """Quota freeze: the resolver abstains instead of queueing a new source."""
+    config.dev.sources_freeze = True
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+        result = asyncio.run(
+            by_name["request_source"].executor(
+                RequestSourceParams(
+                    source_id="kbr_be",
+                    source_name="KBR Belgium",
+                    reason="1914 Belgium photos",
+                    api_url="https://api.kbr.be/",
+                )
+            )
+        )
+        assert result.success is False
+        assert "gelé" in result.content
+        assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
