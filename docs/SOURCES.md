@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **63**
-- Sources actives : **52**
+- Sources déclarées : **64**
+- Sources actives : **53**
 - Sources désactivées : **11**
-## Sources actives (52)
+## Sources actives (53)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -73,6 +73,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | wellesley | Wellesley College Digital Repository (IIIF) | Wellesley College Library | US | iiif | none | varies | Wellesley College — vérifier par notice (droits variables, rightsstatements.org possible) ; manifeste unique par notice (pas de Collection IIIF) ; hôte derrière un challenge Cloudflare Turnstile (accès programmatique à résoudre via navigateur/HITL) |
 | wikidata | Wikidata | Wikimedia Foundation | INTL | sparql | none | CC0 | CC0 (données) ; les images suivent la licence de leur fichier Commons |
 | wikimedia | Wikimedia Commons | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) |
+| wikimedia_commons_photos | Wikimedia Commons — Photographies | Wikimedia Foundation | INTL | rest | none | varies | Licence par fichier Commons (CC BY-SA, CC0, DP…) ; recherche namespace 6 (fichier) via `imageinfo`, restreinte à `filetype:bitmap` + garde MIME raster — exclut les PDF/DjVu de livres numérisés ; photos de 1914 (troupes allemandes Bruxelles/Liège, réfugiés belges, Louvain) ; `maxlag=5` |
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 | yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | INTL | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
@@ -106,13 +107,13 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   (licence vérifiée au niveau de chaque média `dataObjects[].license`),
   attribution par média. `gbif` : uniquement les médias sous CC0 1.0 ou CC BY 4.0
   (licence vérifiée au niveau de chaque média `media[].license`), attribution par
-  média. `inaturalist` : uniquement les photos sous CC0 ou CC B
+  média. `inaturalist` : uniquement les photos sous CC0 ou CC BY 4.0.
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
   `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
-  `yale`, `yale_lux` — la licence est décidée au niveau de l'`Asset` à la
-  frontière du connecteur, pas de la source.
+  `wikimedia_commons_photos`, `yale`, `yale_lux` — la licence est décidée au
+  niveau de l'`Asset` à la frontière du connecteur, pas de la source.
 - **Non commercial / restrictif** : `belvedere`, `cudl`, `ecodices`, `irht`,
   `mai_saint_etienne`, `musee_orsay`, `musei_vaticani`, `vam`, `vatican`,
   `wellcome`.
@@ -127,9 +128,9 @@ Cette table est maintenue en accord avec les descripteurs : voir
 
 Constat issu de la tâche resolver #148 (`catalog_search` sur tout le catalogue),
 ensuite reproduit/vérifié via `fetch_url` le **2026-11-08** (tâche #149). Aucune
-source n'est activée ni désactivée ici : les compteurs ci-dessus (63 / 52 / 11)
-restent **inchangés**. Les fournisseurs ci-dessous restent **actifs** mais leur
-état est documenté (`notes:` des descripteurs + ce tableau).
+source n'est activée ni désactivée ici : les compteurs ci-dessus (64 / 53 / 11)
+restent **inchangés** par ce constat. Les fournisseurs ci-dessous restent
+**actifs** mais leur état est documenté (`notes:` des descripteurs + ce tableau).
 
 | source | URL testée | code/erreur avant | diagnostic | correctif / test | statut final |
 |--------|-----------|-------------------|-----------|------------------|--------------|

@@ -1,0 +1,18 @@
+id: wikimedia_commons_photos
+name: Wikimedia Commons — Photographies
+institution: Wikimedia Foundation
+country: INTL
+protocol: rest
+base_url: https://commons.wikimedia.org/w/api.php
+auth: none
+license: varies
+rights: "Per-file Commons license (CC BY-SA, CC0, PD…)"
+rate_limit_per_s: 0.5
+priority: 30
+tags: [media, photography, keyless]
+seeds:
+  - "German troops entering Brussels 1914"
+  - "réfugiés belges 1914"
+  - "destruction Louvain 1914"
+  - "Liège 1914 troupes allemandes"
+notes: "Namespace 6 (File) imageinfo; search restricted with filetype:bitmap and a raster-MIME guard so OCR-heavy PDF/DjVu book scans are excluded. Use a descriptive User-Agent with contact; maxlag=5."
