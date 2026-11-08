@@ -193,8 +193,9 @@ def test_request_source_allows_a_same_host_specialisation(config):
                 RequestSourceParams(
                     source_id="gallica_photos_v2",
                     source_name="Gallica again",
-                    reason="same host",
+                    reason="photos only, the sibling returns books",
                     api_url="https://example.invalid/iiif/search",
+                    specialisation=True,
                 )
             )
         )
@@ -288,6 +289,56 @@ def test_record_result_cannot_self_validate_while_a_question_is_open(config):
         )
         assert allowed.success is True
         assert db.get_resolver_result(task_id)["status"] == "match"
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_request_source_refuses_a_similar_name(config):
+    """`gallica_bnf` / `wellcome_collection`: same source under a new id."""
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+        result = asyncio.run(
+            by_name["request_source"].executor(
+                RequestSourceParams(
+                    source_id="gallica_bnf",
+                    source_name="Gallica (BnF) — presse & photographie",
+                    reason="press photos",
+                    api_url="https://api.bnf.fr/",
+                )
+            )
+        )
+        assert result.success is False
+        assert "déjà couverte" in result.content
+        assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_request_source_refuses_a_source_already_requested(config):
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+        params = RequestSourceParams(
+            source_id="kbr_be",
+            source_name="KBR Belgium",
+            reason="1914 Belgium photos",
+            api_url="https://api.kbr.be/",
+        )
+        first = asyncio.run(by_name["request_source"].executor(params))
+        assert first.success is True
+        second = asyncio.run(by_name["request_source"].executor(params))
+        assert second.success is False
+        assert "déjà demandée" in second.content
+        assert len(db.resolver_requests(task_id)) == 1
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()

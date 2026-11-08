@@ -205,3 +205,21 @@ def test_enqueue_prefers_the_golden_label_over_the_corpus(config):
         assert task is not None and "Golden wording." in task["objective"]
     finally:
         db.close()
+
+
+def test_the_objective_lists_the_catalog_so_nothing_is_asked_twice(config):
+    from mnemosyne.resolver.queue import build_objective
+
+    objective = build_objective(
+        "yt_a_1",
+        {"id": "yt_a_1", "video": {"id": "v"}, "claim": {}},
+        "A sentence about Belgium.",
+        sources=[
+            {"id": "gallica", "name": "Gallica (BnF)", "enabled": True},
+            {"id": "wellcome", "name": "Wellcome Collection", "enabled": False},
+        ],
+    )
+    assert "Catalogue actuel" in objective
+    assert "gallica — Gallica (BnF) — active" in objective
+    assert "wellcome — Wellcome Collection — désactivée" in objective
+    assert "ne doit PAS" in objective

@@ -569,6 +569,15 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def open_resolver_requests(self) -> list[dict]:
+        """Every request still waiting on the biagent, all sentences mixed."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM resolver_requests WHERE status IN ('pending', 'running') "
+                "ORDER BY id ASC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def pending_resolver_requests(self, resolver_task_id: int) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(
