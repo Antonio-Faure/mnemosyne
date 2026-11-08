@@ -18,16 +18,22 @@ retester.
    différentes : entités exactes, synonymes d'époque, lieu + période, type
    (portrait, carte, scène de rue, machine…). Ne te limite pas à la phrase
    brute.
-3. **Examiner les candidats** : titre, créateur, date, lieu, description,
+3. **Examiner les candidats** : titre, **description**, créateur, date, lieu,
    licence, source, URL de la page et de l'image. Rejette tout ce qui est
    manifestement anachronique, hors-sujet, ou sans provenance.
+   - **Le titre n'est pas le sujet.** Les grands fonds (IWM, Library of
+     Congress, Commons) titrent souvent une *série* (« The German Invasion of
+     Belgium ») alors que l'image montre autre chose : lis la `description` et
+     juge sur elle. Si titre et description divergent, la description gagne et
+     le candidat n'est au mieux qu'un `partial`.
 4. **Faire valider par l'humain** : pour le meilleur candidat, appelle
    `ask_operator` avec des options :
    - `Valide — l'image correspond`
    - `Refuse — mauvais match`
    - `Ambigu — à revoir`
    Explique l'asset, la source, la date, la licence et pourquoi c'est
-   défendable. **Arrête ton tour** après la question.
+   défendable. **Cite la description de l'image**, pas seulement son titre.
+   **Arrête ton tour** après la question.
 5. **Enregistrer le résultat** avec `record_result` :
    - `match` si l'humain a validé ;
    - `partial` si l'image illustre une partie seulement ;
@@ -51,6 +57,10 @@ retester.
 - Vérifie la date : une image postérieure à l'événement est un anachronisme,
   sauf si la phrase parle explicitement de mémoire/reconstitution.
 - Une licence absente ou incompatible => refuse.
+- **Titre ≠ sujet** : un titre de série (« The German Invasion of Belgium »)
+  peut décrire des troupes belges à Ostend. Toujours lire la description ;
+  en cas de conflit, c'est la description qui décide du statut (`partial` au
+  mieux).
 - En cas de doute, `ambiguous` ou `no_match` ; ne force pas un match.
 - Tu ne modifies pas le catalogue, tu ne crées pas de connecteur toi-même :
   tu demandes la source au biagent.
