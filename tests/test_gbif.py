@@ -3,7 +3,7 @@
 Covers: an occurrence with two qualifying media (CC0 + CC BY) -> two assets,
 skipping a CC BY-NC media, a media without a licence, a media without an
 identifier (and a non-http identifier), an occurrence without media, an empty
-response, the ``limit`` cap, pagination (offset 0 -> 20), ``endOfRecords``, the
+response, the ``limit`` cap, pagination (offset 0 -> 40), ``endOfRecords``, the
 ``limit`` clamp to 300, the licence/attribution mapping, and the media-level
 licence normalisation.
 """
@@ -228,12 +228,12 @@ async def test_limit_is_respected():
 
 
 @pytest.mark.asyncio
-async def test_pagination_advances_offset_by_requested_limit():
+async def test_pagination_advances_offset_by_page_size():
     occ_a = _occurrence(301, [_media("https://img.example.org/a.jpg", CC0)])
     occ_b = _occurrence(302, [_media("https://img.example.org/b.jpg", CC_BY)])
     pages = {
         0: _page([occ_a], count=100, offset=0),
-        20: _page([occ_b], count=100, offset=20, end_of_records=True),
+        40: _page([occ_b], count=100, offset=40, end_of_records=True),
     }
     connector, http = _connector(pages)
 
@@ -241,7 +241,22 @@ async def test_pagination_advances_offset_by_requested_limit():
 
     assert len(assets) == 2
     requested_offsets = [kwargs["params"]["offset"] for _, kwargs in http.calls]
-    assert requested_offsets == [0, 20]
+    assert requested_offsets == [0, 40]
+
+
+@pytest.mark.asyncio
+async def test_duplicate_assets_across_pages_are_emitted_once():
+    occ = _occurrence(304, [_media("https://img.example.org/dup.jpg", CC0)])
+    pages = {
+        0: _page([occ], count=100, offset=0),
+        40: _page([occ], count=100, offset=40, end_of_records=True),
+    }
+    connector, _ = _connector(pages)
+
+    assets = await connector.search("papillon", limit=20)
+
+    assert len(assets) == 1
+    assert assets[0].source_asset_id == "304-0"
 
 
 @pytest.mark.asyncio

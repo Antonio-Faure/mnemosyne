@@ -66,19 +66,19 @@ def _is_http_url(value: str | None) -> bool:
 
 class GbifConnector(Connector):
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
-        api_limit = min(max(limit * 2, 10), _MAX_LIMIT)
+        page_size = min(max(limit * 2, 10), _MAX_LIMIT)
         max_pages = int(filters.get("max_pages", 3))
-        step = max(limit, 1)  # offset advances by the requested limit
         offset = int(filters.get("offset", 0))
 
         assets: list[Asset] = []
+        seen: set[str] = set()
         count: int | None = None
         pages = 0
         while pages < max_pages:
             params = {
                 "q": query,
                 "mediaType": "StillImage",
-                "limit": api_limit,
+                "limit": page_size,
                 "offset": offset,
             }
             data = await self.http.get_json(
@@ -91,7 +91,13 @@ class GbifConnector(Connector):
                 break
 
             for occurrence in results:
-                assets.extend(self._occurrence_to_assets(occurrence))
+                for asset in self._occurrence_to_assets(occurrence):
+                    if asset.id in seen:
+                        continue
+                    seen.add(asset.id)
+                    assets.append(asset)
+                    if len(assets) >= limit:
+                        break
                 if len(assets) >= limit:
                     break
 
@@ -100,7 +106,9 @@ class GbifConnector(Connector):
                 break
             if data.get("endOfRecords"):
                 break
-            offset += step
+            # advance by the page size actually requested, never by `limit`
+            # alone: otherwise pages overlap and assets are duplicated.
+            offset += page_size
             if isinstance(count, int) and offset >= count:
                 break
 
