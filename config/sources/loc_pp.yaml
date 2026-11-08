@@ -1,0 +1,39 @@
+id: loc_pp
+name: Library of Congress — Prints & Photographs (all periods, all subjects)
+institution: Library of Congress
+country: US
+protocol: rest
+base_url: https://www.loc.gov/pictures/
+auth: none
+# 403 Akamai depuis l'IP d'exécution (même cas que la sœur loc_wwi_photos,
+# 2026-11-08) : connecteur prêt, activation dès que l'accès JSON est rétabli.
+enabled: false
+license: varies
+rights: "LoC — vérifier par notice (souvent domaine public / « no known restrictions » ; sinon « In Copyright »)"
+rate_limit_per_s: 0.5
+priority: 20
+tags: [national-library, usa, prints-photographs, photographs, petroleum, oil-industry, keyless, json, iiif]
+seeds:
+  - "oil well fire"
+  - "gusher oil well"
+  - "oil well blowout fire"
+  - "Myron Kinley"
+  - "petroleum industry Texas"
+  - "oil field Beaumont Texas"
+notes: >-
+  Source sœur délibérée de `loc_wwi_photos`, mais de portée plus large : tout le
+  catalogue Prints & Photographs Online (PPOC) de la Library of Congress, toutes
+  périodes et tous sujets — et non la seule collection Première Guerre mondiale.
+  Vise notamment l'industrie pétrolière américaine et les incendies/éruptions de
+  puits (gushers en feu, contrôle d'incendies, p. ex. Myron Kinley, pétrole
+  texan). Même API JSON publique sans clé du loc.gov : `/pictures/?fo=json`
+  (champ `results[]` ; chaque notice porte `id`/`url`, `title`, `date`,
+  `description`, `contributor`, `rights` et une liste `image_url` ordonnée de la
+  plus petite à la plus grande dérivée sur `tile.loc.gov`). Le format filaire est
+  identique à `loc_wwi_photos`, donc le connecteur `LocPpConnector` réutilise
+  verbatim le parsing éprouvé ; seuls `base_url` et les seeds diffèrent. Accès
+  100 % programmatique, aucun scraping HTML. Constat 2026-11-08 via `fetch_url` :
+  l'endpoint `?fo=json` (et même la page `/pictures/`) renvoie HTTP 403 après
+  quelques requêtes depuis l'IP d'exécution (détection de bot type Akamai) —
+  vérification de la forme JSON et du 200 à confirmer via navigateur ; le
+  connecteur reste correct (l'API JSON est la voie officielle).

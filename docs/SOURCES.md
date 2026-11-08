@@ -19,9 +19,9 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **65**
+- Sources déclarées : **66**
 - Sources actives : **53**
-- Sources désactivées : **12**
+- Sources désactivées : **13**
 ## Sources actives (53)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
@@ -77,7 +77,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | yale | Yale University Library Digital Collections | Yale University Library, New Haven | US | iiif | none | varies | Yale University Library — beaucoup de domaine public, vérifier par notice |
 | yale_lux | Yale Collections Discovery (LUX) — IIIF | Yale University (LUX) | INTL | iiif | none | varies | Yale University (LUX) — beaucoup de domaine public (CC0), vérifier par notice ; manifeste unique (pas de Collection IIIF) |
 
-## Sources désactivées (12)
+## Sources désactivées (13)
 
 | id | Source | Institution | Pays | Protocole | Licence | Raison de la désactivation |
 |---|---|---|---|---|---|---|
@@ -85,6 +85,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | cudl | Cambridge Digital Library (CUDL) | Cambridge University Library | GB | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | ecodices | e-codices — Virtual Manuscript Library of Switzerland | e-codices (University of Fribourg) | CH | iiif | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) | CC BY-NC — usage non commercial |
 | irht | IRHT — Arca (bibliothèque numérique des manuscrits) | Institut de recherche et d'histoire des textes (IRHT-CNRS) | FR | iiif | varies | Licence variable — CC BY-NC 3.0 sur certains manuscrits ; à confirmer par la politique du projet |
+| loc_pp | Library of Congress — Prints & Photographs (toutes périodes, tous sujets) | Library of Congress | US | rest | varies | Source sœur de `loc_wwi_photos`, portée élargie (tout le PPOC, toutes périodes/sujets — industrie pétrolière US, incendies/éruptions de puits, p. ex. Myron Kinley) ; API JSON `?fo=json` officielle mais **403 Akamai** depuis l'IP d'exécution (2026-11-08) ; connecteur prêt (`LocPpConnector`), activation dès que l'accès est rétabli |
 | loc_wwi_photos | Library of Congress — World War I photographs (Prints & Photographs) | Library of Congress | US | rest | varies | API JSON `?fo=json` officielle mais **403 Akamai** depuis l'IP d'exécution (2026-11-08) ; connecteur prêt, activation dès que l'accès est rétabli (même cas que Gallica/NGA) |
 | mai_saint_etienne | Musée d'Art et d'Industrie de Saint-Étienne | Musée d'Art et d'Industrie de Saint-Étienne (Pôle muséal) | FR | rest | © Musée d'Art et d'Industrie de Saint-Étienne | Mention globale réservant l'usage commercial des images (autorisation requise) — non commercial |
 | musee_orsay | Musée d'Orsay — Collections (IIIF) | Établissement public des musées d'Orsay et de l'Orangerie (EPMO) | FR | iiif | Droits réservés — © EPMO | Mentions légales EPMO : reproduction/représentation interdite sans autorisation expresse (droits réservés) — à confirmer par la politique du projet |
