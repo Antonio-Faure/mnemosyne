@@ -33,8 +33,12 @@ notes: >-
   catalogue inventorié WebMuseo (`/app/collection/*`) renvoie HTTP 403 (mur
   anti-bot) et n'expose PAS d'OAI-PMH. Connecteur + tests prêts : l'activation
   est un changement d'une ligne (`enabled: true` + licence CC/DP) dès réception
-  de l'autorisation (demande e-mail envoyée le 2026-11-08 par l'agent navigateur,
-  en attente).
+  de l'autorisation. Prise de contact du 2026-11-08 : e-mail à
+  museedupetrole@wanadoo.fr = HTTP/SMTP 550 « destinataire invalide » ; copie à
+  musee.petrole@musees-vosges-nord.org = domaine mail cassé ; seul
+  contact@parc-vosges-nord.fr a été délivré (relance 18:10) ; formulaire de
+  contact du musée soumis avec accusé de réception. Aucune réponse à ce jour —
+  aucune adresse morte ne doit être réutilisée.
 extra:
   media_endpoint: /media
   per_page_max: 100
