@@ -31,6 +31,7 @@ from mnemosyne.sources.wikimedia import WikimediaConnector
 #: exact connector per source id
 CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
+    "atlanta": ContentDmConnector,
     "byu": ContentDmConnector,
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
