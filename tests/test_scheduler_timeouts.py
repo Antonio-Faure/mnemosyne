@@ -49,6 +49,7 @@ async def test_agent_session_outlives_the_mechanical_timeout(cfg, monkeypatch):
     mech_id = hb.engine.db.enqueue(Job(kind="verify", payload={"source_id": "x"}, priority=2))
 
     await hb._tick()  # must return: a hung handler cannot freeze the loop
+    await hb._drain()
 
     agent = hb.engine.db.get_job(agency_id)
     mech = hb.engine.db.get_job(mech_id)
@@ -56,3 +57,50 @@ async def test_agent_session_outlives_the_mechanical_timeout(cfg, monkeypatch):
     assert mech is not None and mech.state is JobState.PENDING, mech
     assert mech.attempts == 1, mech  # timed out once, scheduled for retry
     await hb.aclose()
+
+
+async def test_running_agent_session_does_not_block_the_other_loop(cfg, monkeypatch):
+    """A long activation (resolver) must not starve a job enqueued meanwhile.
+
+    Before: `_tick` awaited every claimed job, so one resolver turn blocked the
+    whole heartbeat — the biagent job stayed pending for the session duration.
+    """
+
+    started = asyncio.Event()
+    release = asyncio.Event()
+    ran: list[str] = []
+
+    async def slow_resolver(ctx, job):
+        started.set()
+        await release.wait()
+        ran.append("resolver")
+
+    async def quick_mechanical(ctx, job):
+        ran.append("agency")
+
+    monkeypatch.setitem(jobs_mod.HANDLERS, "resolver", slow_resolver)
+    monkeypatch.setitem(jobs_mod.HANDLERS, "agency", quick_mechanical)
+
+    hb = Heartbeat(cfg)
+    hb.engine.db.enqueue(Job(kind="resolver", payload={}, priority=1))
+
+    await hb._tick()  # dispatches the resolver session, returns at once
+    await started.wait()
+    assert hb._inflight, "the resolver job must still be running"
+
+    agency_id = hb.engine.db.enqueue(Job(kind="agency", payload={}, priority=2))
+    await hb._tick()  # second tick while the resolver is mid-turn
+    for _ in range(100):
+        job = hb.engine.db.get_job(agency_id)
+        if job is not None and job.state is JobState.DONE:
+            break
+        await asyncio.sleep(0.01)
+
+    job = hb.engine.db.get_job(agency_id)
+    assert job is not None and job.state is JobState.DONE, job
+    assert ran == ["agency"]  # the resolver is still parked on its event
+    release.set()
+    await hb._drain()
+    assert ran == ["agency", "resolver"]
+    await hb.aclose()
+

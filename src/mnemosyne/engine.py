@@ -21,6 +21,11 @@ from mnemosyne.sources import build_connector
 
 log = get_logger("engine")
 
+#: A single provider must not hold an entire catalog search hostage: connectors
+#: page through APIs (10 s pacing, 30 s HTTP timeout, 3 retries) and one dead
+#: host would otherwise stall every caller — the resolver included.
+SOURCE_SEARCH_TIMEOUT_S = 60.0
+
 
 class Engine:
     def __init__(self, config: Config):
@@ -83,7 +88,16 @@ class Engine:
             self.governor.set_domain_interval(domain_of(descriptor.base_url), 1.0 / float(rate))
         index = DedupIndex()
         try:
-            assets = await connector.search(query, limit=limit)
+            assets = await asyncio.wait_for(
+                connector.search(query, limit=limit), timeout=SOURCE_SEARCH_TIMEOUT_S
+            )
+        except TimeoutError:
+            log.warning(
+                "%s search timed out after %.0fs; skipping it",
+                descriptor.id,
+                SOURCE_SEARCH_TIMEOUT_S,
+            )
+            return []
         except GovernorBlocked as exc:
             log.warning("%s: %s", descriptor.id, exc)
             return []
