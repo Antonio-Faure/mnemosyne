@@ -139,3 +139,20 @@ def test_corpus_roundtrip_and_open_task_detection(config):
         assert db.open_resolver_task("yt_a_1") is None
     finally:
         db.close()
+
+
+def test_transcript_timestamps_given_as_strings_become_seconds(tmp_path):
+    """The shorts pipeline writes "10.2" (string): keep them as numbers."""
+    path = _write(
+        tmp_path,
+        "transcript.json",
+        {
+            "video": {"id": "v2"},
+            "segments": [
+                {"start": "10.2", "end": "13.3", "text": "La France a des idées."},
+            ],
+        },
+    )
+    entry = load_corpus(path)[0]
+    assert entry["start_s"] == 10.2
+    assert entry["end_s"] == 13.3

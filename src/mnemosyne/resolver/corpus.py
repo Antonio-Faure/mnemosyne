@@ -28,12 +28,19 @@ class CorpusFileError(ValueError):
     """A corpus file could not be parsed or violates the contract."""
 
 
+def _seconds(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _text_of(row: dict[str, Any]) -> tuple[str, float | None, float | None]:
     segment = row.get("segment") if isinstance(row.get("segment"), dict) else None
     source = segment or row
     text = source.get("text") or row.get("sentence") or ""
-    start = source.get("start_s", source.get("start"))
-    end = source.get("end_s", source.get("end"))
+    start = _seconds(source.get("start_s", source.get("start")))
+    end = _seconds(source.get("end_s", source.get("end")))
     return _WS.sub(" ", str(text)).strip(), start, end
 
 
