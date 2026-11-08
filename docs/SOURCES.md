@@ -19,10 +19,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **62**
-- Sources actives : **51**
+- Sources déclarées : **63**
+- Sources actives : **52**
 - Sources désactivées : **11**
-## Sources actives (51)
+## Sources actives (52)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier par notice |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier par notice (conditions Deutsche Fotothek) |
@@ -31,6 +31,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | bsb | Bavarian State Library | Bayerische Staatsbibliothek, München | DE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — Bayerische Staatsbibliothek |
 | bsb_collection | Bavarian State Library — digital collections (IIIF) | Bayerische Staatsbibliothek, München | DE | iiif | none | varies | Bayerische Staatsbibliothek — vérifier par notice (domaine public pour une grande partie) ; Collection IIIF « top » (iiif/presentation/v2/collection/top) |
 | byu | BYU Digital Collections | Brigham Young University | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Brigham Young University — API CONTENTdm publique sans clé (contentdm.lib.byu.edu/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` commençant par `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « not evaluated », « undetermined », « all rights reserved », « In Copyright », CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement), aucun scraping HTML |
+| carli | CARLI Digital Collections — Illinois | Consortium of Academic and Research Libraries in Illinois | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Consortium of Academic and Research Libraries in Illinois — API CONTENTdm publique sans clé (collections.carli.illinois.edu/digital/api) ; recherche `/digital/api/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/digital/api/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette InC, CNE, droits réservés et restrictions non commerciales / CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; aucun téléchargement (URLs seulement), aucun scraping HTML. Seeds orientés portrait/Chicago : la requête `portrait` renvoie des images ouvertes (collection chm_museum, « No known copyright restrictions ») |
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
 | colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries — rightsstatements.org par notice (majorité domaine public / No Copyright) ; manifeste unique par notice (pas de Collection IIIF) |
 | cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
@@ -58,7 +59,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | ndl | National Diet Library Digital Collections (IIIF) | National Diet Library (国立国会図書館), Tokyo | JP | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | 国立国会図書館 National Diet Library, JAPAN — Public Domain Mark (PDM) ; manifeste unique par notice (pas de Collection IIIF) |
 | nga | National Gallery of Art (Washington, DC) | National Gallery of Art | US | iiif | none | varies | National Gallery of Art — Open Access (images du domaine public libres, y compris usage commercial ; métadonnées CC0) ; vérifier les droits par notice ; manifeste unique par objet (pas de Collection IIIF) |
 | north_dakota | North Dakota Digital Horizons | North Dakota State Library / NDSU Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | North Dakota State Library / NDSU Libraries — API CONTENTdm publique sans clé (digitalhorizonsonline.org/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », « Copyright held by the University Archives. », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
-| openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement |
+| openverse | Openverse | WordPress Foundation | INTL | rest | none | varies | Licences Creative Commons uniquement (CC0, CC BY, CC BY-SA ; exclut NC/ND) ; API REST publique sans clé (api.openverse.org/v1/images) ; ne conserver que les licences ouvertes ; pagination `page`/`page_size` |
 | paris_musees | Paris Musées — Collections (API) | Paris Musées (Ville de Paris) | FR | iiif | none | varies | Paris Musées — vérifier la mention de droits par notice (majorité domaine public) ; manifeste unique par notice (pas de Collection IIIF) |
 | penn_state | Penn State Digital Collections | Pennsylvania State University Libraries | US | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Pennsylvania State University Libraries — API CONTENTdm publique sans clé (digital.libraries.psu.edu/digital/api) ; recherche `/search/searchterm/<q>` (maxRecords 10, pagination `start`) puis `/singleitem/collection/<alias>/id/<id>` ; filtre image `contentType` `image/*` et `imageUri` non vide ; filtre droits explicites par notice (PD/NoC-US/CC0/CC BY ; rejette « In Copyright », InC/CNE, droits réservés et CC BY-NC/ND) ; images via IIIF `iiif/2/<alias>:<id>` (!1200 image, !400 vignette) ; page_url via itemLink ; aucun téléchargement (URLs seulement) |
 | princeton_art_museum | Princeton University Art Museum (IIIF) | Princeton University Art Museum, Princeton, NJ | US | iiif | none | varies | Princeton University Art Museum — vérifier la mention de droits par notice (nombreux domaines publics) ; manifeste unique par objet (pas de Collection IIIF) |
@@ -93,10 +94,10 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 
 ## Raccourcis licence
 
-- **Domaine public / CC0** : `atlanta`, `artic`, `bsb`, `byu`, `cleveland`, `cooper_hewitt`,
+- **Domaine public / CC0** : `atlanta`, `artic`, `bsb`, `byu`, `carli`, `cleveland`, `cooper_hewitt`,
   `digital_commonwealth`, `hennepin`, `hillsborough`, `japan_search`, `kmska`, `llgc`, `met`, `nasa`, `nb_no`, `ndl`, `north_dakota`, `penn_state`, `rijksmuseum`, `scdl`, `smk`, `smithsonian`, `teva` (plus
   `wikidata` pour les données ; `nasa` = domaine public US, pas CC0 ; `atlanta`,
-  `byu`, `hennepin`, `hillsborough`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
+  `byu`, `carli`, `hennepin`, `hillsborough`, `north_dakota`, `penn_state`, `scdl`, `teva` = CONTENTdm — filtre PD/NoC-US/CC0/CC BY par
   notice ; `japan_search` — filtre pdm/cc0/ccby par notice).
 - **Réutilisation libre (y compris commerciale), attribution requise** : `anmt`,
   `eol`, `gbif`, `inaturalist` — `anmt` : décision du 21 août 2017 (art. L.213-1
@@ -105,8 +106,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
   (licence vérifiée au niveau de chaque média `dataObjects[].license`),
   attribution par média. `gbif` : uniquement les médias sous CC0 1.0 ou CC BY 4.0
   (licence vérifiée au niveau de chaque média `media[].license`), attribution par
-  média. `inaturalist` : uniquement les photos sous CC0 ou CC BY (licence
-  vérifiée au niveau de chaque photo), attribution par photo.
+  média. `inaturalist` : uniquement les photos sous CC0 ou CC B
 - **Varies / par notice** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `europeana`, `gallica`, `hammer`, `harvard_art_museums`,
   `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`,
