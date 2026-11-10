@@ -68,6 +68,9 @@ operator:
   browser:
     bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN
     chat_id: ""
+  resolver:
+    bot_token_env: MNEMOSYNE_RESOLVER_BOT_TOKEN
+    chat_id: ""
 
 # Email wait channel: the browser agent can park a task until a matching email
 # arrives (`wait_for_email`). The heartbeat polls this IMAP mailbox and puts the

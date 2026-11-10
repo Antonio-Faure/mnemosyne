@@ -52,9 +52,13 @@ ET sort du cadre écrit**.
    coupe jamais une tâche en cours : elle fait passer la tâche concernée en
    tête de la prochaine place libre.
 
-## Telegram : deux bots, des boutons
+## Telegram : trois bots, une question à la fois
 
-- **Un bot par agent** (`coder`, `browser`) : tu sais toujours qui parle.
+- **Un bot par agent** (`coder`, `browser`, `resolver`) : tu sais toujours qui
+  parle, et deux sessions ne peuvent pas te poser une question en même temps.
+- **Une seule question à la fois** : la file d'attente est globale. Tant que la
+  question envoyée n'a pas de réponse, aucune autre n'est expédiée — quel que
+  soit l'agent ou la tâche. Dès que tu réponds, la suivante part.
 - La question part avec des **boutons inline** (2 à 6 options) + un bouton
   **✏️ Autre réponse** (tu réponds au message, texte libre, max 500 caractères).
 - Seul **ton chat** est écouté ; tout autre expéditeur est ignoré.
@@ -78,12 +82,14 @@ question.
 
 ## Mise en place (une fois)
 
-1. **Créer deux bots** chez [@BotFather](https://t.me/BotFather) :
-   `/newbot` → ex. `mnemosyne_coder_bot` et `mnemosyne_browser_bot`.
+1. **Créer trois bots** chez [@BotFather](https://t.me/BotFather) :
+   `/newbot` → ex. `mnemosyne_coder_bot`, `mnemosyne_browser_bot` et
+   `mnemosyne_resolver_bot`.
 2. **Déposer les tokens au vault** :
    ```bash
    mnemosyne vault set mnemosyne_coder_bot_token <token coder>
    mnemosyne vault set mnemosyne_browser_bot_token <token browser>
+   mnemosyne vault set mnemosyne_resolver_bot_token <token resolver>
    ```
 3. **Ouvrir chaque bot et appuyer sur /start** (un bot ne peut pas écrire le
    premier). Récupérer ton chat id : `mnemosyne telegram updates`.
@@ -91,8 +97,9 @@ question.
    ```yaml
    operator:
      enabled: true
-     coder:   { bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN,   chat_id: "123456789" }
-     browser: { bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN, chat_id: "123456789" }
+     coder:    { bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN,    chat_id: "123456789" }
+     browser:  { bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN,  chat_id: "123456789" }
+     resolver: { bot_token_env: MNEMOSYNE_RESOLVER_BOT_TOKEN, chat_id: "123456789" }
    ```
 5. Redémarrer le conteneur (`docker compose up -d`) — le job `telegram`
    (toutes les 30 s) apparaît dans le heartbeat.
@@ -118,6 +125,7 @@ Le chien de garde alerte si une question attend depuis plus de 2 h.
 - `src/mnemosyne/agents/supervisor.py` — injection de la réponse
   (`--- réponse de l'opérateur ---`), destinataires filtrés aux agents.
 - `dev/tools.py` + `agents/browser_agent.py` — l'outil `ask_operator`.
-- `agents/coder.md` / `agents/browser.md` — les règles de questionnement.
+- `agents/coder.md` / `agents/browser.md` / `agents/resolver.md` — les règles
+  de questionnement.
 - `src/mnemosyne/heartbeat/jobs.py` — job `telegram` (30 s).
 - `src/mnemosyne/monitor.py` — alerte « attend une réponse » (> 2 h).

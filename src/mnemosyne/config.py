@@ -245,9 +245,11 @@ class OperatorBotConfig(BaseModel):
 class OperatorConfig(BaseModel):
     """Operator channel: agent questions as Telegram inline keyboards.
 
-    Two bots (one per agent) so the operator always knows who is asking. The
-    token is read from the env var, then from the vault under the lowercased
-    name (e.g. `mnemosyne_coder_bot_token`).
+    Three bots (one per agent: coder, browser, resolver) so the operator always
+    knows who is asking. Questions are delivered ONE AT A TIME: the next one is
+    only sent after the previous answer. The token is read from the env var,
+    then from the vault under the lowercased name (e.g.
+    `mnemosyne_coder_bot_token`).
     """
 
     enabled: bool = False
@@ -256,6 +258,9 @@ class OperatorConfig(BaseModel):
     )
     browser: OperatorBotConfig = Field(
         default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_BROWSER_BOT_TOKEN")
+    )
+    resolver: OperatorBotConfig = Field(
+        default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_RESOLVER_BOT_TOKEN")
     )
 
 
