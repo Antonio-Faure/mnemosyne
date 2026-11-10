@@ -231,7 +231,6 @@ def test_resolver_question_is_stored_for_resolver_mailbox(config):
                 task_id=1,
                 question="Valide ce candidat ?",
                 options=[{"label": "Valide"}, {"label": "Refuse"}],
-                bot_agent="browser",
             )
         )
         assert db.get_ask(ask_id)["agent"] == "resolver"
@@ -239,5 +238,102 @@ def test_resolver_question_is_stored_for_resolver_mailbox(config):
         assert len(asked) == 1
         assert asked[0]["sender"] == "resolver"
         assert "Valide ce candidat" in asked[0]["body"]
+    finally:
+        db.close()
+
+
+def test_questions_are_delivered_one_at_a_time(config):
+    """The Telegram drip: a sent-but-unanswered question blocks the queue."""
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("coder", "mission 1")
+        db.enqueue_task("browser", "mission 2")
+        db.create_ask("a1", 1, "coder", "q1", [{"label": "Oui"}])
+        db.create_ask("a2", 2, "browser", "q2", [{"label": "Oui"}])
+
+        assert telegram.next_ask_to_send(db)["id"] == "a1"
+        db.set_ask_telegram("a1", "42", 100)
+        assert telegram.next_ask_to_send(db) is None, "one question at a time"
+
+        db.answer_ask("a1", "Oui")
+        assert telegram.next_ask_to_send(db)["id"] == "a2"
+    finally:
+        db.close()
+
+
+def test_ask_operator_does_not_send_immediately(config, monkeypatch):
+    """The agent only registers; the telegram job owns delivery order."""
+    sent: list[str] = []
+
+    async def fake_send(cfg, agent, ask, vault_get):
+        sent.append(ask["id"])
+        return None
+
+    monkeypatch.setattr(telegram, "send_ask", fake_send)
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("resolver", "mission")
+        ask_id = asyncio.run(
+            telegram.ask_operator(
+                config,
+                db,
+                None,
+                agent="resolver",
+                task_id=1,
+                question="Valide ?",
+                options=[{"label": "Oui"}, {"label": "Non"}],
+            )
+        )
+        assert sent == []
+        assert db.get_ask(ask_id)["tg_message_id"] is None
+    finally:
+        db.close()
+
+
+def test_resolver_has_its_own_bot(config):
+    assert config.operator.resolver.bot_token_env == "MNEMOSYNE_RESOLVER_BOT_TOKEN"
+    assert config.operator.resolver is not config.operator.browser
+
+
+def test_reply_is_matched_within_the_right_bot(config):
+    """Two bots can use the same message id: the reply must not cross them."""
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("coder", "mission 1")
+        db.enqueue_task("browser", "mission 2")
+        db.create_ask("a1", 1, "coder", "coder question", [{"label": "Oui"}])
+        db.create_ask("a2", 2, "browser", "browser question", [{"label": "Oui"}])
+        db.set_ask_telegram("a1", "42", 100)
+        db.set_ask_telegram("a2", "42", 100)
+
+        update = {
+            "message": {
+                "text": "réponse au coder",
+                "chat": {"id": 42},
+                "reply_to_message": {"message_id": 100},
+            }
+        }
+        order = telegram.handle_update(db, "coder", update)
+        assert order["kind"] == "answered"
+        assert db.get_ask("a1")["status"] == "answered"
+        assert db.get_ask("a2")["status"] == "pending"
+    finally:
+        db.close()
+
+
+def test_questions_from_before_the_channel_was_enabled_are_skipped(config):
+    """Enabling Telegram must not dump the backlog accumulated while it was off."""
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("coder", "old mission")
+        db.create_ask("old", 1, "coder", "old question", [{"label": "Oui"}])
+        db._conn.execute(
+            "UPDATE operator_asks SET created_at = '2000-01-01T00:00:00+00:00' WHERE id = 'old'"
+        )
+        db._conn.commit()
+        db.enqueue_task("coder", "new mission")
+        db.create_ask("new", 2, "coder", "new question", [{"label": "Oui"}])
+
+        assert telegram.next_ask_to_send(db, since="2020-01-01T00:00:00+00:00")["id"] == "new"
     finally:
         db.close()

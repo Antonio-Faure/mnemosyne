@@ -2,12 +2,15 @@
 
 Design (see docs/OPERATEUR-TELEGRAM.md):
 
-* each agent has its own bot and its own chat with the operator;
+* each agent has its own bot and its own chat with the operator
+  (coder, browser, resolver — never shared);
 * a question is stored (`operator_asks`), posted in the task's mailbox
   (`agent → operator`) and sent with inline keyboard buttons;
+* questions are delivered ONE AT A TIME: the next one is only sent after the
+  previous answer, so two agents can never ask at the same time;
 * a tap (or a free-text reply) is routed back into the mailbox
   (`operator → agent`) and the task resumes at the next heartbeat tick;
-* one process (the container) is the only update reader for both bots.
+* one process (the container) is the only update reader for the three bots.
 """
 
 from __future__ import annotations
@@ -109,12 +112,13 @@ async def ask_operator(
     task_id: int,
     question: str,
     options: list[dict[str, Any]],
-    bot_agent: str | None = None,
 ) -> str:
-    """Register the question, post it in the task mailbox, send it to Telegram.
+    """Register the question and post it in the task mailbox.
 
-    Returns the ask id. Telegram being unavailable is not fatal: the question
-    is still in the mailbox and the operator can answer with `mnemosyne answer`.
+    Delivery is deliberately NOT immediate: the telegram job sends questions one
+    at a time (`send_next_ask`), and only after the previous answer. Telegram
+    being unavailable is not fatal: the question is in the mailbox and the
+    operator can answer with `mnemosyne answer`.
     """
     ask_id = secrets.token_hex(5)
     mailbox = Mailbox(db)
@@ -123,13 +127,50 @@ async def ask_operator(
     )
     message_id = mailbox.post(agent, OPERATOR, body, task_id)
     db.create_ask(ask_id, task_id, agent, question, options, message_id=message_id)
-    # The question belongs to `agent` (the answer goes back to its mailbox),
-    # while the Telegram bot/chat can be another one (e.g. resolver reuses the
-    # browser bot to avoid a third token).
-    sent = await send_ask(config, bot_agent or agent, db.get_ask(ask_id), vault_get)
-    if sent:
-        db.set_ask_telegram(ask_id, sent[0], sent[1])
     return ask_id
+
+
+def _awaiting_answer(ask: dict) -> bool:
+    """True when this question is already on the operator's screen."""
+    return bool(ask.get("tg_message_id") or ask.get("tg_prompt_id"))
+
+
+def next_ask_to_send(db: Database, *, since: str | None = None) -> dict | None:
+    """The next question to send, or None when one is already awaiting an answer.
+
+    This is the whole one-at-a-time mechanic: as long as a sent question has no
+    answer, nothing else is delivered — whatever the agent or the task. `since`
+    (ISO timestamp) skips a backlog created before the channel was enabled.
+    """
+    pending = db.list_asks(status="pending")
+    if since:
+        pending = [ask for ask in pending if str(ask.get("created_at") or "") >= since]
+    if any(_awaiting_answer(ask) for ask in pending):
+        return None
+    for ask in pending:
+        if not _awaiting_answer(ask):
+            return ask
+    return None
+
+
+async def send_next_ask(
+    config: Config, db: Database, vault_get, *, since: str | None = None
+) -> dict | None:
+    """Deliver the next pending question (if the channel is idle)."""
+    ask = next_ask_to_send(db, since=since)
+    if ask is None:
+        return None
+    sent = await send_ask(config, ask["agent"], ask, vault_get)
+    if not sent:
+        return None
+    db.set_ask_telegram(ask["id"], sent[0], sent[1])
+    log.info(
+        "operator: question %s envoyée (agent %s, tâche #%s)",
+        ask["id"],
+        ask["agent"],
+        ask["task_id"],
+    )
+    return ask
 
 
 def _deliver(db: Database, ask: dict, answer: str) -> None:
@@ -173,6 +214,10 @@ def handle_update(db: Database, agent: str, update: dict) -> dict | None:
             return None
         replied_to = reply.get("message_id")
         for ask in db.list_asks(status="pending"):
+            # Message ids are per bot: a reply in the coder bot must never match
+            # a browser/resolver question that happens to share the same id.
+            if ask.get("agent") != agent:
+                continue
             if str(ask.get("tg_chat_id") or "") != chat_id:
                 continue
             if replied_to in (ask.get("tg_message_id"), ask.get("tg_prompt_id")):
@@ -248,7 +293,7 @@ async def poll_once(config: Config, db: Database, vault_get) -> int:
     Only the configured chat is heard. Returns the number of handled updates.
     """
     handled = 0
-    for agent in ("coder", "browser"):
+    for agent in ("coder", "browser", "resolver"):
         bot = resolve_bot(config, agent, vault_get)
         if bot is None:
             continue
@@ -301,4 +346,7 @@ async def poll_once(config: Config, db: Database, vault_get) -> int:
                 # advance only AFTER the update was handled: a crash mid-batch
                 # must not consume updates that were never routed
                 db.set_kv(offset_key, int(update["update_id"]) + 1)
+    # The answer (if any) just freed the channel: send the next question.
+    since = db.get_kv("telegram_since") or None
+    await send_next_ask(config, db, vault_get, since=since)
     return handled
