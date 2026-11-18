@@ -39,14 +39,19 @@ _CALLBACK_PREFIX = "q"
 def resolve_bot(config: Config, agent: str, vault_get) -> tuple[str, str] | None:
     """(token, chat_id) for one agent's bot; token from env, then the vault."""
     bot: OperatorBotConfig | None = getattr(config.operator, agent, None)
-    if bot is None or not bot.chat_id:
+    if bot is None:
+        return None
+    chat_id = bot.chat_id or (
+        os.environ.get(bot.chat_id_env, "") if bot.chat_id_env else ""
+    )
+    if not chat_id:
         return None
     token = os.environ.get(bot.bot_token_env) or ""
     if not token and vault_get is not None:
         token = str(vault_get(bot.bot_token_env.lower()) or "")
     if not token:
         return None
-    return token, bot.chat_id
+    return token, chat_id
 
 
 def question_text(ask: dict) -> str:

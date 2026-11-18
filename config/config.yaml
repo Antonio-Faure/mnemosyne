@@ -58,15 +58,18 @@ llm:
 # (e.g. `mnemosyne vault set mnemosyne_coder_bot_token <token>`).
 # A bot cannot message you before you press /start on it.
 operator:
-  enabled: false
+  enabled: true
   coder:
     bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN
-    chat_id: ""     # your Telegram chat id (see `mnemosyne telegram updates`)
+    chat_id_env: MNEMOSYNE_CODER_CHAT_ID
+    chat_id: ""
   browser:
     bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN
+    chat_id_env: MNEMOSYNE_BROWSER_CHAT_ID
     chat_id: ""
   resolver:
     bot_token_env: MNEMOSYNE_RESOLVER_BOT_TOKEN
+    chat_id_env: MNEMOSYNE_RESOLVER_CHAT_ID
     chat_id: ""
 
 # Email wait channel: the browser agent can park a task until a matching email
