@@ -93,8 +93,8 @@ class CatalogSearchParams(BaseModel):
 
 
 class VideoContextParams(BaseModel):
-    before: int = Field(default=15, ge=0, le=40, description="Segments before the phrase")
-    after: int = Field(default=15, ge=0, le=40, description="Segments after the phrase")
+    before: int = Field(default=30, ge=0, le=40, description="Segments before the phrase")
+    after: int = Field(default=30, ge=0, le=40, description="Segments after the phrase")
     include_summary: bool = Field(
         default=True, description="Include the stored video summary/outline"
     )
@@ -278,6 +278,7 @@ class ResolverToolProvider(ToolProvider):
                 before=p.before,
                 after=p.after,
                 include_summary=p.include_summary,
+                max_chars=12000,
             )
             if not card:
                 return _fail("contexte vidéo indisponible pour cette phrase")
