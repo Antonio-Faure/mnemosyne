@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from mnemosyne.config import get_config
 from mnemosyne.db import Database
+from mnemosyne.observatory.board import BOARDS, build_board
 
 router = APIRouter(prefix="/api/obs", tags=["observatory"])
 
@@ -53,6 +54,20 @@ def _event(row: dict) -> dict:
     out = dict(row)
     out["payload"] = _decode(out.get("payload"))
     return out
+
+
+@router.get("/tasks")
+def list_board_tasks(
+    board: Annotated[str, Query(pattern="^(resolver|atelier)$")] = "resolver",
+) -> dict:
+    """The two Kanbans: resolutions (resolver) or source missions (atelier)."""
+    if board not in BOARDS:
+        raise HTTPException(status_code=400, detail="unknown board")
+    db = _connect()
+    try:
+        return build_board(db, board)
+    finally:
+        db.close()
 
 
 @router.get("/sessions")

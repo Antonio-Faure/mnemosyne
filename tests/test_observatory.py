@@ -377,3 +377,23 @@ def test_api_serves_the_search_page(config, monkeypatch):
     assert response.status_code == 200
     assert "Mnemosyne" in response.text
     assert 'id="search-form"' in response.text
+
+
+def test_api_serves_the_two_kanbans(config, monkeypatch):
+    db = Database(config.db_file())
+    task_id = db.enqueue_task("resolver", "Phrase : Une phrase de test.")
+    db.close()
+
+    client = _client(config, monkeypatch)
+    resolver = client.get("/api/obs/tasks?board=resolver").json()
+    assert resolver["board"] == "resolver"
+    assert [column["id"] for column in resolver["columns"]] == [
+        "queued", "running", "waiting", "done", "failed",
+    ]
+    assert any(card["task_id"] == task_id for card in resolver["cards"])
+    assert resolver["cards"][0]["kind"] == "resolution"
+
+    atelier = client.get("/api/obs/tasks?board=atelier").json()
+    assert atelier["board"] == "atelier"
+    assert atelier["cards"] == []
+    assert client.get("/api/obs/tasks?board=nope").status_code == 422
