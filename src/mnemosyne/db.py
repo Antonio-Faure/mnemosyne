@@ -349,7 +349,7 @@ class Database:
             self._conn.commit()
 
     def _migrate_legacy_names(self) -> None:
-        """Rename columns/indexes that predate the tri-agent naming (idempotent)."""
+        """Rename columns/indexes that predate the Archivist naming (idempotent)."""
         exists = self._conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='resolver_requests'"
         ).fetchone()

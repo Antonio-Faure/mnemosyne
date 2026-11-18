@@ -90,7 +90,7 @@ class IdentityConfig(BaseModel):
 
 
 class AgentsConfig(BaseModel):
-    """Stirrup agent loop settings (tri-agent + warmup)."""
+    """Stirrup agent loop settings (Archivist + warmup)."""
 
     max_turns: int = 400
     #: warmup sessions use the same reasoning model as everything else

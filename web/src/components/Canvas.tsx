@@ -140,7 +140,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         handles: NODE_HANDLES,
         position: { x: 240, y: -120 },
         data: {
-          label: "Agency",
+          label: "Moteur de file",
           subtitle: isAgency
             ? `moteur de la file · ${session?.status ?? ""}`
             : last === "agency"
@@ -163,7 +163,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         data: {
           label: "Résolveur",
           subtitle: resolverActive
-            ? "session de phrase en cours"
+            ? "résolution en cours"
             : `${state.eventsByAgent.resolver ?? 0} événements`,
           color: COLORS.resolver,
           icon: ScanSearch,
@@ -179,7 +179,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         handles: NODE_HANDLES,
         position: { x: 400, y: 0 },
         data: {
-          label: "Orchestrateur",
+          label: "Superviseur",
           subtitle: isJob ? `job ${session?.type ?? ""}` : "file · superviseur",
           color: COLORS.orchestrator,
           icon: Network,
@@ -213,7 +213,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         handles: NODE_HANDLES,
         position: { x: 400, y: 200 },
         data: {
-          label: "Mailbox",
+          label: "Boîte aux lettres",
           subtitle: "messages",
           color: COLORS.mailbox,
           icon: Inbox,
@@ -250,7 +250,7 @@ export function Canvas({ session, visible, onFocus, panelOpen, sidebarOpen }: Pr
         handles: NODE_HANDLES,
         position: { x: 80, y: 400 },
         data: {
-          label: `Job · ${session?.type ?? ""}`,
+          label: `Job système · ${session?.type ?? ""}`,
           subtitle: state.jobActive ? "en cours" : session?.status ?? "terminé",
           color: COLORS.job,
           icon: Briefcase,

@@ -53,7 +53,7 @@ export function ReplayBar({
           onClick={onReplay}
           disabled={!hasEvents}
           className={GHOST}
-          title="Rejouer depuis le début"
+          title="Relire depuis le début"
           aria-label="Rejouer depuis le début"
         >
           <RotateCcw size={13} />
@@ -98,8 +98,8 @@ export function ReplayBar({
         value={hasEvents ? cursor : 0}
         onChange={(event) => onSeek(Number(event.target.value))}
         className="h-1 min-w-[60px] flex-1 cursor-pointer rounded-full bg-ink-700 accent-sky-400"
-        title="Position dans la timeline"
-        aria-label="Position dans la timeline"
+        title="Position dans la chronologie"
+        aria-label="Position dans la chronologie"
       />
 
       <div className="hidden shrink-0 flex-col items-end leading-tight sm:flex">

@@ -47,5 +47,5 @@ editing `.env`.
 
 - Never log a secret value. `export_vault_secrets()` logs only variable *names*.
 - Vault writes go through `Vault.set()` (atomic write).
-- If a provider needs an account (email verification, captcha), the browser agent
+- If a source needs an account (email verification, captcha), the browser agent
   asks the operator via Telegram (`request_human`) instead of guessing.

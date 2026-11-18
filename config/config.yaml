@@ -116,7 +116,7 @@ discovery:
   interval_s: 86400
   limit: 100
 
-# Coder agent (tri-agent; also reachable via `mnemosyne agency --to coder`).
+# Coder agent (Archivist; also reachable via `mnemosyne agency --to coder`).
 dev:
   # GEL DE L'ONBOARDING (décision du 16/10/2026) : aucune source ne s'ajoute —
   # ni scan, ni mission de connexion, ni `connect-next`, ni tâche connect en
@@ -130,7 +130,7 @@ dev:
   fetch_max_chars: 3000
   # model: deepseek-v4.1-flash   # uncomment to use a cheaper model for dev
 
-# Stirrup agent loop settings (tri-agent + warmup).
+# Stirrup agent loop settings (Archivist + warmup).
 agents:
   max_turns: 400
   # Modèle des séances de warmup : aligné sur le défaut DeepSeek V4.1 Flash.

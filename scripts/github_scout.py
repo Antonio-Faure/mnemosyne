@@ -4,7 +4,7 @@ The purpose: feed the architect-taste corpus with real decision stories —
 small repos (like mnemosyne) whose README/docs/issues/commit messages show
 WHY a design was chosen and what was rejected. Discovery is an API problem
 (no browser): this script finds and ranks candidates; the deep reading is
-delegated to the tri-agent.
+delegated to Archivist.
 
 Usage (host, authenticated gh):
     python scripts/github_scout.py --out data/architect-corpus/candidates.jsonl
@@ -79,6 +79,7 @@ def candidate_signal(repo: dict, docs: list[str]) -> int:
         score += min(4, len(docs))
     if repo.get("open_issues_count"):
         score += 1
+    # External discovery keywords: other repositories may still use "bi-agent".
     if repo.get("description") and any(
         w in repo["description"].lower()
         for w in ("agent", "orchestr", "autonom", "multi-agent", "bi-agent")

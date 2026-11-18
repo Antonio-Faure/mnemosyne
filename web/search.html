@@ -472,7 +472,7 @@
     }
     .chip:hover { border-color: var(--accent); background: var(--accent-wash); color: var(--accent-dark); }
 
-    .notice {
+    .alert-box {
       border: 1px solid var(--line-strong);
       border-top: 2px solid var(--accent);
       background: var(--surface);
@@ -480,14 +480,14 @@
       max-width: 760px;
     }
 
-    .notice h2 {
+    .alert-box h2 {
       margin: 0 0 6px;
       font-family: var(--serif);
       font-size: 24px;
       font-weight: 400;
     }
 
-    .notice p { margin: 0 0 14px; color: var(--ink-soft); font-size: 13.5px; }
+    .alert-box p { margin: 0 0 14px; color: var(--ink-soft); font-size: 13.5px; }
 
     .retry {
       border: 1px solid var(--ink);
@@ -775,7 +775,7 @@
         <div class="state" id="initial-state">
           <h2>Commencez par un sujet, un lieu, une époque.</h2>
           <p>
-            Une seule recherche parcourt les catalogues connectés. Vous arrivez ensuite sur la notice
+            Une seule recherche parcourt les catalogues connectés. Vous arrivez ensuite sur la fiche
             de l'institution, qui donne accès à l'image et à ses conditions d'utilisation.
           </p>
           <div class="state-actions" id="suggestions" aria-label="Exemples de recherche"></div>
@@ -807,7 +807,7 @@
       <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Fermer l'aperçu">Fermer</button>
       <div class="lightbox-media" id="lightbox-media">
         <div class="lightbox-fallback" id="lightbox-fallback">
-          L'image ne peut pas être affichée ici. Ouvrez la notice de l'institution pour la consulter.
+          L'image ne peut pas être affichée ici. Ouvrez la fiche de l'institution pour la consulter.
         </div>
       </div>
       <div class="lightbox-body">
@@ -938,7 +938,7 @@
         const state = el("div", "state");
         state.id = "initial-state";
         state.appendChild(el("h2", "", "Commencez par un sujet, un lieu, une époque."));
-        state.appendChild(el("p", "", "Une seule recherche parcourt les catalogues connectés. Vous arrivez ensuite sur la notice de l'institution, qui donne accès à l'image et à ses conditions d'utilisation."));
+        state.appendChild(el("p", "", "Une seule recherche parcourt les catalogues connectés. Vous arrivez ensuite sur la fiche de l'institution, qui donne accès à l'image et à ses conditions d'utilisation."));
         const actions = el("div", "state-actions");
         actions.id = "suggestions";
         actions.setAttribute("aria-label", "Exemples de recherche");
@@ -1019,15 +1019,15 @@
 
       function showError(message) {
         clear(content);
-        const notice = el("div", "notice");
-        notice.setAttribute("role", "alert");
-        notice.appendChild(el("h2", "", "La recherche n'a pas abouti."));
-        notice.appendChild(el("p", "", message || "Vérifiez que le service Mnemosyne est lancé, puis réessayez."));
+        const alertBox = el("div", "alert-box");
+        alertBox.setAttribute("role", "alert");
+        alertBox.appendChild(el("h2", "", "La recherche n'a pas abouti."));
+        alertBox.appendChild(el("p", "", message || "Vérifiez que le service Mnemosyne est lancé, puis réessayez."));
         const retry = el("button", "retry", "Réessayer");
         retry.type = "button";
         retry.addEventListener("click", () => runSearch({ push: false }));
-        notice.appendChild(retry);
-        content.appendChild(notice);
+        alertBox.appendChild(retry);
+        content.appendChild(alertBox);
       }
 
       function openLightbox(asset) {
@@ -1117,7 +1117,7 @@
         const rights = (asset.rights || asset.license || "").trim();
         article.appendChild(el("p", "result-rights", rights || "Droits non précisés"));
 
-        if (page) article.appendChild(link(page, "result-link", "Voir la notice"));
+        if (page) article.appendChild(link(page, "result-link", "Voir la fiche"));
         return article;
       }
 
@@ -1163,7 +1163,7 @@
 
       function paramsFor(query) {
         // Per-source limit. A single source gets a fuller page; the federated
-        // search stays lean so one slow provider cannot dominate the request.
+        // search stays lean so one slow source cannot dominate the request.
         const limit = sourceSelect.value ? "12" : "8";
         const params = new URLSearchParams({ q: query, limit });
         if (sourceSelect.value) params.set("source", sourceSelect.value);

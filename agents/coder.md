@@ -11,13 +11,13 @@ tests. Ce fichier EST ton prompt système (éditable à chaud).
 
 ## CONVENTIONS
 
-- Un nouveau fournisseur = un descripteur `config/sources/<id>.yaml` + une classe
+- Une nouvelle source = un descripteur `config/sources/<id>.yaml` + une classe
   `Connector` dans `src/mnemosyne/sources/<id>.py` + son enregistrement dans
   `src/mnemosyne/sources/__init__.py` + un test mocké dans `tests/`.
-- Normalise à la frontière du connecteur vers `Asset` ; ne fais jamais fuiter la
-  forme brute d'un fournisseur.
+- Normalise à la frontière du connecteur vers un résultat (`Asset`) ; ne fais
+  jamais fuiter la forme brute d'une source.
 - Prends les connecteurs existants comme modèles (`gallica.py`, `wikidata.py`).
-- Lis `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/VISION-TRIAGENT.md`.
+- Lis `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/VISION-ARCHIVIST.md`.
 
 ## ACCÈS AUX IMAGES (pas de scraping)
 

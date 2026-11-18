@@ -1,6 +1,6 @@
 """Real-Chrome integration.
 
-The tri-agent drives one headful Chrome over CDP (Xvfb + noVNC inside the
+Archivist drives one headful Chrome over CDP (Xvfb + noVNC inside the
 `mnemosyne` container) with its own persistent profile and Google account;
 `browser-harness` helpers attach to `cdp_url()`.
 """

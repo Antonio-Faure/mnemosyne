@@ -158,7 +158,7 @@ def _cmd_obs_backfill(args: argparse.Namespace) -> int:
 
 
 def _cmd_agency(args: argparse.Namespace) -> int:
-    """Run the coder/browser supervisor (part of the tri-agent system)."""
+    """Run the coder/browser supervisor (part of Archivist)."""
     cfg = get_config()
     from mnemosyne.agents.supervisor import run_agency
 

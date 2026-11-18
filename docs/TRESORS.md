@@ -44,20 +44,20 @@ Seeds de (re)collecte déclarés dans `config/sources/` :
 | `title` | string | Titre de l'œuvre / de la planche |
 | `creator` | string | Auteur (graveur / illustrateur), éventuellement « variés » |
 | `date` | string | Date de création ou de publication (ex. `"1896"`) |
-| `source` | string | Fournisseur (`Wikimedia Commons`, `Internet Archive`, `Cleveland Museum of Art`) |
+| `source` | string | Source (`Wikimedia Commons`, `Internet Archive`, `Cleveland Museum of Art`) |
 | `page_url` | string (HTTP 200) | Page descriptive pérenne de l'item |
 | `image_url` | string (HTTP 200, `image/*`, JPEG) | Fichier image plein format |
 | `license` | string | Libellé exact de licence (voir §2) |
 | `license_url` | string | URL canonique de la licence (Creative Commons / Commons) |
 | `retrieved_at` | string (ISO 8601) | Horodatage de collecte, ex. `2025-01-15T10:00:00Z` |
 
-Le connecteur ne fait jamais fuiter la forme brute d'un fournisseur : à la
+Le connecteur ne fait jamais fuiter la forme brute d'une source : à la
 frontière il normalise vers l'`Asset` canonique (`src/mnemosyne/models.py`),
 le surplus allant dans `Asset.extra`.
 
 ## 4. Méthode de collecte et vérification
 
-1. Interrogation *paced* de chaque fournisseur via le helper
+1. Interrogation *paced* de chaque source via le helper
    `harness/helpers/belle_epoque.py` (User-Agent descriptif pour Wikimedia,
    User-Agent navigateur pour Gallica, `maxlag=5`, retries espacés).
 2. Pour chaque candidat : **vérification HTTP 200** de `page_url` et

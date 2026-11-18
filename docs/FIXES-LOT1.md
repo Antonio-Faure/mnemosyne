@@ -1,5 +1,8 @@
 # Lot 1 — bugs critiques (audit multi-agents, octobre 2026)
 
+> Document historique : le vocabulaire d'époque est conservé ; voir
+> [`docs/NOMENCLATURE.md`](NOMENCLATURE.md) pour les termes actuels.
+
 Quatre sous-agents ont audité le dépôt (code mort, bugs cœur, sources,
 refactor) : ~60 constats. Ce lot corrige les **6 bugs critiques vérifiés**
 (lecture du code + exécution des cas) et durcit les garde-fous de tests.

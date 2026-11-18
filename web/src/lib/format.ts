@@ -32,7 +32,7 @@ export function sessionTypeLabel(session: Session): string {
 }
 
 export function sessionFamilyLabel(session: Session): string {
-  if (session.family === "job") return "système";
+  if (session.family === "job") return "job système";
   if (session.agent === "browser") return "navigateur";
   if (session.agent === "coder") return "codeur";
   if (session.agent === "resolver") return "résolveur";
