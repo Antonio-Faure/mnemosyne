@@ -25,7 +25,6 @@ WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
 WATCHDOG_INTERVAL_S = 300  # invariants check, inside the service (no side process)
 AGENCY_INTERVAL_S = 120  # check the agent mailbox every 2 minutes (idle = free)
-OPERATOR_INTERVAL_S = 30  # poll the operator bots (answers wake parked tasks)
 
 #: Job runs whose real trace is the task session: keep them out of the sidebar
 #: by default (visible with "inclure les runs silencieux").
@@ -47,9 +46,62 @@ class Heartbeat:
             notifier=self.notifier,
         )
         self._stop = asyncio.Event()
+        self._wake_tasks: set[asyncio.Task] = set()
         # Jobs run OUTSIDE the tick: a long agent session (agency, resolver) must
         # never freeze the heartbeat and starve the other permanent loop.
         self._inflight: dict[int, asyncio.Task] = {}
+
+    def _vault_get(self):
+        """Vault reader for the listener wake path (same rules as job handlers)."""
+        from mnemosyne.vault import Vault
+
+        if not self.config.vault_file.exists():
+            return None
+        return Vault(self.config.vault_file).get
+
+    def _wake_from_operator(self, order: dict) -> None:
+        """After an answer, nudge the right supervisor instead of waiting a tick."""
+        ask = order.get("ask") or {}
+        agent = str(ask.get("agent") or "")
+        if agent == "resolver":
+            if not self.config.resolver.enabled:
+                return
+            agents: tuple[str, ...] = ("resolver",)
+            lease = "resolver"
+        else:
+            agents = ("coder", "browser")
+            lease = "agency"
+        from mnemosyne.agents.supervisor import run_pending_once
+
+        task = asyncio.create_task(
+            run_pending_once(
+                self.config,
+                journal=self.journal,
+                vault_get=self._vault_get(),
+                agents=agents,
+                lease=lease,
+            )
+        )
+        self._wake_tasks.add(task)
+        task.add_done_callback(self._wake_tasks.discard)
+
+    async def _listen_loop(self) -> None:
+        """Persistent Telegram bridge; restart it if a bug ever escapes the loops."""
+        from mnemosyne.operator.telegram import listen_forever
+
+        while not self._stop.is_set():
+            try:
+                await listen_forever(
+                    self.config,
+                    self.engine.db,
+                    self._vault_get(),
+                    wake=self._wake_from_operator,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - keep the operator channel alive
+                log.error("telegram listener crashed: %s", exc, exc_info=True)
+                await asyncio.sleep(5)
 
     # ── bootstrap ────────────────────────────────────────────────────────
     def bootstrap(self) -> None:
@@ -94,10 +146,6 @@ class Heartbeat:
         if not self.engine.db.has_open_job("watchdog"):
             self.engine.db.enqueue(
                 Job(kind="watchdog", payload={"interval_s": WATCHDOG_INTERVAL_S}, priority=99)
-            )
-        if self.config.operator.enabled and not self.engine.db.has_open_job("telegram"):
-            self.engine.db.enqueue(
-                Job(kind="telegram", payload={"interval_s": OPERATOR_INTERVAL_S}, priority=15)
             )
         if self.config.email.enabled and not self.engine.db.has_open_job("email_watch"):
             self.engine.db.enqueue(
@@ -154,6 +202,11 @@ class Heartbeat:
             log.error("bootstrap failed: %s", exc, exc_info=True)
             await self.notifier.send(f"heartbeat bootstrap failed: {exc}", "error")
         renew = asyncio.create_task(self._renew_loop())
+        listener = (
+            asyncio.create_task(self._listen_loop(), name="telegram-listener")
+            if self.config.operator.enabled
+            else None
+        )
         try:
             pending = self.engine.db.count_jobs(JobState.PENDING)
             await self.notifier.send(f"mnemosyne heartbeat online — {pending} jobs pending")
@@ -173,6 +226,15 @@ class Heartbeat:
             renew.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await renew
+            if listener is not None:
+                listener.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await listener
+            for task in list(self._wake_tasks):
+                task.cancel()
+            for task in list(self._wake_tasks):
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
 
     async def _renew_loop(self, interval_s: float = 60.0) -> None:
         """Keep our leases and job locks fresh while we work.

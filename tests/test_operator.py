@@ -434,3 +434,37 @@ async def test_render_posts_a_note_when_the_card_cannot_be_edited(monkeypatch):
 
     assert [method for method, _ in calls] == ["sendMessage"]
     assert calls[0][1]["text"] == "✅ Réponse enregistrée : A"
+
+
+@pytest.mark.asyncio
+async def test_route_update_wakes_the_task_before_editing_the_card(config, monkeypatch):
+    """The agent must resume from the answer, not wait for a slow Telegram edit."""
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("coder", "mission")
+        db.create_ask("a1", 1, "coder", "Question ?", [{"label": "Oui"}])
+        db.set_ask_telegram("a1", "42", 100)
+        update = {
+            "callback_query": {
+                "id": "cb1",
+                "data": "q:a1:0",
+                "message": {"chat": {"id": 42}, "message_id": 100},
+            }
+        }
+        calls: list[str] = []
+
+        async def fake_render(*args, **kwargs):
+            calls.append("render")
+
+        def wake(order):
+            calls.append("wake")
+
+        monkeypatch.setattr(telegram, "_render", fake_render)
+        handled = await telegram._route_update(
+            db, "coder", "token", "42", update, wake=wake
+        )
+        assert handled is True
+        assert calls == ["wake", "render"]
+        assert db.get_ask("a1")["status"] == "answered"
+    finally:
+        db.close()

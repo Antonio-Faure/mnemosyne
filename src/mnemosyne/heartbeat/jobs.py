@@ -282,21 +282,11 @@ def _feed_resolver(ctx: JobContext) -> dict | None:
 
 @handler("telegram")
 async def handle_telegram(ctx: JobContext, job: Job) -> dict | None:
-    """Operator channel: poll both bots, route the answers into the mailboxes."""
-    from mnemosyne.operator.telegram import poll_once
+    """Legacy job: the live bridge is the long-poll listener in Heartbeat.
 
-    if not ctx.config.operator.enabled:
-        return {"interval_s": 300}
-    if not ctx.engine.db.get_kv("telegram_since"):
-        # first enabled run: never dump the backlog accumulated while the
-        # channel was off; only questions asked from now on are delivered.
-        from mnemosyne.util import utcnow_iso
-
-        ctx.engine.db.set_kv("telegram_since", utcnow_iso())
-    handled = await poll_once(ctx.config, ctx.engine.db, _vault_get(ctx))
-    if handled:
-        log.info("operator: %d réponse(s) routée(s)", handled)
-    return {"interval_s": 30}
+    Kept so an old pending `telegram` job drains harmlessly after an upgrade.
+    """
+    return None
 
 
 @handler("email_watch")

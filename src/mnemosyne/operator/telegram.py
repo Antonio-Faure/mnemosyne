@@ -9,8 +9,9 @@ Design (see docs/OPERATEUR-TELEGRAM.md):
 * questions are delivered ONE AT A TIME: the next one is only sent after the
   previous answer, so no two agents can ask at the same time;
 * a tap (or a free-text reply) is routed back into the mailbox
-  (`operator → agent`) and the task resumes at the next heartbeat tick;
-* one process (the container) is the only update reader for the three bots.
+  (`operator → agent`) and the bridge wakes the task immediately;
+* one process (the container) is the only update reader for the three bots,
+  through a persistent long poll (not a periodic job).
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from mnemosyne.agents.mailbox import OPERATOR, Mailbox
 from mnemosyne.config import Config, OperatorBotConfig
 from mnemosyne.db import Database
 from mnemosyne.logger import get_logger
+from mnemosyne.util import utcnow_iso
 
 log = get_logger("operator")
 
@@ -383,12 +385,72 @@ async def _render(token: str, chat_id: str, order: dict) -> None:
         if ack is not None:
             await ack
 
+def _update_chat_id(update: dict) -> str:
+    """The chat that produced this update (message or callback query)."""
+    message = update.get("message") or {}
+    chat = message.get("chat") or {}
+    if chat.get("id") is not None:
+        return str(chat["id"])
+    query = update.get("callback_query") or {}
+    chat = ((query.get("message") or {}).get("chat") or {})
+    return str(chat.get("id", ""))
+
+
+def _poll_error(agent: str, exc: BaseException) -> None:
+    """Log a polling failure without ever echoing the bot URL (it contains the token)."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        log.warning(
+            "telegram poll (%s) failed: HTTP %s — %s",
+            agent,
+            exc.response.status_code,
+            _telegram_error(exc.response),
+        )
+    else:
+        log.warning(
+            "telegram poll (%s) failed: %s", agent, str(exc) or type(exc).__name__
+        )
+
+
+async def _route_update(
+    db: Database,
+    agent: str,
+    token: str,
+    chat_id: str,
+    update: dict,
+    wake=None,
+) -> bool:
+    """Route one update; return True when it produced a rendering order."""
+    sender_chat = _update_chat_id(update)
+    if sender_chat != chat_id:
+        log.warning("telegram: update ignoré (chat non autorisé %s)", sender_chat)
+        return False
+    order = handle_update(db, agent, update)
+    if order is None:
+        return False
+    # Wake the task BEFORE the card edit: the answer is already in the mailbox,
+    # and a slow/failing edit must not delay the agent by another heartbeat tick.
+    if wake is not None and order.get("kind") == "answered":
+        try:
+            wake(order)
+        except Exception as exc:  # noqa: BLE001 - a wake failure must not lose the answer
+            log.warning("operator wake failed: %s", str(exc) or type(exc).__name__)
+    await _render(token, chat_id, order)
+    if order.get("prompt_id") and order.get("ask"):
+        db.set_ask_prompt(order["ask"]["id"], order["prompt_id"])
+    log.info(
+        "operator (%s): %s (tâche #%s)",
+        agent,
+        order["kind"],
+        order["ask"]["task_id"] if order.get("ask") else "?",
+    )
+    return True
 
 
 async def poll_once(config: Config, db: Database, vault_get) -> int:
-    """Read updates from both bots and route the operator's answers.
+    """Legacy one-shot poll (tests, manual checks).
 
-    Only the configured chat is heard. Returns the number of handled updates.
+    The live bridge uses :func:`listen_forever`; this function remains for
+    compatibility and for the CLI/manual path.
     """
     handled = 0
     for agent in ("coder", "browser", "resolver"):
@@ -411,33 +473,13 @@ async def poll_once(config: Config, db: Database, vault_get) -> int:
                 resp.raise_for_status()
                 updates = resp.json().get("result", [])
         except (httpx.HTTPError, ValueError) as exc:
-            log.warning("telegram poll (%s) failed: %s", agent, exc)
+            _poll_error(agent, exc)
             continue
 
         for update in updates:
             try:
-                sender_chat = str(
-                    ((update.get("message") or {}).get("chat") or {}).get("id", "")
-                    or (
-                        ((update.get("callback_query") or {}).get("message") or {}).get("chat")
-                        or {}
-                    ).get("id", "")
-                )
-                if sender_chat != chat_id:
-                    log.warning("telegram: update ignoré (chat non autorisé %s)", sender_chat)
-                else:
-                    order = handle_update(db, agent, update)
-                    if order is not None:
-                        handled += 1
-                        await _render(token, chat_id, order)
-                        if order.get("prompt_id") and order.get("ask"):
-                            db.set_ask_prompt(order["ask"]["id"], order["prompt_id"])
-                        log.info(
-                            "operator (%s): %s (tâche #%s)",
-                            agent,
-                            order["kind"],
-                            order["ask"]["task_id"] if order.get("ask") else "?",
-                        )
+                if await _route_update(db, agent, token, chat_id, update):
+                    handled += 1
             except Exception as exc:  # noqa: BLE001 - one poison update must not block the channel
                 log.error("telegram update %s failed: %s", update.get("update_id"), exc)
             finally:
@@ -448,3 +490,95 @@ async def poll_once(config: Config, db: Database, vault_get) -> int:
     since = db.get_kv("telegram_since") or None
     await send_next_ask(config, db, vault_get, since=since)
     return handled
+
+
+async def _poll_bot(
+    config: Config,
+    db: Database,
+    vault_get,
+    agent: str,
+    *,
+    wake=None,
+) -> None:
+    """Long-poll ONE bot forever. Telegram holds the request until an update."""
+    poll_timeout = max(5, int(config.operator.poll_timeout_s))
+    while True:
+        bot = resolve_bot(config, agent, vault_get)
+        if bot is None:
+            # Tokens can be added to .env without a reload; retry quietly.
+            await asyncio.sleep(30)
+            continue
+        token, chat_id = bot
+        offset_key = f"telegram_offset:{agent}"
+        offset = int(db.get_kv(offset_key, 0) or 0)
+        try:
+            async with httpx.AsyncClient(timeout=poll_timeout + 10) as client:
+                resp = await client.get(
+                    f"{_API}/bot{token}/getUpdates",
+                    params={
+                        "offset": offset,
+                        "timeout": poll_timeout,
+                        "allowed_updates": '["message","callback_query"]',
+                    },
+                )
+                resp.raise_for_status()
+                updates = resp.json().get("result", [])
+        except asyncio.CancelledError:
+            raise
+        except (httpx.HTTPError, ValueError) as exc:
+            _poll_error(agent, exc)
+            await asyncio.sleep(2)
+            continue
+
+        for update in updates:
+            try:
+                await _route_update(db, agent, token, chat_id, update, wake=wake)
+            except Exception as exc:  # noqa: BLE001 - one poison update must not block the channel
+                log.error("telegram update %s failed: %s", update.get("update_id"), exc)
+            finally:
+                db.set_kv(offset_key, int(update["update_id"]) + 1)
+
+
+async def _sender_loop(config: Config, db: Database, vault_get) -> None:
+    """Send the next queued question as soon as the channel is free."""
+    interval = max(0.5, float(config.operator.send_interval_s))
+    while True:
+        try:
+            since = db.get_kv("telegram_since") or None
+            await send_next_ask(config, db, vault_get, since=since)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - the sender must never die
+            log.warning(
+                "telegram sender failed: %s", str(exc) or type(exc).__name__
+            )
+        await asyncio.sleep(interval)
+
+
+async def listen_forever(config: Config, db: Database, vault_get, *, wake=None) -> None:
+    """The live operator bridge: long-poll the three bots, route immediately.
+
+    This mirrors the Hermes gateway architecture: a persistent long-poll loop
+    instead of a periodic heartbeat job. Answers are acknowledged and routed as
+    soon as Telegram delivers them; ``wake`` lets the heartbeat resume the task
+    without waiting for the next agency tick.
+    """
+    if not db.get_kv("telegram_since"):
+        # First enabled run: never dump a backlog accumulated while the bridge
+        # was off. Only questions created from now on are delivered.
+        db.set_kv("telegram_since", utcnow_iso())
+    log.info("telegram bridge listening (long poll, 3 bots)")
+    tasks = [asyncio.create_task(_sender_loop(config, db, vault_get), name="telegram-sender")]
+    for agent in ("coder", "browser", "resolver"):
+        tasks.append(
+            asyncio.create_task(
+                _poll_bot(config, db, vault_get, agent, wake=wake),
+                name=f"telegram-poll:{agent}",
+            )
+        )
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
