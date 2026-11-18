@@ -37,9 +37,11 @@ ET sort du cadre écrit**.
 - **« Attendre » n'est jamais bloquant** : l'agent pose sa question puis
   **arrête son tour**. La tâche reste `running` mais **garée** — le superviseur
   la saute, elle ne coûte rien et ne bloque pas la file.
-- **La réponse réveille la tâche** : elle atterrit dans la boîte, le tick
-  suivant (~2 min) réactive l'agent **avec tout son contexte** (session
-  persistante), exactement où il s'était arrêté.
+- **La réponse réveille la tâche** : elle atterrit dans la boîte ; le listener
+  Telegram (long poll permanent) réveille immédiatement l'agent concerné, avec
+  tout son contexte (session persistante), exactement où il s'était arrêté. Le
+  tick suivant reste le filet de sécurité si la tâche reprend dans un autre
+  worker.
 
 ## Ordonnancement (les tâches garées libèrent la place)
 
@@ -66,6 +68,15 @@ ET sort du cadre écrit**.
   bouton ancien reste utilisable : l'acquittement du clic peut expirer, la
   carte est éditée quand même (et un message de confirmation est posté si
   l'édition échoue).
+
+## Pourquoi un long poll (et pas un job toutes les 30 s)
+
+Le bridge suit l'architecture du gateway Hermes : un **processus persistant**
+qui long-poll `getUpdates` par bot, au lieu d'un job périodique. Telegram garde
+la requête jusqu'à 25 s et la rend dès qu'un clic ou un message arrive :
+l'acquittement et l'édition de la carte partent dans la seconde, et la réponse
+réveille la tâche immédiatement. Chaque bot a sa boucle indépendante ; une
+erreur réseau fait un backoff puis reprend, sans bloquer les autres bots.
 - Un seul lecteur d'updates : le conteneur (Telegram n'autorise qu'un lecteur
   par bot).
 
@@ -118,8 +129,8 @@ question.
      resolver: { bot_token_env: MNEMOSYNE_RESOLVER_BOT_TOKEN, chat_id_env: MNEMOSYNE_RESOLVER_CHAT_ID }
    ```
    (`chat_id` direct reste possible et prioritaire sur l'environnement.)
-5. Redémarrer le conteneur (`docker compose up -d`) — le job `telegram`
-   (toutes les 30 s) apparaît dans le heartbeat.
+5. Redémarrer le conteneur (`docker compose up -d`). Le listener démarre avec
+   le heartbeat : long poll permanent des trois bots, sans job périodique.
 
 ## Commandes
 
@@ -132,8 +143,9 @@ Le chien de garde alerte si une question attend depuis plus de 2 h.
 
 ## Où c'est dans le code
 
-- `src/mnemosyne/operator/telegram.py` — rendu des questions, polling,
-  routage des réponses (`handle_update` est testable sans réseau).
+- `src/mnemosyne/operator/telegram.py` — rendu des questions, **listener long
+  poll** (`listen_forever`, un `getUpdates` par bot), routage des réponses
+  (`handle_update` est testable sans réseau).
 - `src/mnemosyne/operator/models.py` — schéma de l'outil (`question`,
   2-6 `options` label+description).
 - `src/mnemosyne/db.py` — table `operator_asks` + `next_task()` (tâches
@@ -144,5 +156,8 @@ Le chien de garde alerte si une question attend depuis plus de 2 h.
 - `dev/tools.py` + `agents/browser_agent.py` — l'outil `ask_operator`.
 - `agents/coder.md` / `agents/browser.md` / `agents/resolver.md` — les règles
   de questionnement.
-- `src/mnemosyne/heartbeat/jobs.py` — job `telegram` (30 s).
+- `src/mnemosyne/heartbeat/scheduler.py` — démarrage du listener et réveil
+  immédiat de la tâche répondue.
+- `src/mnemosyne/heartbeat/jobs.py` — ancien job `telegram`, désormais no-op
+  (drainage d'un job en file lors d'une mise à jour).
 - `src/mnemosyne/monitor.py` — alerte « attend une réponse » (> 2 h).

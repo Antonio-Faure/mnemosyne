@@ -59,6 +59,8 @@ llm:
 # A bot cannot message you before you press /start on it.
 operator:
   enabled: true
+  poll_timeout_s: 25   # long-poll idle ceiling; an update returns immediately
+  send_interval_s: 2   # how often the sender looks for a queued question
   coder:
     bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN
     chat_id_env: MNEMOSYNE_CODER_CHAT_ID

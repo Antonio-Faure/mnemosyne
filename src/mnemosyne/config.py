@@ -246,6 +246,11 @@ class OperatorConfig(BaseModel):
     """
 
     enabled: bool = False
+    #: Telegram long-poll window in seconds; the request returns as soon as an
+    #: update arrives, so this is only the idle ceiling (not the latency).
+    poll_timeout_s: int = Field(default=25, ge=5, le=50)
+    #: How often the sender loop looks for a queued question (seconds).
+    send_interval_s: float = Field(default=2.0, ge=0.5, le=30)
     coder: OperatorBotConfig = Field(
         default_factory=lambda: OperatorBotConfig(
             bot_token_env="MNEMOSYNE_CODER_BOT_TOKEN",
