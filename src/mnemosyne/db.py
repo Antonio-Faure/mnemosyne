@@ -566,6 +566,14 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def all_resolver_requests(self) -> list[dict]:
+        """Every resolver→agent dependency, for the Atelier board."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM resolver_requests ORDER BY id ASC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def pending_resolver_requests(self, resolver_task_id: int) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(
@@ -1736,6 +1744,25 @@ class Database:
                 (task_id,),
             ).fetchone()
         return dict(row) if row else None
+
+    def task_activation_agents(self, task_id: int) -> list[str]:
+        """Distinct agents that worked on a task, in activation order."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT payload FROM events "
+                "WHERE session_id = ? AND kind = 'activation.start' ORDER BY id",
+                (f"task:{task_id}",),
+            ).fetchall()
+        agents: list[str] = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload"] or "{}")
+            except ValueError:
+                continue
+            agent = str(payload.get("agent") or "")
+            if agent and agent not in agents:
+                agents.append(agent)
+        return agents
 
     def task_waiting_on_email(self, task_id: int) -> bool:
         return self.task_email_wait(task_id) is not None
