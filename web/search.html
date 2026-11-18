@@ -45,6 +45,8 @@
       text-rendering: optimizeLegibility;
     }
 
+    body.lightbox-open { overflow: hidden; }
+
     ::selection { background: var(--accent); color: #fff8f2; }
 
     a { color: inherit; }
@@ -335,11 +337,17 @@
     .result-media {
       position: relative;
       display: block;
+      width: 100%;
       aspect-ratio: 4 / 3;
       overflow: hidden;
       border: 1px solid var(--line);
       background: var(--paper-deep);
       text-decoration: none;
+      padding: 0;
+      color: inherit;
+      font: inherit;
+      text-align: inherit;
+      cursor: zoom-in;
     }
 
     .result-media img {
@@ -520,6 +528,112 @@
       50% { opacity: 1; }
     }
 
+
+    /* ── lightbox ────────────────────────────────────────────────────── */
+    .lightbox {
+      width: min(1120px, calc(100vw - 40px));
+      max-height: calc(100vh - 40px);
+      padding: 8px;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .55);
+    }
+
+    .lightbox::backdrop {
+      background: rgba(20, 24, 20, .62);
+      backdrop-filter: blur(3px);
+    }
+
+    .lightbox[open] { animation: lightbox-in .18s ease-out; }
+
+    @keyframes lightbox-in {
+      from { opacity: 0; transform: translateY(8px) scale(.995); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .lightbox-panel {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, .8fr);
+      min-height: 340px;
+    }
+
+    .lightbox-media {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 340px;
+      max-height: 78vh;
+      overflow: hidden;
+      background: var(--paper-deep);
+    }
+
+    .lightbox-media img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+    }
+
+    .lightbox-fallback {
+      display: none;
+      padding: 28px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .lightbox.is-broken .lightbox-fallback { display: block; }
+    .lightbox.is-broken img { display: none; }
+
+    .lightbox-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 650;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    .lightbox-close:hover { border-color: var(--accent); color: var(--accent-dark); }
+
+    .lightbox-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 28px 26px 24px;
+      overflow: auto;
+    }
+
+    .lightbox-title {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 28px;
+      font-weight: 400;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    .lightbox-body .result-link { margin-top: 16px; padding-top: 0; }
+
+    @media (max-width: 820px) {
+      .lightbox { width: calc(100vw - 24px); max-height: calc(100vh - 24px); }
+      .lightbox-panel { grid-template-columns: 1fr; }
+      .lightbox-media { min-height: 0; max-height: 52vh; }
+      .lightbox-media img { max-height: 52vh; }
+      .lightbox-body { padding: 20px 18px 22px; }
+      .lightbox-title { font-size: 23px; }
+    }
+
     /* ── footer ──────────────────────────────────────────────────────── */
     .footer {
       border-top: 1px solid var(--line-strong);
@@ -687,6 +801,25 @@
     </div>
   </footer>
 
+
+  <dialog class="lightbox" id="lightbox" aria-labelledby="lightbox-title">
+    <div class="lightbox-panel">
+      <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Fermer l'aperçu">Fermer</button>
+      <div class="lightbox-media" id="lightbox-media">
+        <div class="lightbox-fallback" id="lightbox-fallback">
+          L'image ne peut pas être affichée ici. Ouvrez la notice de l'institution pour la consulter.
+        </div>
+      </div>
+      <div class="lightbox-body">
+        <p class="result-source" id="lightbox-source"></p>
+        <h2 class="lightbox-title" id="lightbox-title"></h2>
+        <p class="result-byline" id="lightbox-byline"></p>
+        <p class="result-rights" id="lightbox-rights"></p>
+        <a class="result-link" id="lightbox-link" target="_blank" rel="noopener noreferrer">Voir sur le site de l'institution</a>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     (() => {
       "use strict";
@@ -701,6 +834,9 @@
       const results = $("#results");
       const content = $("#results-content");
       const searchButton = $("#search-button");
+      const lightbox = $("#lightbox");
+      const lightboxMedia = $("#lightbox-media");
+      const lightboxClose = $("#lightbox-close");
 
       const SUGGESTIONS = ["Pechelbronn", "Lacq", "derrick", "ouvriers du pétrole", "raffinerie"];
       const RECENT_KEY = "mnemosyne.recent";
@@ -831,7 +967,13 @@
         clear(content);
         const head = el("div", "results-head");
         const sourceCount = Object.keys(sourcesById).length;
-        head.appendChild(el("h2", "results-title", sourceCount ? `Recherche dans ${sourceCount} sources…` : "Recherche en cours…"));
+        const selectedSource = sourceSelect.value
+          ? (sourcesById[sourceSelect.value]?.name || sourceSelect.value)
+          : null;
+        const title = selectedSource
+          ? `Recherche dans ${selectedSource}…`
+          : (sourceCount ? `Recherche dans ${sourceCount} sources…` : "Recherche en cours…");
+        head.appendChild(el("h2", "results-title", title));
         const meta = el("span", "results-meta", "réponses en direct — jusqu'à une minute");
         head.appendChild(meta);
         content.appendChild(head);
@@ -888,14 +1030,60 @@
         content.appendChild(notice);
       }
 
+      function openLightbox(asset) {
+        const page = asset.page_url || asset.image_url || null;
+        const image = asset.image_url || asset.thumbnail_url || null;
+        const title = (asset.title || "").trim() || "Sans titre";
+
+        $("#lightbox-title").textContent = title;
+        $("#lightbox-source").textContent = sourceName(asset.source_id);
+
+        const byline = [];
+        if (asset.creator) byline.push(asset.creator);
+        if (asset.date_text) byline.push(asset.date_text);
+        else if (asset.year) byline.push(String(asset.year));
+        $("#lightbox-byline").textContent = byline.join(" · ");
+
+        const rights = (asset.rights || asset.license || "").trim();
+        $("#lightbox-rights").textContent = rights || "Droits non précisés";
+
+        const sourceLink = $("#lightbox-link");
+        if (page) {
+          sourceLink.href = page;
+          sourceLink.hidden = false;
+        } else {
+          sourceLink.removeAttribute("href");
+          sourceLink.hidden = true;
+        }
+
+        lightbox.classList.remove("is-broken");
+        const previous = lightboxMedia.querySelector("img");
+        if (previous) previous.remove();
+        if (image) {
+          const img = document.createElement("img");
+          img.alt = title;
+          img.src = image;
+          img.onerror = () => lightbox.classList.add("is-broken");
+          lightboxMedia.insertBefore(img, lightboxMedia.firstChild);
+        } else {
+          lightbox.classList.add("is-broken");
+        }
+
+        document.body.classList.add("lightbox-open");
+        if (typeof lightbox.showModal === "function") lightbox.showModal();
+        else lightbox.setAttribute("open", "");
+      }
+
       function resultCard(asset, index) {
         const article = el("article", "result");
         const page = asset.page_url || asset.image_url || null;
         const image = asset.thumbnail_url || asset.image_url || null;
         const title = (asset.title || "").trim() || "Sans titre";
 
-        const media = page ? link(page, "result-media") : el("div", "result-media");
-        media.setAttribute("aria-label", title);
+        const media = el("button", "result-media");
+        media.type = "button";
+        media.setAttribute("aria-label", `Agrandir l'image : ${title}`);
+        media.addEventListener("click", () => openLightbox(asset));
         if (image) {
           const img = document.createElement("img");
           img.src = image;
@@ -933,6 +1121,17 @@
         return article;
       }
 
+      lightboxClose.addEventListener("click", () => lightbox.close());
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) lightbox.close();
+      });
+      lightbox.addEventListener("close", () => {
+        document.body.classList.remove("lightbox-open");
+        const img = lightboxMedia.querySelector("img");
+        if (img) img.remove();
+        lightbox.classList.remove("is-broken");
+      });
+
       function renderResults(data, elapsedMs, query) {
         clear(content);
 
@@ -963,7 +1162,10 @@
       }
 
       function paramsFor(query) {
-        const params = new URLSearchParams({ q: query, limit: "48" });
+        // Per-source limit. A single source gets a fuller page; the federated
+        // search stays lean so one slow provider cannot dominate the request.
+        const limit = sourceSelect.value ? "12" : "8";
+        const params = new URLSearchParams({ q: query, limit });
         if (sourceSelect.value) params.set("source", sourceSelect.value);
         const from = Number(yearFrom.value);
         const to = Number(yearTo.value);
