@@ -85,7 +85,7 @@ def test_request_source_creates_agent_task_and_dependency(config):
         assert payload["source_id"] == "kbr_be"
         requests = db.resolver_requests(task_id)
         assert len(requests) == 1
-        assert requests[0]["biagent_task_id"] == agent_task["id"]
+        assert requests[0]["agent_task_id"] == agent_task["id"]
         assert db.task_waiting_on_sources(task_id) is True
         wait_msg = asyncio.run(by_name["wait_for_sources"].executor(EmptyParams()))
         assert wait_msg.success is True
@@ -222,7 +222,7 @@ def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
     try:
         resolver_id = db.enqueue_task("resolver", "illustrate a sentence")
         db.set_task_status(resolver_id, "running", agent="resolver")
-        biagent_id = db.enqueue_task(
+        source_task_id = db.enqueue_task(
             "browser", "add the missing source", payload={"kind": "resolver_source"}
         )
         db.create_resolver_request(
@@ -230,7 +230,7 @@ def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
             sentence_id="yt_demo_1",
             source_id="loc_wwi_photos",
             source_name="Library of Congress photos",
-            biagent_task_id=biagent_id,
+            agent_task_id=source_task_id,
         )
         assert db.task_waiting_on_sources(resolver_id) is True
     finally:
@@ -239,7 +239,7 @@ def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
     info = asyncio.run(
         supervisor.run_pending_once(config, agents=("browser",), lease="agency")
     )
-    assert info is not None and info["task_id"] == biagent_id
+    assert info is not None and info["task_id"] == source_task_id
 
     db = _db(config)
     try:
