@@ -15,6 +15,7 @@ Design (see docs/OPERATEUR-TELEGRAM.md):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import secrets
@@ -81,16 +82,97 @@ def build_question_payload(ask: dict, chat_id: str) -> dict:
     }
 
 
-async def _api_post(token: str, method: str, payload: dict) -> dict | None:
+async def _api_post(
+    token: str, method: str, payload: dict, *, timeout: float = 15.0, quiet: bool = False
+) -> dict | None:
     """Best-effort Telegram call; a failure must never break the pipeline."""
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(f"{_API}/bot{token}/{method}", json=payload)
-            resp.raise_for_status()
-            return resp.json()
+        if resp.status_code >= 400:
+            if not quiet:
+                log.warning(
+                    "telegram %s failed: HTTP %s — %s",
+                    method,
+                    resp.status_code,
+                    _telegram_error(resp),
+                )
+            return None
+        return resp.json()
     except (httpx.HTTPError, ValueError) as exc:
-        log.warning("telegram %s failed: %s", method, exc)
+        if not quiet:
+            log.warning(
+                "telegram %s failed: %s", method, str(exc) or type(exc).__name__
+            )
         return None
+
+
+def _telegram_error(resp: httpx.Response) -> str:
+    """The human-readable part of a Telegram error response (never the token)."""
+    try:
+        return str(resp.json().get("description") or resp.text)[:300]
+    except ValueError:
+        return (resp.text or "")[:300]
+
+
+#: Telegram refuses answerCallbackQuery once the tap is older than its window.
+_STALE_QUERY_MARKERS = (
+    "query is too old",
+    "query id is invalid",
+    "response timeout expired",
+)
+
+
+def _is_stale_query(description: str) -> bool:
+    """True when Telegram refused an answer because the callback query expired."""
+    text = description.lower()
+    return any(marker in text for marker in _STALE_QUERY_MARKERS)
+
+
+async def _answer_callback(token: str, callback_id: str, text: str | None = None) -> bool:
+    """Ack a button tap; an expired query is routine, not an error.
+
+    Telegram keeps a button card forever but its callback query expires after a
+    few minutes. A user can therefore tap a valid question long after it was
+    sent; the answer must still be routed, and the UI feedback must still be the
+    edit — the toast is optional.
+    """
+    payload: dict[str, Any] = {"callback_query_id": callback_id}
+    if text:
+        payload["text"] = text[:200]
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(f"{_API}/bot{token}/answerCallbackQuery", json=payload)
+    except httpx.HTTPError as exc:
+        log.warning("telegram answerCallbackQuery failed: %s", str(exc) or type(exc).__name__)
+        return False
+    if resp.status_code < 400:
+        return True
+    description = _telegram_error(resp)
+    if _is_stale_query(description):
+        log.debug("telegram answerCallbackQuery ignoré (requête expirée)")
+        return False
+    log.warning(
+        "telegram answerCallbackQuery failed: HTTP %s — %s", resp.status_code, description
+    )
+    return False
+
+
+async def _edit_message(token: str, chat_id: str, message_id: int, text: str) -> bool:
+    """Edit the question card; retry once because a timeout can be transient."""
+    for attempt in range(2):
+        data = await _api_post(
+            token,
+            "editMessageText",
+            {"chat_id": chat_id, "message_id": message_id, "text": text},
+            timeout=20.0,
+            quiet=attempt == 0,
+        )
+        if data is not None:
+            return True
+        if attempt == 0:
+            await asyncio.sleep(0.5)
+    return False
 
 
 async def send_ask(config: Config, agent: str, ask: dict, vault_get) -> tuple[str, int] | None:
@@ -233,63 +315,74 @@ def handle_update(db: Database, agent: str, update: dict) -> dict | None:
 
 
 async def _render(token: str, chat_id: str, order: dict) -> None:
-    """Apply the visual feedback for a routed update (best-effort)."""
+    """Apply the visual feedback for a routed update (best-effort).
+
+    The card edit is the durable feedback; `answerCallbackQuery` is only the
+    transient toast, and Telegram refuses it once the card is older than its
+    window. Both run concurrently so a stale or slow toast never blocks the
+    edit that actually tells the operator the answer was recorded.
+    """
     kind = order["kind"]
-    if kind == "stale":
-        if order.get("callback_id"):
-            await _api_post(
-                token,
-                "answerCallbackQuery",
-                {"callback_query_id": order["callback_id"], "text": "Question expirée."},
-            )
-        return
-
-    ask = order["ask"]
+    ack = None
     if order.get("callback_id"):
-        await _api_post(
-            token, "answerCallbackQuery", {"callback_query_id": order["callback_id"]}
+        ack_text = "Question expirée." if kind == "stale" else None
+        ack = asyncio.create_task(
+            _answer_callback(token, order["callback_id"], ack_text)
         )
 
-    if kind == "custom":
-        # a free-text answer arrives as a REPLY to a ForceReply prompt
-        data = await _api_post(
-            token,
-            "sendMessage",
-            {
-                "chat_id": chat_id,
-                "text": f"✏️ Réponds à CE message avec ta réponse.\n\n{question_text(ask)}",
-                "reply_markup": {"force_reply": True, "selective": True},
-            },
-        )
-        try:
-            prompt_id = int(data["result"]["message_id"]) if data else None
-        except (KeyError, TypeError, ValueError):
-            prompt_id = None
-        if prompt_id:
-            # the prompt id is how the reply is matched; the caller owns the db
-            order["prompt_id"] = prompt_id
-        if ask.get("tg_message_id"):
-            await _api_post(
+    try:
+        if kind == "stale":
+            return
+
+        ask = order["ask"]
+        if kind == "custom":
+            # a free-text answer arrives as a REPLY to a ForceReply prompt
+            data = await _api_post(
                 token,
-                "editMessageText",
+                "sendMessage",
                 {
                     "chat_id": chat_id,
-                    "message_id": ask["tg_message_id"],
-                    "text": f"{question_text(ask)}\n\n✏️ en attente de ta réponse personnalisée…",
+                    "text": f"✏️ Réponds à CE message avec ta réponse.\n\n{question_text(ask)}",
+                    "reply_markup": {"force_reply": True, "selective": True},
                 },
             )
-        return
+            try:
+                prompt_id = int(data["result"]["message_id"]) if data else None
+            except (KeyError, TypeError, ValueError):
+                prompt_id = None
+            if prompt_id:
+                # the prompt id is how the reply is matched; the caller owns the db
+                order["prompt_id"] = prompt_id
+            if ask.get("tg_message_id"):
+                await _edit_message(
+                    token,
+                    chat_id,
+                    ask["tg_message_id"],
+                    f"{question_text(ask)}\n\n✏️ en attente de ta réponse personnalisée…",
+                )
+            return
 
-    if kind == "answered" and ask.get("tg_message_id"):
-        await _api_post(
-            token,
-            "editMessageText",
-            {
-                "chat_id": chat_id,
-                "message_id": ask["tg_message_id"],
-                "text": f"{question_text(ask)}\n\n✅ {order['answer']}",
-            },
-        )
+        if kind == "answered" and ask.get("tg_message_id"):
+            edited = await _edit_message(
+                token,
+                chat_id,
+                ask["tg_message_id"],
+                f"{question_text(ask)}\n\n✅ {order['answer']}",
+            )
+            if not edited:
+                # the card may be gone or uneditable; the answer is still recorded
+                await _api_post(
+                    token,
+                    "sendMessage",
+                    {
+                        "chat_id": chat_id,
+                        "text": f"✅ Réponse enregistrée : {order['answer']}",
+                    },
+                )
+    finally:
+        if ack is not None:
+            await ack
+
 
 
 async def poll_once(config: Config, db: Database, vault_get) -> int:
