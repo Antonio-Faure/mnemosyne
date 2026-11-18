@@ -140,7 +140,9 @@ pour l'upload et l'e-mail, puis `finish`.
 
 Quand tu écris à une institution, utilise exactement ce texte, en remplaçant
 `{{institution}}` et en adaptant « votre institution » / « votre musée ». La
-version longue et la checklist sont dans `docs/OUTREACH.md`.
+version longue et la checklist sont dans `docs/OUTREACH.md`. Le skill
+`email-writing` (dans les skills du harness) donne le ton, les interdits et la
+checklist d'envoi ; le modèle ci-dessous reste la référence.
 
 **Objet :** Mnemosyne — ajouter les images d'archives du {{institution}} à un moteur de recherche
 

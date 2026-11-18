@@ -27,8 +27,8 @@ from mnemosyne.util import ensure_dir, finish_text, load_prompt
 log = get_logger("dev")
 
 _FALLBACK = (
-    "You are {name}, the coder agent of the Mnemosyne project. MISSION: {task}. "
-    "Read agents/coder.md for your full instructions."
+    "You are {name}, the coder agent of the Mnemosyne project. "
+    "The task is in the user message. Read agents/coder.md for your full instructions."
 )
 
 
@@ -104,7 +104,6 @@ async def run_dev_agent(
                 repo_path / "agents" / "coder.md",
                 fallback=_FALLBACK,
                 name=config.identity.agent_name,
-                task=task,
             ),
             tools=[watched],
             max_turns=max_turns or config.dev.max_turns,

@@ -31,7 +31,8 @@ def build_objective(
     segment_id: str,
     entry: dict[str, Any],
     text: str,
-    sources: list[dict[str, Any]] | None = None,
+    *,
+    context: str | None = None,
 ) -> str:
     claim = entry.get("claim") or {}
     video = entry.get("video") or {}
@@ -48,29 +49,18 @@ def build_objective(
         )
     if claim:
         objective += f"Claim : {claim}\n"
+    if context:
+        objective += f"\n{context}\n"
     objective += (
-        "Cherche dans la meta API, fais valider le candidat par l'opérateur, "
-        "et demande aux agents les sources manquantes si nécessaire."
+        "\nCherche dans la meta API, fais valider le candidat par l'opérateur, "
+        "et demande aux agents les sources manquantes si nécessaire.\n"
+        "Le catalogue des sources déjà connues est disponible via "
+        "`catalog_inventory` : consulte-le avant de demander une source."
     )
-    if sources:
-        objective += "\n\nCatalogue actuel (source_id — nom — état) :\n"
-        objective += "\n".join(
-            f"- {source['id']} — {source['name']} — "
-            f"{'active' if source.get('enabled', True) else 'désactivée'}"
-            for source in sorted(sources, key=lambda item: item["id"])
-        )
-        objective += (
-            "\n\nUne source absente de cette liste peut être demandée via "
-            "`request_source`. Une source présente, même désactivée, ne doit PAS "
-            "être redemandée : utilise `catalog_search(source_ids=[...])` et "
-            "signale le trou à l'opérateur."
-        )
     return objective
 
 
-def enqueue_sentence(
-    db: Database, segment_id: str, *, sources: list[dict[str, Any]] | None = None
-) -> tuple[int | None, str]:
+def enqueue_sentence(db: Database, segment_id: str) -> tuple[int | None, str]:
     """Queue one resolver session for `segment_id` (golden preferred to corpus).
 
     Returns `(task_id, reason)`; `task_id` is None when the sentence is unknown
@@ -103,7 +93,14 @@ def enqueue_sentence(
         payload["label"] = label
     if corpus is not None:
         payload["corpus"] = corpus
+
+    context = None
+    if corpus is not None and (corpus.get("video") or {}).get("id"):
+        from mnemosyne.resolver.context import video_context_card
+
+        context = video_context_card(db, segment_id)
+
     task_id = db.enqueue_task(
-        "resolver", build_objective(segment_id, entry, text, sources), payload=payload
+        "resolver", build_objective(segment_id, entry, text, context=context), payload=payload
     )
     return task_id, source

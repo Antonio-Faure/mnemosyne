@@ -54,3 +54,22 @@ def test_commit_refuses_until_lint_and_tests_pass(tmp_path):
     res = asyncio.run(tool.executor(CommitParam(message="wip")))
     assert not res.success
     assert "run_lint and run_tests" in res.content
+
+
+def test_coder_does_not_get_the_email_wait_tool(config, tmp_path):
+    """Email belongs to the browser agent; the coder must not park on IMAP."""
+    from mnemosyne.agents.mailbox import Mailbox
+    from mnemosyne.db import Database
+
+    db = Database(config.db_file())
+    try:
+        repo, _ = _provider(tmp_path)
+        provider = DevToolProvider(
+            repo, config.dev, None, mailbox=Mailbox(db), task_id=None
+        )
+        names = {tool.name for tool in provider._tools()}
+        assert "wait_for_email" not in names
+        assert "send_message" in names
+        assert "ask_operator" in names
+    finally:
+        db.close()

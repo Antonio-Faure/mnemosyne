@@ -79,21 +79,38 @@ propres :
 | Outil | Rôle |
 |---|---|
 | `catalog_search(query, limit)` | interroge la meta API (registre des sources, connecteurs) |
-| `asset_details(asset_id)` | vérifie provenance, date, lieu, licence, image |
-| `propose_sources(claim)` | cherche des APIs/sources candidates (LLM/recherche) |
+| `catalog_inventory()` | liste les sources connues avant d'en demander une |
+| `video_context(before, after)` | résumé global, plan et fenêtre plus large autour de la phrase |
+| `search_transcript(query)` | retrouve un terme, un lieu ou une personne dans la transcription |
+| `read_transcript(start_s, end_s)` | lit la transcription entre deux timecodes |
 | `request_source(source, reason)` | enqueue **une tâche agent par source** + dépendance |
 | `wait_for_sources()` | parke la session resolver jusqu'à complétion |
-| `submit_for_review(asset_id, evidence)` | demande la validation humaine (Telegram/CLI) |
-| `abstain(reason, missing)` | enregistre `no_match` + gap de couverture |
-| `ask_operator` / `wait_for_email` | réutilisés tels quels |
+| `record_result(status, asset_id, evidence)` | enregistre le verdict structuré |
+| `ask_operator` | demande la validation humaine (Telegram/CLI) |
 
 Le résolveur n'écrit pas dans le registre des sources : il lit la meta API et produit des
 candidats, des verdicts et des demandes de sources.
 
+### Contexte vidéo
+
+Chaque tâche reçoit une **fiche de contexte** : titre, durée, résumé global,
+période, lieux, entités, plan et ~15 segments avant/après la phrase. Le résumé
+est généré **une fois par vidéo** et stocké dans `video_contexts` :
+
+```bash
+mnemosyne resolve context --video <video_id>   # ou sans --video : toutes
+mnemosyne resolve context --force              # régénère
+```
+
+Si la fiche ne suffit pas, les trois outils `video_context`,
+`search_transcript` et `read_transcript` permettent d'élargir ou de chercher
+dans la transcription. La transcription est un **contexte**, jamais une preuve
+de provenance pour l'image.
+
 Comme les autres agents, il peut poser une question à l'opérateur (`ask_operator`) :
 questionnaire à boutons + réponse libre, attaché à sa session resolver. La
-réponse le réveille au tick suivant. Il peut aussi utiliser `wait_for_email`
-pour une réponse externe.
+réponse le réveille au tick suivant. Il n'a **pas** `wait_for_email` : l'email
+est le domaine du navigateur.
 
 
 ## Demandes de sources et réveil
@@ -131,7 +148,7 @@ resolver_requests (
 - Quand toutes les demandes d'une session resolver sont terminales, il poste
   un message `system → resolver` et la session reprend.
 - Pendant l'attente, `next_task()` parke la session resolver (zéro token,
-  file non bloquée), exactement comme un `ask_operator` ou un `wait_for_email`.
+  file non bloquée), exactement comme un `ask_operator`.
 
 ## Vérification humaine / anti-triche
 
@@ -216,6 +233,13 @@ segments (
   id TEXT PRIMARY KEY,             -- yt_<video>_<index>
   video_id TEXT, video_title TEXT, channel TEXT, video_url TEXT,
   start_s REAL, end_s REAL, text TEXT
+)
+
+video_contexts (
+  video_id TEXT PRIMARY KEY,
+  title TEXT, duration_s REAL,
+  summary TEXT, outline_json TEXT, meta_json TEXT,
+  model TEXT, created_at TEXT, updated_at TEXT
 )
 
 claims (
@@ -339,6 +363,10 @@ mnemosyne resolve import-golden data/golden.jsonl
 
 # état du dataset importé
 mnemosyne resolve stats
+
+# générer la fiche de contexte globale (résumé + plan) — une fois par vidéo
+mnemosyne resolve context
+mnemosyne resolve context --video <video_id> --force
 
 # mettre une phrase dans la boucle resolver (une session par segment)
 mnemosyne resolve enqueue yt_<video_id>_<sentence_index>

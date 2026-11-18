@@ -92,6 +92,29 @@ class CatalogSearchParams(BaseModel):
     )
 
 
+class VideoContextParams(BaseModel):
+    before: int = Field(default=15, ge=0, le=40, description="Segments before the phrase")
+    after: int = Field(default=15, ge=0, le=40, description="Segments after the phrase")
+    include_summary: bool = Field(
+        default=True, description="Include the stored video summary/outline"
+    )
+
+
+class SearchTranscriptParams(BaseModel):
+    query: str = Field(
+        min_length=2,
+        max_length=200,
+        description="Term, person, place or event to find in the transcript",
+    )
+    limit: int = Field(default=8, ge=1, le=20)
+
+
+class ReadTranscriptParams(BaseModel):
+    start_s: float = Field(ge=0, description="Start timecode in seconds")
+    end_s: float = Field(ge=0, description="End timecode in seconds")
+    limit: int = Field(default=20, ge=1, le=40)
+
+
 class RequestSourceParams(BaseModel):
     source_id: str = Field(description="Stable proposed source id, e.g. 'kbr_be'")
     source_name: str = Field(description="Human-readable source name")
@@ -181,6 +204,17 @@ class ResolverToolProvider(ToolProvider):
         payload = self._payload()
         return payload.get("segment_id") or payload.get("id")
 
+    def _video_id(self) -> str | None:
+        payload = self._payload()
+        for key in ("corpus", "label"):
+            entry = payload.get(key)
+            if not isinstance(entry, dict):
+                continue
+            video = entry.get("video")
+            if isinstance(video, dict) and video.get("id"):
+                return str(video["id"])
+        return None
+
     def _known_sources(self) -> dict[str, object]:
         """The catalogue as the resolver must see it before asking for a source.
 
@@ -218,6 +252,89 @@ class ResolverToolProvider(ToolProvider):
             if hidden > 0:
                 payload += f"\n… {hidden} autre(s) candidat(s) non affiché(s)."
             return _ok(payload)
+
+        async def catalog_inventory_exec(_p: EmptyParams):
+            from mnemosyne.resolver.queue import catalog_inventory
+
+            sources = catalog_inventory(self.config)
+            if not sources:
+                return _ok("aucune source déclarée")
+            lines = [
+                f"- {source['id']} — {source['name']} — "
+                f"{'active' if source.get('enabled', True) else 'désactivée'}"
+                for source in sorted(sources, key=lambda item: item["id"])
+            ]
+            return _ok(f"{len(sources)} source(s) connue(s) :\n" + "\n".join(lines))
+
+        async def video_context_exec(p: VideoContextParams):
+            segment_id = self._segment_id()
+            if not segment_id:
+                return _fail("aucune phrase associée à cette session")
+            from mnemosyne.resolver.context import video_context_card
+
+            card = video_context_card(
+                self.db,
+                segment_id,
+                before=p.before,
+                after=p.after,
+                include_summary=p.include_summary,
+            )
+            if not card:
+                return _fail("contexte vidéo indisponible pour cette phrase")
+            return _ok(card)
+
+        async def search_transcript_exec(p: SearchTranscriptParams):
+            video_id = self._video_id()
+            if not video_id:
+                return _fail("aucune vidéo associée à cette session")
+            matches = self.db.search_resolver_corpus(
+                video_id, p.query, limit=p.limit
+            )
+            if not matches:
+                return _ok(
+                    f"aucun passage pour {p.query!r} dans la transcription de "
+                    f"{video_id} — essaie un synonyme ou un mot plus court."
+                )
+            from mnemosyne.resolver.context import format_time, segment_label
+
+            lines = [
+                f"{len(matches)} passage(s) pour {p.query!r} dans la vidéo :"
+            ]
+            for segment in matches:
+                lines.append(
+                    f"- [{segment_label(segment)}] "
+                    f"{format_time(segment.get('start_s'))} — "
+                    f"{str(segment.get('text') or '').strip()}"
+                )
+            return _ok("\n".join(lines))
+
+        async def read_transcript_exec(p: ReadTranscriptParams):
+            video_id = self._video_id()
+            if not video_id:
+                return _fail("aucune vidéo associée à cette session")
+            if p.end_s <= p.start_s:
+                return _fail("plage invalide : end_s doit être après start_s")
+            from mnemosyne.resolver.context import format_time, segment_label
+
+            segments = self.db.resolver_corpus_window(
+                video_id, start_s=p.start_s, end_s=p.end_s, limit=p.limit
+            )
+            if not segments:
+                return _ok(
+                    f"aucun segment entre {format_time(p.start_s)} et "
+                    f"{format_time(p.end_s)}."
+                )
+            lines = [
+                f"{len(segments)} segment(s) entre {format_time(p.start_s)} et "
+                f"{format_time(p.end_s)} :"
+            ]
+            for segment in segments:
+                lines.append(
+                    f"- [{segment_label(segment)}] "
+                    f"{format_time(segment.get('start_s'))} — "
+                    f"{str(segment.get('text') or '').strip()}"
+                )
+            return _ok("\n".join(lines))
 
         async def request_source_exec(p: RequestSourceParams):
             if self.task_id is None:
@@ -393,6 +510,46 @@ class ResolverToolProvider(ToolProvider):
                 ),
                 parameters=CatalogSearchParams,
                 executor=catalog_search_exec,
+            ),
+            Tool(
+                name="catalog_inventory",
+                description=(
+                    "List the sources already known to Mnemosyne, with their state. "
+                    "Check it before requesting a source: an absent source can be "
+                    "requested, an existing one must not be requested again."
+                ),
+                parameters=EmptyParams,
+                executor=catalog_inventory_exec,
+            ),
+            Tool(
+                name="video_context",
+                description=(
+                    "Return the global video context (summary, outline, period, "
+                    "places, entities) and a wider window of surrounding transcript "
+                    "segments. Use it when the context already in the task is not "
+                    "enough to understand the sentence."
+                ),
+                parameters=VideoContextParams,
+                executor=video_context_exec,
+            ),
+            Tool(
+                name="search_transcript",
+                description=(
+                    "Search the full transcript of the current video for a term, "
+                    "person, place or event. Returns timecoded matches; use it to "
+                    "find where a reference was introduced."
+                ),
+                parameters=SearchTranscriptParams,
+                executor=search_transcript_exec,
+            ),
+            Tool(
+                name="read_transcript",
+                description=(
+                    "Read the transcript of the current video between two timecodes "
+                    "(seconds). Use it to read a precise passage around the sentence."
+                ),
+                parameters=ReadTranscriptParams,
+                executor=read_transcript_exec,
             ),
             Tool(
                 name="request_source",
