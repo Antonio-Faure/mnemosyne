@@ -19,7 +19,7 @@ test:  ## pytest
 	$(PY)/pytest -q
 
 vocab:  ## check the vocabulary (docs/NOMENCLATURE.md)
-	$(PY)/pytest tests/test_nomenclature.py -q
+	$(PY)/pytest --noconftest tests/test_nomenclature.py -q
 
 run:  ## run the heartbeat locally (foreground)
 	$(PY)/mnemosyne run
