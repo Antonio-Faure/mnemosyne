@@ -52,7 +52,7 @@ function StatusIcon({ status }: { status: string }) {
 const FAMILIES: { id: "all" | "task" | "job"; label: string }[] = [
   { id: "all", label: "Tout" },
   { id: "task", label: "Tâches" },
-  { id: "job", label: "Système" },
+  { id: "job", label: "Jobs" },
 ];
 
 export function Sidebar({
@@ -221,10 +221,10 @@ export function Sidebar({
             </p>
             <p className="mt-1 text-[10.5px] leading-relaxed text-slate-400">
               {loading
-                ? "Lecture de la file et des runs système."
+                ? "Lecture de la file et des jobs système."
                 : error
                   ? "La lecture de la base a échoué."
-                  : "Les runs vides et les wrappers restent masqués."}
+                  : "Les exécutions vides et les enveloppes restent masquées."}
             </p>
             {error && onRetry && (
               <button
@@ -243,7 +243,7 @@ export function Sidebar({
           <button
             onClick={() => onIncludeSilent(true)}
             className="flex w-full items-center gap-1.5 text-left text-[10px] text-slate-400 transition hover:text-slate-200"
-            title="Les runs de jobs qui n'ont rien produit sont masqués par défaut"
+            title="Les exécutions de jobs qui n'ont rien produit sont masquées par défaut"
           >
             <EyeOff size={11} />
             {hiddenCount.toLocaleString("fr-FR")} runs silencieux · afficher

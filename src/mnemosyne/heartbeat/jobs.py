@@ -343,7 +343,7 @@ async def handle_discover(ctx: JobContext, job: Job) -> dict | None:
     if added:
         top = sorted(fresh, key=lambda r: r.item_count or 0, reverse=True)[:8]
         await ctx.notifier.send(
-            "discovery — nouveaux fournisseurs : "
+            "discovery — nouvelles sources : "
             + ", ".join(f"{r.host} ({r.item_count})" for r in top),
             "info",
         )

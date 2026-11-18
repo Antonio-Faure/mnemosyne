@@ -78,7 +78,7 @@ async def test_search_collapses_the_same_work_across_sources(
         await engine.aclose()
 
     assert len(assets) == 1, "le même objet ne doit pas être compté deux fois"
-    assert assets[0].source_id == "gallica"  # premier fournisseur (ordre catalogue)
+    assert assets[0].source_id == "gallica"  # première source (ordre du registre)
 
 
 @pytest.mark.asyncio

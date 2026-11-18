@@ -116,10 +116,10 @@ export function Header({
         </span>
         <div className="hidden leading-tight md:block">
           <div className="text-[13px] font-semibold tracking-tight text-slate-100">
-            mnemosyne
+            Mnemosyne
           </div>
           <div className="text-[9px] uppercase tracking-[0.18em] text-slate-400">
-            observatoire
+            Observatoire
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ export function Header({
           onClick={onReplay}
           disabled={!session}
           className={`${NAV} border-sky-500/25 text-sky-200 hover:border-sky-400/50 hover:bg-sky-500/10`}
-          title="Rejouer depuis le début"
+          title="Relire depuis le début"
         >
           <RotateCcw size={12} />
           <span className="hidden md:inline">Rejouer</span>

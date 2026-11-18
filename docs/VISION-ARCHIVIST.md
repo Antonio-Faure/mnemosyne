@@ -1,4 +1,4 @@
-# Vision — mnemosyne, tri-agent autonome
+# Vision — Mnemosyne et Archivist
 
 > Document de référence (validé). À lire **avant toute reprise** du chantier
 > agent, notamment après une compaction de session : il contient la vision
@@ -8,7 +8,7 @@
 
 Trouver les **meilleures images d'archives historiques** pour une requête.
 Le goulot n'est pas la recherche mais **l'accès aux sources** (des centaines de
-fournisseurs hétérogènes). On délègue ce travail à un agent autonome, qui doit
+sources hétérogènes). On délègue ce travail à un agent autonome, qui doit
 savoir **à la fois utiliser un navigateur ET écrire du code**.
 
 ## 1. Architecture d'exécution — « Version A » (faite)
@@ -30,7 +30,7 @@ Règles :
 Fichiers : `Dockerfile`, `docker/entrypoint.sh`, `docker-compose.yml`.
 Commandes : `make up|down|logs`, `make cdp`, `make vnc|record`, `make egress`.
 
-## 2. Le tri-agent (vision validée)
+## 2. Archivist (vision validée)
 
 **Trois agents** : le **codeur** (produit), le **navigateur** (web) et le
 **resolver** (phrase → image). Les deux premiers partagent le superviseur et la
@@ -38,7 +38,7 @@ boîte de tâches ; le resolver tourne dans sa propre boucle et demande des
 sources aux deux autres (`docs/RESOLVER-ADVERSARIAL.md`).
 
 **Sessions Stirrup distinctes** pour le codeur, le navigateur et le resolver,
-même provider (OpenCode Go / Zen, `deepseek-v4.1-flash`), **un seul agent
+même fournisseur LLM (OpenCode Go / Zen, `deepseek-v4.1-flash`), **un seul agent
 codeur/navigateur actif à la fois**.
 
 Chaque agent a son **fichier de consignes** (prompt système), chargé au runtime
@@ -168,8 +168,8 @@ Détail : `docs/RESOLVER-ADVERSARIAL.md`.
   obligatoire, **narration « collante »** (ne la mettre que lorsqu'elle change).
 - Variable d'env : `BU_CDP_URL=http://127.0.0.1:9222`, `BH_HOME=/app/data/browser-harness`
   (les enregistrements persistent dans `data/`).
-- Un seul stack navigateur : **browser-harness** via l'agent navigateur du
-  tri-agent (plus d'agent browser-use générique).
+- Un seul stack navigateur : **browser-harness** via l'agent navigateur
+  d'Archivist (plus d'agent browser-use générique).
 
 ## 4. Ce qui existe / ce qui reste
 
@@ -181,7 +181,7 @@ Détail : `docs/RESOLVER-ADVERSARIAL.md`.
   découverte (`src/mnemosyne/discovery/`) + 1 connexion/jour (timer).
 - Warmup auto (1–2/jour, sites pondérés) : **une mission « lecture seule » postée au navigateur** (plafonnée en tours), vault, Telegram, journal.
 
-**Tri-agent (fait) :**
+**Archivist (fait) :**
 1. **File de tâches + boîte temporaire par tâche** : table `tasks` + messages
    rattachés à une tâche (`src/mnemosyne/db.py`) + `mailbox.py` (enveloppe).
 2. **Superviseur déterministe** : `src/mnemosyne/agents/supervisor.py`
@@ -199,7 +199,7 @@ Détail : `docs/RESOLVER-ADVERSARIAL.md`.
 7. Le **codeur** tourne aussi dans le conteneur (dépôt monté sur `/repo`,
    `MNEMOSYNE_DEV_REPO=/repo`, worktree isolé) → `agency` fait tourner les deux.
 
-**Tri-agent — suite (fait) :**
+**Archivist — suite (fait) :**
 - **Autonomie heartbeat** : job `agency` (toutes les 2 min, coût nul s'il n'y a
   rien) → `supervisor.run_pending_once()` exécute **une** activation (la tâche
   en cours d'abord, sinon la plus ancienne en file). Vérifié : un crash au
@@ -261,9 +261,9 @@ Détail : `docs/RESOLVER-ADVERSARIAL.md`.
 
 **Reste :**
 - Exemple de référence de l'identité : **Archivist** = le système autonome **à
-  trois têtes** — le tri-agent ENTIER est le personnage ; `identity.agent_email`
+  trois agents** — l'ensemble est le personnage ; `identity.agent_email`
   (adresse définie dans la configuration locale) est sa carte d'identité partagée, utilisée
-  par la tête navigateur quand elle touche le web. Voir aussi
+  par l'agent navigateur quand il touche le web. Voir aussi
   `docs/CHOIX-ARCHI-NAVIGATEUR.md`.
 **Reste :**
 - **Canal opérateur** : design validé et implémenté (`docs/OPERATEUR-TELEGRAM.md`) —
@@ -294,7 +294,7 @@ Détail : `docs/RESOLVER-ADVERSARIAL.md`.
 - `src/mnemosyne/dev/` — agent codeur + garde-fous + git.
 - `src/mnemosyne/agents/browser_agent.py` — agent navigateur (browser-harness).
 - `src/mnemosyne/agents/warmup_schedule.py` — warmup.
-- `src/mnemosyne/discovery/` — découverte de fournisseurs (P3).
+- `src/mnemosyne/discovery/` — découverte de sources (P3).
 - `src/mnemosyne/sources/iiif.py` — connecteur IIIF générique (P4).
 - `src/mnemosyne/identity.py` — transparence (phrase + repo) pour mails/formulaires.
 - `src/mnemosyne/vault/` — coffre chiffré.

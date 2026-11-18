@@ -23,6 +23,7 @@ historiques peuvent les citer avec une mention « historique ».
 | **L'opérateur** | l'humain qui répond aux questions et valide les choix | humain, HITL, user |
 | **Le gestionnaire du projet** | Antonio Faure, responsable public du projet | fondateur, owner, admin |
 | **L'institution** | le musée, la bibliothèque ou l'archive qui conserve les images | fournisseur, provider, partenaire |
+| **Un fournisseur LLM** | le service qui fournit le modèle (OpenCode Go, etc.) | ne pas confondre avec une source d'images |
 
 **Hiérarchie** : **Archivist** est le système. **Le Résolveur** et **L'Atelier**
 sont ses deux équipes. Les **agents** sont « l'agent codeur », « l'agent
@@ -191,7 +192,7 @@ Les types sont des **badges et des filtres**, pas des colonnes.
 | **tri-agent** | banni : remplacé par Archivist / deux équipes |
 | **archiviste** | banni : ce n'est pas Archivist |
 | **système résolveur**, **système navigateur/codeur** | bannis : Le Résolveur / L'Atelier |
-| **fournisseur** | banni des docs : utiliser **source** |
+| **fournisseur** | banni pour une source d'images : utiliser **source**. Autorisé pour un **fournisseur LLM**. |
 | **asset**, **record**, **item** | code uniquement : produit = **résultat** |
 | **provider** | code / docs techniques anglaises uniquement : docs FR = **source** |
 | **metadata**, **métadonnées** | technique uniquement : produit = **informations** |
@@ -248,19 +249,33 @@ Les types sont des **badges et des filtres**, pas des colonnes.
 | `warmup` | rodage |
 | `harvest` | banni (supprimé) |
 
-## 9. Écarts connus à corriger
+## 9. Chasse au vocabulaire — état
 
-La chasse au vocabulaire devra traiter au minimum :
+Corrigé le 18 novembre 2026 :
 
-| Fichier | Écart | Action |
-|---|---|---|
-| `docs/SOURCES.md` | « fournisseurs déclarés » | → « sources déclarées » |
-| `docs/SOURCES.md` | « vérifier par notice » | → « vérifier sur la fiche de l'institution » |
-| `docs/ARCHITECTURE.md` | « providers », « catalog », « Asset », « state machine » | aligner sur source / registre / résultat / état |
-| `docs/OBSERVATORY.md` | « run de job système », « tâche de la queue » | → exécution d'un job système / tâche de la file |
-| `docs/ONBOARDING.md` | « onboarding », « connexion », « catalogue » | → intégration d'une source / mission de source / registre des sources |
-| `docs/RESOLVER-ADVERSARIAL.md` | « match », « onboarder », « tâches coder/browser », « tâches resolver » | → validé / intégrer / missions de source / résolutions |
-| `docs/VISION-TRIAGENT.md` | « tri-agent » partout | renommer et aligner sur Archivist / deux équipes |
-| `docs/CLEANUP-TRIAGENT.md` | « tri-agent » | marquer historique ou aligner |
-| `agents/browser.md` | vérifier « source », « institution », « fiche » | aligner si besoin |
-| `config/sources/*.yaml` | « provider », « harvest », « notice » dans les notes | remplacer par source / recherche / fiche |
+- [x] `docs/SOURCES.md` : « fournisseurs » → « sources » ; « notice » → « fiche ».
+- [x] `docs/ARCHITECTURE.md` : providers → sources, catalog → source registry,
+  Asset → result, state machine → source state.
+- [x] `docs/OBSERVATORY.md` : queue → file, run → exécution, sidebar → panneau
+  des sessions, timeline → chronologie, replay → relecture.
+- [x] `docs/ONBOARDING.md` → `docs/INTEGRATION-SOURCES.md` : onboarding →
+  intégration, connexion → intégration, catalogue interne → registre des sources.
+- [x] `docs/RESOLVER-ADVERSARIAL.md` : match → validé, onboarder → intégrer,
+  tâches coder/browser → missions de source, tâches resolver → résolutions.
+- [x] `docs/VISION-TRIAGENT.md` → `docs/VISION-ARCHIVIST.md` : tri-agent →
+  Archivist / deux équipes.
+- [x] `docs/CLEANUP-TRIAGENT.md` → `docs/CLEANUP-AGENTS.md` : document historique.
+- [x] `agents/coder.md`, `agents/resolver.md` : fournisseur → source, asset →
+  résultat, claim → fait.
+- [x] UI : Mnemosyne / Observatoire, Jobs, chronologie, relecture, boîte aux
+  lettres, job système, « Voir la fiche ».
+
+Reste assumé :
+
+- `config/sources/*.yaml` : « notice » est un terme technique/archivistique
+  acceptable ; « provider » a été corrigé.
+- `docs/FIXES-LOT*`, `docs/CLEANUP-AGENTS.md`, `docs/P2-AGENTS.md` : documents
+  historiques, le vocabulaire d'époque est conservé avec une note.
+- Identifiants de code (`Asset`, `provider`, `status`, `state`, `Sidebar`,
+  `ReplayBar`, `TimelineState`, `onboarding`…) : conservés en anglais ; voir la
+  correspondance section 8.

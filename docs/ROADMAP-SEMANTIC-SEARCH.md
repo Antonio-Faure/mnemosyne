@@ -5,7 +5,7 @@
 
 ## Vision
 
-Passer de « agréger des centaines de fournisseurs » à « trouver l'image
+Passer de « chercher dans des centaines de sources » à « trouver l'image
 d'archive la plus pertinente pour une requête », y compris par similarité
 visuelle (une usine de 1900, un derrick, une affiche). Cible : recherche
 multimodale (texte ↔ image) sur l'ensemble du corpus agrégé.
@@ -67,7 +67,7 @@ puis monter.
 Indexer n'est pas rediffuser : on stocke un **vecteur** (donnée non expressive),
 des **métadonnées** et un **lien**, pas l'œuvre. Puisqu'on **supprime le contenu**,
 il n'y a pas de question de droits côté stockage. On garde attribution + licence +
-lien canonique **par utilité** (affichage, crédit, retrouver la source), pas par
+lien canonique **par utilité** (affichage, mention, retrouver la source), pas par
 contrainte. Seule vraie limite : **rediffuser publiquement du full-res sous
 droits** — ce qu'on ne fait pas.
 
@@ -86,7 +86,7 @@ droits** — ce qu'on ne fait pas.
 2. **Étage 2 — image (échantillon)** : embeddings multimodaux sur un sous-ensemble,
    mesurer qualité et coût.
 3. **Étage 3 — flux complet** : job incrémental par source, dédup pHash avant embedding.
-4. **Étage 4 — recherche hybride + dédup inter-fournisseurs** : fusion
+4. **Étage 4 — recherche hybride + dédup inter-sources** : fusion
    BM25 + vecteur, regroupement des doublons (même image chez Gallica/Europeana/Commons).
 
 ## Questions ouvertes

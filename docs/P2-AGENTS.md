@@ -1,8 +1,8 @@
 # P2 — the agentic layer (Stirrup)
 
-> **Superseded (Oct 2026).** The agentic layer is now the **tri-agent** described
-> in `docs/VISION-TRIAGENT.md`: coder + browser + resolver agents over a durable
-> mailbox, deterministic supervisor, Chrome via browser-harness. The legacy onboarding/
+> **Superseded (Oct 2026).** The agentic layer is now **Archivist**, described
+> in `docs/VISION-ARCHIVIST.md`: coder + browser + resolver agents over a durable
+> mailbox, deterministic supervisor, Chrome via browser-harness. The legacy source-integration/
 > outreach agents this document describes have been removed; it is kept as
 > design history.
 
@@ -11,7 +11,7 @@
 The heartbeat (control plane) stays home-made: durable jobs, crash recovery,
 governor. It is deterministic and must not be an LLM loop.
 
-For the **cognition/action** layer (obtain access, contact providers) we use
+For the **cognition/action** layer (obtain access, contact institutions) we use
 **Stirrup** (Artificial Analysis), a lightweight agent framework. It handles
 agent sessions, the tool-calling loop, and interruption caching
 (`agent.session(...)`).
@@ -57,7 +57,7 @@ decides the next step.
   alert + journal entry, then the agent stops (never loops).
 - Outreach text is generated from `identity.py`; the disclosure line (who the
   agent is + repo URL) is mandatory.
-- Credentials found during onboarding are stored in the encrypted vault via the
+- Credentials found during source integration are stored in the encrypted vault via the
   `remember` / `task_done(api_key=...)` tools.
 
 ## Running
@@ -69,12 +69,12 @@ pip install -e '.[browser]'
 ```
 
 Prerequisites: the dedicated Chrome is up and signed into Google (see
-`RUNBOOK.md`). Then the heartbeat enqueues `onboard` jobs for providers with
+`RUNBOOK.md`). Then the heartbeat enqueues `onboard` jobs for sources with
 `auth != none`, gated by the governor.
 
 ## Status
 
 The framework, prompts, tools, governance and heartbeat wiring are implemented.
-Provider-specific DOM details (exact selectors of each signup form / contact
-page) are refined per provider when onboarding it — the deterministic-tools
+Source-specific DOM details (exact selectors of each signup form / contact
+page) are refined per source when integrating it — the deterministic-tools
 design keeps those changes local to `tools.py`.

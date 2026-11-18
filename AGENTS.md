@@ -26,20 +26,20 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **three agents**
 - `main.py` — CLI entry (`python main.py`, or the `mnemosyne` script)
 - `src/mnemosyne/heartbeat/` — durable scheduler, job store (SQLite WAL), job handlers
 - `src/mnemosyne/reputation/` — adaptive governor (pacing, blocks, warmup caps)
-- `src/mnemosyne/catalog/` — provider registry + lifecycle state machine
+- `src/mnemosyne/catalog/` — source registry + lifecycle states
 - `src/mnemosyne/connectors/` — connector contract (`base.py`)
-- `src/mnemosyne/sources/` — one connector per provider (`iiif.py` = generic IIIF)
-- `src/mnemosyne/agents/` — supervisor + mailbox: `supervisor.py`, `browser_agent.py`, `warmup_schedule.py` (le warmup est une mission du navigateur)
+- `src/mnemosyne/sources/` — one connector per source (`iiif.py` = generic IIIF)
+- `src/mnemosyne/agents/` — supervisor + mailbox: `supervisor.py`, `browser_agent.py`, `warmup_schedule.py` (le rodage est une mission du navigateur)
 - `src/mnemosyne/dev/` — coder agent: `agent.py`, `tools.py`, `guard.py`, `git_ops.py`, `worktree.py`
 - `src/mnemosyne/resolver/` — resolver agent: une phrase → une image, questions à l'opérateur, demandes de sources
-- `src/mnemosyne/discovery/` — find new providers (Wikidata IIIF hosts)
-- `src/mnemosyne/normalize/` — canonical `Asset`, dedup
+- `src/mnemosyne/discovery/` — find new sources (Wikidata IIIF hosts)
+- `src/mnemosyne/normalize/` — canonical result (`Asset`), dedup
 - `src/mnemosyne/api/` — FastAPI federated search service
 - `src/mnemosyne/vault/` — encrypted credentials · `src/mnemosyne/notify/` — Telegram
 - `src/mnemosyne/browser/` — CDP client, history reader · `src/mnemosyne/journal.py` — daily + per-service journals
 - `src/mnemosyne/identity.py` — transparency (identity + repo URL)
 - `harness/` — helpers (agent-written, versioned) + vendored interaction skills
-- `config/config.yaml`, `config/sources/*.yaml` — settings + provider descriptors
+- `config/config.yaml`, `config/sources/*.yaml` — settings + source descriptors
 
 # Runtime agents vs AGENTS.md
 
@@ -49,7 +49,7 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **three agents**
 - **browser** → `agents/browser.md` (browser-harness, helpers, video, accounts/keys)
 - **resolver** → `agents/resolver.md` (sentence → image, operator validation, source requests)
 
-The validated three-agent design is in **`docs/VISION-TRIAGENT.md`** — read it before any agent work.
+The validated three-agent design is in **`docs/VISION-ARCHIVIST.md`** — read it before any agent work.
 
 # Commands
 
@@ -71,12 +71,12 @@ Dev: `pip install -e '.[dev]'` then `ruff check .` and `pytest`.
 - Chrome runs as **uid 1000 with its sandbox enabled**; never `--no-sandbox`. Exposed ports are **loopback only**; the agent's traffic must not transit Tailscale (`make egress`).
 - **Governor mandatory** for any rate-limited/sensitive action (HTTP, account creation, outbound email). On 403/429/captcha the whole system slows down.
 - **Transparent identity**: the agent always states who it is and links the repo — build it with `identity.disclosure()`, never by hand. Human-in-the-loop for anything irreversible. The **operator channel** is the mailbox's third correspondent: agents ASK with `ask_operator` (Telegram inline keyboards, one bot per agent), the operator answers, the parked task resumes — never pay, never subscribe (a paid access is abandoned). Telegram alerts stay outbound; see `docs/OPERATEUR-TELEGRAM.md`.
-- **Provenance on every asset** (source, page URL, license/rights, date).
+- **Provenance on every result** (source, page URL, license/rights, date).
 - **Bounded context**: agent turns are bounded Stirrup sessions (`agents.max_turns`), tool outputs are truncated, and turns go through the durable mailbox instead of replaying history. Stirrup requires an output ceiling — keep `agents.max_tokens` high (32k). Record `usage`.
 
 # Contributing
 
-- A new provider = `config/sources/<id>.yaml` + a `Connector` in `src/mnemosyne/sources/` + registration in `sources/__init__.py` + a mocked test (never hit the network in tests). Normalize into `Asset` at the connector boundary.
+- A new source = `config/sources/<id>.yaml` + a `Connector` in `src/mnemosyne/sources/` + registration in `sources/__init__.py` + a mocked test (never hit the network in tests). Normalize into a result (`Asset`) at the connector boundary.
 - **Self-extension** runs through `dev/guard.py`: writes only under `config/sources/`, `src/mnemosyne/sources/`, `tests/`, `docs/`; never `.env`, `vault/`, `data/`, `agents/`, `heartbeat/`, `reputation/`, `dev/`, `AGENTS.md`, `pyproject.toml`; no `--force`/`reset`/`clean`; lint + tests must pass; PR reviewed by a human.
 - Prefer the smallest diff that fixes the problem; keep token use low (`Grep`/`Glob`, sliced reads, `tail`/`grep ERROR` on logs).
 - Architecture decisions are recorded in `docs/`.

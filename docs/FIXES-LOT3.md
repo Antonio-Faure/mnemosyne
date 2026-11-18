@@ -1,5 +1,8 @@
 # Lot 3 — bail multi-hôtes, dédup inter-sources, couverture (octobre 2026)
 
+> Document historique : le vocabulaire d'époque est conservé ; voir
+> [`docs/NOMENCLATURE.md`](NOMENCLATURE.md) pour les termes actuels.
+
 Troisième et dernier lot de l'audit multi-agents. **466 tests verts, ruff OK.**
 
 ## 1. Bail : plus de vol hôte ↔ conteneur, reprise rapide conservée

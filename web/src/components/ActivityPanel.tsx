@@ -51,13 +51,13 @@ interface Props {
 }
 
 const STEPS: Record<NodeId, { label: string; color: string; icon: LucideIcon }> = {
-  agency: { label: "Agency · file", color: "#f59e0b", icon: Cog },
+  agency: { label: "Moteur de file", color: "#f59e0b", icon: Cog },
   resolver: { label: "Résolveur", color: "#f472b6", icon: ScanSearch },
-  orchestrator: { label: "Orchestrateur", color: "#60a5fa", icon: Network },
+  orchestrator: { label: "Superviseur", color: "#60a5fa", icon: Network },
   browser: { label: "Navigateur", color: "#38bdf8", icon: Globe },
   coder: { label: "Codeur", color: "#818cf8", icon: Code2 },
-  mailbox: { label: "Mailbox", color: "#fbbf24", icon: Inbox },
-  job: { label: "Système · job", color: "#34d399", icon: Briefcase },
+  mailbox: { label: "Boîte aux lettres", color: "#fbbf24", icon: Inbox },
+  job: { label: "Job système", color: "#34d399", icon: Briefcase },
 };
 
 /** Pretty-print a JSON string when possible (tool arguments). */
@@ -631,7 +631,7 @@ export function ActivityPanel({
   const meta = STEPS[step];
   const stepLabel =
     step === "job" && session?.type === "agency"
-      ? "Agency · moteur de file"
+      ? "Moteur de file"
       : meta.label;
   const Icon = meta.icon;
 
@@ -711,7 +711,7 @@ export function ActivityPanel({
               <button
                 onClick={onFollow}
                 className="rounded-md bg-sky-500/15 px-2 py-1 text-[10px] font-medium text-sky-300 ring-1 ring-inset ring-sky-500/30 transition hover:bg-sky-500/25"
-                title="Revenir au suivi automatique de la timeline"
+                title="Revenir au suivi automatique de la chronologie"
               >
                 suivre
               </button>
@@ -1022,7 +1022,7 @@ export function ActivityPanel({
                 >
                   <Block
                     {...common}
-                    label={`Job · ${payload.kind ?? "?"} démarré`}
+                    label={`Job système · ${payload.kind ?? "?"} démarré`}
                     icon={Briefcase}
                     color="#34d399"
                   >
@@ -1043,7 +1043,7 @@ export function ActivityPanel({
                 >
                   <Block
                     {...common}
-                    label={`Job · ${payload.status ?? "terminé"}`}
+                    label={`Job système · ${payload.status ?? "terminé"}`}
                     icon={Briefcase}
                     color="#10b981"
                   >
@@ -1089,7 +1089,7 @@ export function ActivityPanel({
               {loading
                 ? "Chargement de la session…"
                 : error
-                  ? "Timeline indisponible"
+                  ? "Chronologie indisponible"
                   : session
                     ? "Aucun événement pour cette étape"
                     : "Aucune session sélectionnée"}
@@ -1098,8 +1098,8 @@ export function ActivityPanel({
               {error
                 ? "La lecture des événements a échoué."
                 : session
-                  ? "La timeline de cette étape est vide pour l'instant."
-                  : "Choisissez une session dans la liste pour dérouler son replay."}
+                  ? "La chronologie de cette étape est vide pour l'instant."
+                  : "Choisissez une session dans la liste pour dérouler sa relecture."}
             </p>
             {error && onRetry && (
               <button

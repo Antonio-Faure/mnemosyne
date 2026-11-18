@@ -10,7 +10,7 @@ license: varies
 rights: >-
   Per-record; DPLA aggregates contributors (rights field on each item), ranging
   from public domain / CC to rights reserved. Always check the record's rights
-  and provider before reuse.
+  and contributing institution before reuse.
 rate_limit_per_s: 0.5
 priority: 61
 tags: [aggregator, united-states, glam, cultural-heritage]

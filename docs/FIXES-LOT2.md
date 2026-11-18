@@ -1,5 +1,8 @@
 # Lot 2 — robustesse, code mort, refactors (octobre 2026)
 
+> Document historique : le vocabulaire d'époque est conservé ; voir
+> [`docs/NOMENCLATURE.md`](NOMENCLATURE.md) pour les termes actuels.
+
 Suite du **Lot 1** (`docs/FIXES-LOT1.md`). Trois familles : (A) robustesse du
 service et des agents, (B) suppression de code mort, (C) refactors sûrs.
 Chaque correctif est couvert par un test ; **344 tests verts, ruff OK**.
@@ -75,7 +78,7 @@ Chaque correctif est couvert par un test ; **344 tests verts, ruff OK**.
 - `supervisor.outcome_status_note` (+ son test) : jamais branché, logique
   divergente du code réel (fausse couverture).
 - `warmup_schedule.goal_weights` (test réécrit sur `WARMUP_GOALS`).
-- Références périmées : `docs/VISION-TRIAGENT.md` (`warmup.py` supprimé),
+- Références périmées : `docs/VISION-ARCHIVIST.md` (`warmup.py` supprimé),
   `tests/test_dev_guard.py` (chemin mort) ; `.pyc` orphelins nettoyés.
 
 ## C. Refactors

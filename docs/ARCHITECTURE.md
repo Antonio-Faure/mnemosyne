@@ -2,9 +2,9 @@
 
 ## Goal
 
-Federate access to hundreds of heterogeneous historical image providers through
+Federate access to hundreds of heterogeneous historical image sources through
 one live search API — without copying or hosting their images. The bottleneck is
-not search but **access**: onboarding providers (accounts, API keys, emails) is a
+not search but **access**: integrating sources (accounts, API keys, emails) is a
 long human task, so it is delegated to a perpetual agent with a heartbeat.
 
 ## Layers
@@ -13,16 +13,16 @@ long human task, so it is delegated to a perpetual agent with a heartbeat.
 |---|---|
 | `heartbeat` | durable scheduler + job queue (SQLite WAL). Survives crashes. |
 | `reputation` | adaptive governor + account warmup phases. |
-| `catalog` | provider registry + state machine. |
+| `catalog` | source registry + lifecycle states. |
 | `connectors` | protocol adapters (IIIF / SRU / OAI-PMH / SPARQL / REST / HTML). |
-| `sources` | one connector per provider, mapped from `config/sources/*.yaml`. |
-| `normalize` | canonical `Asset`, dedup, provenance. |
+| `sources` | one connector per source, mapped from `config/sources/*.yaml`. |
+| `normalize` | canonical result (`Asset`), dedup, provenance. |
 | `api` | FastAPI unified search. |
 | `vault` | encrypted credentials (Fernet). |
 | `notify` | Telegram HITL alerts. |
 | `browser`/`agents` | P2: Stirrup agent loop + browser-use over CDP, with deterministic tools. |
 
-## Provider state machine
+## Source state machine
 
 ```
 DISCOVERED → RESEARCHED → ONBOARDING → PENDING → CREDENTIALED → CONNECTED → DEGRADED → BROKEN
@@ -38,7 +38,7 @@ descriptor never loses lifecycle progress.
    are recovered on each tick.
 2. **Governor is mandatory.** Every HTTP call passes through per-domain pacing and
    a cooldown after a block; a global pressure multiplier (AIMD) slows the whole
-   system when a provider fights back. Daily caps follow warmup phases.
+   system when a source fights back. Daily caps follow warmup phases.
 3. **Warmup is phase-based.** A brand-new agent account must not create accounts or
    send emails immediately. `account_created_at` in config drives
    outbound/search caps (0 outbound for the first 3 days by default).
@@ -47,12 +47,12 @@ descriptor never loses lifecycle progress.
    a real profile + residential IP + human pacing, not from "no automation".
 5. **Human-in-the-loop.** VNC access to the agent's browser + Telegram alerts for
    hard blockers (captcha, phone verification, refusal). The agent keeps working
-   on other providers meanwhile.
+   on other sources meanwhile.
 6. **Gmail via the browser.** The agent has its own Google account and reads
    verification emails / sends outreach through the browser agent. A
    contact-form fallback covers bounces.
-7. **Keyless first.** P1 connects providers that need no credentials to prove the
-   whole pipeline before spending reputation on onboarding.
+7. **Keyless first.** P1 connects sources that need no credentials to prove the
+   whole pipeline before spending reputation on source integration.
 8. **Atomic writes everywhere** (`.tmp` → `os.replace`); orphan tmp files are
    cleaned on startup.
 9. **Operator observability.** A daily markdown journal (`journal/`) makes the
@@ -87,23 +87,23 @@ descriptor never loses lifecycle progress.
     compose subnet is pinned so a host policy route can force the physical NIC.
     `scripts/check-egress.sh` (aka `make egress`) asserts host and container
     egress IPs match.
-16. **One dated journal per service.** Besides the daily journal, each provider the
+16. **One dated journal per service.** Besides the daily journal, each source the
     agent wants to access has its own markdown (`journal/services/<id>.md`), every
     entry timestamped `YYYY-MM-DD HH:MM:SS`. It records the full access history of
-    that provider (attempts, key obtained, email sent, blocks, escalations), so the
+    that source (attempts, key obtained, email sent, blocks, escalations), so the
     operator can audit a single service without scanning the global log.
 17. **Stirrup for cognition, home-made for control.** The heartbeat stays a
     deterministic durable scheduler. The agent layer (coder + browser +
     resolver, **Stirrup**) exchanges durable mailbox messages; a deterministic
     supervisor runs one coder/browser agent at a time. The browser drives real
     Chrome through **browser-harness**, never the DOM directly. See
-    `docs/VISION-TRIAGENT.md`.
+    `docs/VISION-ARCHIVIST.md`.
 
 ## Milestones
 
-- **P0+P1** (this): heartbeat, catalog, governor, 5 keyless providers, normalize,
+- **P0+P1** (this): heartbeat, catalog, governor, 5 keyless sources, normalize,
   unified API.
-- **P2** (superseded): onboarding/outreach agents → replaced by the tri-agent
-  (`docs/VISION-TRIAGENT.md`).
+- **P2** (superseded): source-integration/outreach agents → replaced by Archivist
+  (`docs/VISION-ARCHIVIST.md`).
 - **P3**: autonomous discovery (GLAM SPARQL, directories).
-- **P4**: connector self-repair, dashboard, scale to hundreds of providers.
+- **P4**: connector self-repair, dashboard, scale to hundreds of sources.

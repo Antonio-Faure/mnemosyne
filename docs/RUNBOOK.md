@@ -202,10 +202,10 @@ mnemosyne doctor             # ligne "telegram: enabled=… bot=@…"
 | Canal | Usage |
 |---|---|
 | **Journal quotidien** | `mnemosyne journal` ou `journal/YYYY-MM-DD.md` — un fichier par jour, append-only. |
-| **Journal par service** | `mnemosyne journal --service <id>` ou `journal/services/<id>.md` — un md par fournisseur auquel l'agent veut accéder, avec **dates complètes** de chaque action. Lister : `mnemosyne journal --services`. |
+| **Journal par service** | `mnemosyne journal --service <id>` ou `journal/services/<id>.md` — un md par source à laquelle l'agent veut accéder, avec **dates complètes** de chaque action. Lister : `mnemosyne journal --services`. |
 | **Message ponctuel** | `mnemosyne say "priorise Lacq et Pechelbronn"` — déposé dans `control/inbox.md`, lu au tick suivant. |
 | **Directives** | `control/directives.md` — consignes permanentes, relues au démarrage. |
-| **Statut** | `mnemosyne status` — providers, sources, pression du gouverneur. |
+| **Statut** | `mnemosyne status` — sources, pression du gouverneur. |
 | **Alertes** | Telegram (captcha dur, blocage, source dégradée, échec définitif). |
 | **Santé** | `mnemosyne doctor` — config, vault, auth LLM, accessibilité Chrome. |
 
@@ -214,9 +214,9 @@ sources dégradées, erreurs/retries, digests périodiques.
 
 ## 4quater. Découverte autonome (P3)
 
-L'agent trouve **tout seul** de nouveaux fournisseurs d'images d'archives.
+L'agent trouve **tout seul** de nouvelles sources d'images d'archives.
 Première source : **Wikidata** (propriété `P6108` = manifeste IIIF). On regroupe
-les 300 000+ manifestes par **hôte** → ça révèle les vrais fournisseurs qui
+les 300 000+ manifestes par **hôte** → ça révèle les vraies sources qui
 servent du IIIF (bibliothèques nationales, musées, universités) sans aucune clé.
 
 - Job heartbeat `discover` : **1×/jour** (`config.discovery.interval_s`), dédup
@@ -231,7 +231,7 @@ Candidats trouvés (extrait du 1er run) : `www.nga.gov` (127 942 manifestes),
 Suite (P4) : l'agent dev transforme un candidat en descripteur + connecteur et
 ouvre une PR (`docs/P2-AGENTS.md`).
 
-## 4bisbis. Warmup automatique (« nourrir » le compte)
+## 4bisbis. Rodage automatique (« nourrir » le compte)
 
 Le heartbeat planifie **1 à 2 sessions/jour**, à des heures humaines aléatoires
 (fenêtre 8h–23h), avec 20% de chance de sauter (irrégularité humaine). Chaque
@@ -258,7 +258,7 @@ de plafond de temps (jugées sur le marqueur de patinage).
 
 Enregistrer l'écran de l'agent (vidéo) : `make record SECONDS=120` (ffmpeg
 `x11grab` dans le conteneur Chrome) → `data/agent-recording.mp4`. Lance une
-session (warmup/onboarding) pendant l'enregistrement.
+session (rodage/intégration) pendant l'enregistrement.
 
 Lancer **manuellement** une session (debug) : `mnemosyne warmup --minutes 8`
 (ou `make`-style dans le conteneur). Les sessions auto se voient dans le journal
@@ -267,7 +267,7 @@ Lancer **manuellement** une session (debug) : `mnemosyne warmup --minutes 8`
 
 ## 4ter. Auto-extension (l'agent code ses propres connecteurs)
 
-L'agent peut ajouter un fournisseur **lui-même** : descripteur + connecteur +
+L'agent peut ajouter une source **lui-même** : descripteur + connecteur +
 test, puis lint/tests, commit sur une branche `agent/*`, push et **PR**. Tu relis
 et merges.
 

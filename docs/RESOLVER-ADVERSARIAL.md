@@ -2,7 +2,7 @@
 
 ## Vision
 
-Le catalogue répond à « trouve-moi des images sur X ». Le résolveur répond à
+La recherche répond à « trouve-moi des images sur X ». Le résolveur répond à
 « **cette phrase historique précise** est-elle illustrable par une image
 d'archive, et laquelle ? ».
 
@@ -14,10 +14,10 @@ Il prend en entrée :
 
 Il produit :
 
-1. pour chaque phrase, un **match** (image + preuves + confiance) ou une
+1. pour chaque phrase, un **validé** (`match` : image + preuves + confiance) ou une
    **abstention** ;
 2. pour chaque abstention, un **trou de couverture** : pays, période, type
-   d'image, sources candidates à onboarder.
+   d'image, sources candidates à intégrer.
 
 Le résolveur ne remplace pas les connecteurs d'images : il les utilise et les
 met à l'épreuve.
@@ -25,8 +25,8 @@ met à l'épreuve.
 ## Deux boucles permanentes
 
 ```text
-job:agency    → tâches coder/browser (sources, code, navigateur)
-job:resolver  → tâches resolver (une session par phrase)
+job:agency    → missions de source (codeur + navigateur)
+job:resolver  → résolutions (une session par phrase)
 ```
 
 Les deux jobs tournent en parallèle avec des leases séparés :
@@ -38,13 +38,13 @@ Les deux jobs tournent en parallèle avec des leases séparés :
 (mailbox, cache de session, activation, events) est partagé. Le heartbeat a
 `max_workers > 1`, donc les deux boucles avancent en même temps.
 
-Une tâche resolver est créée **par phrase** (ou par petit lot) à partir du
+Une résolution est créée **par phrase** (ou par petit lot) à partir du
 corpus / golden dataset. Elle porte `sentence_id`, la phrase, le claim et
 les critères. Elle peut :
 
-1. interroger la **meta API de Mnemosyne** (`Engine.search`, le catalogue) ;
+1. interroger la **meta API de Mnemosyne** (`Engine.search`, le registre des sources) ;
 2. demander une revue humaine ;
-3. demander l'ajout d'une ou plusieurs sources au tri-agent ;
+3. demander l'ajout d'une ou plusieurs sources à l'Atelier ;
 4. se parquer en attendant ces sources, puis être réveillée.
 
 ### La boucle s'alimente elle-même
@@ -66,7 +66,7 @@ pour maintenir le flux ; l'opérateur n'intervient que sur les verdicts.
 
 ### Réveil par une source
 
-Quand une tâche agent liée à une `resolver_requests` se ferme, le
+Quand une mission de source liée à une `resolver_requests` se ferme, le
 superviseur marque la demande `done`/`failed` et poste `[SOURCES READY]` au
 résolveur dès qu'il n'attend plus aucune source. Le résolveur reprend alors la
 phrase avec la meta API à jour.
@@ -78,7 +78,7 @@ propres :
 
 | Outil | Rôle |
 |---|---|
-| `catalog_search(query, limit)` | interroge la meta API (catalogue, connecteurs) |
+| `catalog_search(query, limit)` | interroge la meta API (registre des sources, connecteurs) |
 | `asset_details(asset_id)` | vérifie provenance, date, lieu, licence, image |
 | `propose_sources(claim)` | cherche des APIs/sources candidates (LLM/recherche) |
 | `request_source(source, reason)` | enqueue **une tâche agent par source** + dépendance |
@@ -87,7 +87,7 @@ propres :
 | `abstain(reason, missing)` | enregistre `no_match` + gap de couverture |
 | `ask_operator` / `wait_for_email` | réutilisés tels quels |
 
-Le resolver n'écrit pas dans le catalogue : il lit la meta API et produit des
+Le résolveur n'écrit pas dans le registre des sources : il lit la meta API et produit des
 candidats, des verdicts et des demandes de sources.
 
 Comme les autres agents, il peut poser une question à l'opérateur (`ask_operator`) :
@@ -125,7 +125,7 @@ resolver_requests (
 )
 ```
 
-- `request_source` crée la tâche agent et la ligne `resolver_requests`.
+- `request_source` crée la mission de source et la ligne `resolver_requests`.
 - Le supervisor, à la fermeture d'une tâche agent, marque la demande
   `done`/`failed`.
 - Quand toutes les demandes d'une session resolver sont terminales, il poste
@@ -135,9 +135,9 @@ resolver_requests (
 
 ## Vérification humaine / anti-triche
 
-Le resolver ne peut pas se contenter d'un score. Pour chaque match :
+Le resolver ne peut pas se contenter d'un score. Pour chaque résultat validé :
 
-1. il présente l'asset, la source, la licence, la date, le lieu, la caption et
+1. il présente le résultat, la source, la licence, la date, le lieu, la caption et
    les preuves ;
 2. il demande une revue via `ask_operator` :
    - `Valide`
@@ -153,7 +153,7 @@ Contrôles anti-triche automatiques avant la revue :
 - licence et provenance présentes ;
 - date de l'image compatible avec le claim (pas d'anachronisme) ;
 - l'agent ne peut pas réutiliser une image d'une autre phrase sans preuve ;
-- toute image non issue du catalogue/meta API est refusée.
+- toute image non issue du registre des sources / meta API est refusée.
 
 ## Méta API
 
@@ -161,10 +161,10 @@ Le resolver consomme la même API que le reste de mnemosyne :
 
 - `Engine.search(query, source_ids, limit)` pour les candidats ;
 - `/api/search?q=...` si l'API HTTP est utilisée ;
-- les assets normalisés (`Asset`) avec `source_id`, `page_url`, `image_url`,
+- les résultats normalisés (`Asset`) avec `source_id`, `page_url`, `image_url`,
   `license`, `rights`, `extra`.
 
-Il ne scrape pas les sites des fournisseurs : il utilise les connecteurs et
+Il ne scrape pas les sites des institutions : il utilise les connecteurs et
 les URLs canoniques.
 
 
@@ -197,7 +197,7 @@ graph TB
     I1 --> J1(["spec pour la boucle agency"])
 ```
 
-## Modèle de données (SQLite, même DB que le catalogue)
+## Modèle de données (SQLite, même DB que le registre des sources)
 
 ```sql
 texts (
@@ -319,10 +319,10 @@ Un JSONL, une ligne par phrase. Schéma JSON :
 
 Règles d'annotation :
 
-- `match` : au moins une image défendable pour la phrase ;
+- `match` (validé) : au moins une image défendable pour la phrase ;
 - `partial` : l'image illustre une partie seulement (ex. le bon pays, la
   mauvaise année) ;
-- `no_match` : aucune image du catalogue ne convient — **très important** ;
+- `no_match` (abstention) : aucune image du registre des sources ne convient — **très important** ;
 - `ambiguous` : désaccord ou image discutable ;
 - toujours fournir des **hard negatives** quand ils existent ;
 - plusieurs images acceptables sont autorisées ;
