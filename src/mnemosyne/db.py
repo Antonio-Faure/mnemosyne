@@ -191,15 +191,13 @@ CREATE INDEX IF NOT EXISTS idx_resolver_corpus_video
     ON resolver_corpus(video_id);
 
 -- Resolver -> agent source dependencies: one row per source request.
--- `biagent_task_id` is a historical column name: it points to the coder/browser
--- task that adds the source. Kept as-is to avoid a database migration.
 CREATE TABLE IF NOT EXISTS resolver_requests (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     resolver_task_id  INTEGER NOT NULL,
     sentence_id       TEXT,
     source_id         TEXT,
     source_name       TEXT,
-    biagent_task_id   INTEGER,
+    agent_task_id     INTEGER,
     status            TEXT NOT NULL DEFAULT 'pending',
     created_at        TEXT NOT NULL,
     completed_at      TEXT,
@@ -207,8 +205,8 @@ CREATE TABLE IF NOT EXISTS resolver_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_resolver_requests_resolver
     ON resolver_requests(resolver_task_id, status);
-CREATE INDEX IF NOT EXISTS idx_resolver_requests_biagent
-    ON resolver_requests(biagent_task_id, status);
+CREATE INDEX IF NOT EXISTS idx_resolver_requests_agent_task
+    ON resolver_requests(agent_task_id, status);
 
 CREATE TABLE IF NOT EXISTS resolver_results (
     resolver_task_id INTEGER PRIMARY KEY,
@@ -345,9 +343,38 @@ class Database:
         with self._lock:
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA synchronous=NORMAL")
+            self._migrate_legacy_names()
             self._conn.executescript(SCHEMA)
             self._migrate()
             self._conn.commit()
+
+    def _migrate_legacy_names(self) -> None:
+        """Rename columns/indexes that predate the tri-agent naming (idempotent)."""
+        exists = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='resolver_requests'"
+        ).fetchone()
+        if not exists:
+            return
+        cols = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(resolver_requests)")
+        }
+        if "biagent_task_id" in cols and "agent_task_id" not in cols:
+            try:
+                self._conn.execute(
+                    "ALTER TABLE resolver_requests "
+                    "RENAME COLUMN biagent_task_id TO agent_task_id"
+                )
+            except sqlite3.OperationalError:
+                # two processes may initialise the same file at once: the loser
+                # of the race finds the column already renamed
+                cols = {
+                    row["name"]
+                    for row in self._conn.execute("PRAGMA table_info(resolver_requests)")
+                }
+                if "agent_task_id" not in cols:
+                    raise
+        self._conn.execute("DROP INDEX IF EXISTS idx_resolver_requests_biagent")
 
     def _migrate(self) -> None:
         """Add columns introduced after the first schema version (idempotent)."""
@@ -487,20 +514,20 @@ class Database:
         sentence_id: str | None = None,
         source_id: str | None = None,
         source_name: str | None = None,
-        biagent_task_id: int | None = None,
+        agent_task_id: int | None = None,
     ) -> int:
         with self._lock:
             cur = self._conn.execute(
                 """INSERT INTO resolver_requests
                    (resolver_task_id, sentence_id, source_id, source_name,
-                    biagent_task_id, status, created_at)
+                    agent_task_id, status, created_at)
                    VALUES (?, ?, ?, ?, ?, 'pending', ?)""",
                 (
                     resolver_task_id,
                     sentence_id,
                     source_id,
                     source_name,
-                    biagent_task_id,
+                    agent_task_id,
                     utcnow_iso(),
                 ),
             )
@@ -537,9 +564,9 @@ class Database:
     def task_waiting_on_sources(self, resolver_task_id: int) -> bool:
         return bool(self.pending_resolver_requests(resolver_task_id))
 
-    def complete_resolver_requests_for_biagent(
+    def complete_resolver_requests_for_agent_task(
         self,
-        biagent_task_id: int,
+        agent_task_id: int,
         *,
         status: str = "done",
         note: str | None = None,
@@ -550,15 +577,15 @@ class Database:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT DISTINCT resolver_task_id FROM resolver_requests "
-                "WHERE biagent_task_id = ? AND status IN ('pending', 'running')",
-                (biagent_task_id,),
+                "WHERE agent_task_id = ? AND status IN ('pending', 'running')",
+                (agent_task_id,),
             ).fetchall()
             resolver_ids = [int(row["resolver_task_id"]) for row in rows]
             self._conn.execute(
                 """UPDATE resolver_requests
                    SET status = ?, completed_at = ?, note = ?
-                   WHERE biagent_task_id = ? AND status IN ('pending', 'running')""",
-                (status, utcnow_iso(), note, biagent_task_id),
+                   WHERE agent_task_id = ? AND status IN ('pending', 'running')""",
+                (status, utcnow_iso(), note, agent_task_id),
             )
             self._conn.commit()
         return resolver_ids

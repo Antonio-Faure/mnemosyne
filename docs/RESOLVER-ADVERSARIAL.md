@@ -110,9 +110,6 @@ resolver task (sentence)
 
 Table `resolver_requests` :
 
-La colonne `biagent_task_id` garde son nom historique : elle pointe vers la
-tâche agent (coder/browser) qui ajoute la source.
-
 ```sql
 resolver_requests (
   id INTEGER PRIMARY KEY,
@@ -120,7 +117,7 @@ resolver_requests (
   sentence_id TEXT,
   source_id TEXT,
   source_name TEXT,
-  biagent_task_id INTEGER,
+  agent_task_id INTEGER,
   status TEXT,              -- pending|running|done|failed
   created_at TEXT,
   completed_at TEXT,
@@ -258,7 +255,7 @@ resolver_requests (
   id INTEGER PRIMARY KEY,
   resolver_task_id INTEGER NOT NULL,
   sentence_id TEXT, source_id TEXT, source_name TEXT,
-  biagent_task_id INTEGER, status TEXT, created_at TEXT,
+  agent_task_id INTEGER, status TEXT, created_at TEXT,
   completed_at TEXT, note TEXT
 )
 

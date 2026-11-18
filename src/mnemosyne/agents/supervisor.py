@@ -444,7 +444,7 @@ def _complete_resolver_dependencies(
     note: str | None,
 ) -> None:
     """Wake resolver sessions whose requested sources just became terminal."""
-    resolver_ids = db.complete_resolver_requests_for_biagent(
+    resolver_ids = db.complete_resolver_requests_for_agent_task(
         task_id, status=status, note=note
     )
     for resolver_id in resolver_ids:

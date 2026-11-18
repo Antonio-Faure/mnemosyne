@@ -34,13 +34,13 @@ def test_resolver_parks_while_sources_pending(config):
             sentence_id="yt_1",
             source_id="source_x",
             source_name="Source X",
-            biagent_task_id=coder,
+            agent_task_id=coder,
         )
         assert request > 0
         assert db.task_waiting_on_sources(resolver) is True
         assert db.next_task(agents=("resolver",)) is None
 
-        db.complete_resolver_requests_for_biagent(coder, status="done", note="added")
+        db.complete_resolver_requests_for_agent_task(coder, status="done", note="added")
         assert db.task_waiting_on_sources(resolver) is False
         # A wake message is what makes it runnable again.
         Mailbox(db).post("system", "resolver", "[SOURCES READY]", resolver)
@@ -58,17 +58,17 @@ def test_multiple_requests_wake_only_when_all_terminal(config):
         first = db.enqueue_task("coder", "add source A")
         second = db.enqueue_task("coder", "add source B")
         db.create_resolver_request(
-            resolver, source_id="a", source_name="A", biagent_task_id=first
+            resolver, source_id="a", source_name="A", agent_task_id=first
         )
         db.create_resolver_request(
-            resolver, source_id="b", source_name="B", biagent_task_id=second
+            resolver, source_id="b", source_name="B", agent_task_id=second
         )
 
-        assert db.complete_resolver_requests_for_biagent(first, status="done") == [resolver]
+        assert db.complete_resolver_requests_for_agent_task(first, status="done") == [resolver]
         assert db.task_waiting_on_sources(resolver) is True
         assert db.next_task(agents=("resolver",)) is None
 
-        assert db.complete_resolver_requests_for_biagent(second, status="failed") == [resolver]
+        assert db.complete_resolver_requests_for_agent_task(second, status="failed") == [resolver]
         assert db.task_waiting_on_sources(resolver) is False
     finally:
         db.close()
@@ -79,12 +79,12 @@ def test_supervisor_helper_posts_one_wake_message(config):
     try:
         resolver = db.enqueue_task("resolver", "illustrate a sentence")
         db.set_task_status(resolver, "running", agent="resolver")
-        biagent = db.enqueue_task("coder", "add source A")
+        agent_task = db.enqueue_task("coder", "add source A")
         db.create_resolver_request(
-            resolver, source_id="a", source_name="A", biagent_task_id=biagent
+            resolver, source_id="a", source_name="A", agent_task_id=agent_task
         )
         _complete_resolver_dependencies(
-            db, Mailbox(db), biagent, "done", "source added"
+            db, Mailbox(db), agent_task, "done", "source added"
         )
         pending = db.pending_task_messages(resolver, "resolver")
         assert len(pending) == 1
@@ -93,7 +93,7 @@ def test_supervisor_helper_posts_one_wake_message(config):
         assert "A: done" in pending[0]["body"]
         # Completing again must not post a duplicate.
         _complete_resolver_dependencies(
-            db, Mailbox(db), biagent, "done", "source added"
+            db, Mailbox(db), agent_task, "done", "source added"
         )
         assert len(db.pending_task_messages(resolver, "resolver")) == 1
     finally:

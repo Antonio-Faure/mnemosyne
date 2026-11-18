@@ -265,7 +265,7 @@ class ResolverToolProvider(ToolProvider):
                 ):
                     return _fail(
                         f"cette source est déjà demandée (request #{request['id']}, "
-                        f"tâche #{request.get('biagent_task_id')}) : ne la redemande pas, "
+                        f"tâche #{request.get('agent_task_id')}) : ne la redemande pas, "
                         "elle sera ajoutée par l'agent."
                     )
             # Same host is allowed: a photo-only sibling of a text connector is
@@ -289,7 +289,7 @@ class ResolverToolProvider(ToolProvider):
                 "la phrase avec la meta API à jour."
             )
             try:
-                biagent_task_id = self.db.enqueue_task(
+                agent_task_id = self.db.enqueue_task(
                     p.agent,
                     objective,
                     payload={
@@ -307,7 +307,7 @@ class ResolverToolProvider(ToolProvider):
                     sentence_id=segment_id,
                     source_id=p.source_id,
                     source_name=p.source_name,
-                    biagent_task_id=biagent_task_id,
+                    agent_task_id=agent_task_id,
                 )
             except Exception as exc:  # noqa: BLE001 - never break the session
                 return _fail(f"demande de source non enregistrée : {exc}")
@@ -318,7 +318,7 @@ class ResolverToolProvider(ToolProvider):
                     "précise dans la raison en quoi ce profil de recherche diffère."
                 )
             return _ok(
-                f"tâche agent #{biagent_task_id} créée (request #{request_id}) pour "
+                f"tâche agent #{agent_task_id} créée (request #{request_id}) pour "
                 f"{p.source_name} ; la session resolver sera parquée tant que la source "
                 f"n'est pas terminale.{note}"
             )
