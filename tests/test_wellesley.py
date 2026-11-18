@@ -10,7 +10,7 @@ NOTE (access): the whole host currently sits behind an origin-side Cloudflare
 Turnstile challenge — every content path (including the manifest) answers HTTP
 200 with the challenge HTML to non-JavaScript clients, so the connector cannot
 fetch at runtime. The descriptor records the entry point so the source can be
-harvested as soon as the block is lifted. These tests stay fully offline.
+queried as soon as the block is lifted. These tests stay fully offline.
 """
 
 from __future__ import annotations

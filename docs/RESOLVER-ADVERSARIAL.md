@@ -160,7 +160,7 @@ Contrôles anti-triche automatiques avant la revue :
 Le resolver consomme la même API que le reste de mnemosyne :
 
 - `Engine.search(query, source_ids, limit)` pour les candidats ;
-- `/api/assets/...` si l'API HTTP est utilisée ;
+- `/api/search?q=...` si l'API HTTP est utilisée ;
 - les assets normalisés (`Asset`) avec `source_id`, `page_url`, `image_url`,
   `license`, `rights`, `extra`.
 

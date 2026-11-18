@@ -28,7 +28,7 @@ notes: >-
   Turnstile challenge — every content path (including the manifest) answers
   HTTP 200 with the challenge HTML to non-JavaScript clients, so the generic
   connector cannot fetch at runtime. The entry point is recorded so the source
-  can be harvested as soon as the block is lifted (resolve via browser/HITL).
+  can be queried as soon as the block is lifted (resolve via browser/HITL).
 extra:
   manifest: "https://repository.wellesley.edu/node/33362/manifest"
   collection_id: "33362"

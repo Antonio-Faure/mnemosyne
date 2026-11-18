@@ -13,7 +13,7 @@ multimodale (texte ↔ image) sur l'ensemble du corpus agrégé.
 ## Principe : incrémental, pas un « common crawl » séparé
 
 Un méga-crawl one-shot (tout télécharger d'un coup) est **fragile, coûteux et
-juridiquement lourd**. On enrichit plutôt **ce qu'on harvest déjà** :
+juridiquement lourd**. On enrichit plutôt **ce qu'on interroge déjà** :
 
 ```
 asset (déjà stocké : image_url + métadonnées + provenance)

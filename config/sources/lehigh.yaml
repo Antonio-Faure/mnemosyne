@@ -28,7 +28,7 @@ notes: >-
   exposed (Islandora 2 default) and /browse and /search are HTML (scraping not
   allowed), so a single-manifest entry point is used with the generic
   src/mnemosyne/sources/iiif.py connector. Keyless; rights vary per item. The
-  host answers 429 to aggressive clients, so harvest with a low rate limit.
+  host answers 429 to aggressive clients, so query with a low rate limit.
 extra:
   manifest: "https://preserve.lehigh.edu/node/450566/book-manifest"
   collection_id: "450566"

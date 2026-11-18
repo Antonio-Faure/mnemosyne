@@ -53,9 +53,9 @@ def test_status_changes_are_mirrored_and_terminal_closes_the_session(config):
 
 def test_job_runs_are_sessions_and_silent_runs_are_hidden(config):
     db = Database(config.db_file())
-    db.open_job_session(7, "harvest")
+    db.open_job_session(7, "verify")
     db.close_job_session(
-        7, status="done", activity="harvest gallica « usine » → 3 nouveaux"
+        7, status="done", activity="verify gallica « usine » → OK"
     )
     db.open_job_session(8, "agency")
     db.close_job_session(8, status="done", activity=None)
@@ -69,7 +69,7 @@ def test_job_runs_are_sessions_and_silent_runs_are_hidden(config):
     }
 
     session = db.get_session("job:7")
-    assert session["title"].startswith("harvest gallica")
+    assert session["title"].startswith("verify gallica")
     assert session["ended_at"]
     assert session["notable"] == 1
     db.close()
@@ -196,7 +196,7 @@ async def test_task_wrapper_job_sessions_stay_silent(config, monkeypatch, kind):
 
 @pytest.mark.asyncio
 async def test_empty_mechanical_job_stays_silent(config, monkeypatch):
-    """A harvest with no new asset is a silent run (no `_activity`)."""
+    """A mechanical job with no activity is a silent run (no `_activity`)."""
     from mnemosyne.heartbeat import scheduler as sch
     from mnemosyne.heartbeat.jobs import HANDLERS
     from mnemosyne.models import Job
@@ -204,12 +204,12 @@ async def test_empty_mechanical_job_stays_silent(config, monkeypatch):
     async def handler(ctx, job):
         return {"seed_index": 42}
 
-    monkeypatch.setitem(HANDLERS, "harvest", handler)
+    monkeypatch.setitem(HANDLERS, "verify", handler)
     heartbeat = sch.Heartbeat(config)
     try:
         job_id = heartbeat.engine.db.enqueue(
             Job(
-                kind="harvest",
+                kind="verify",
                 payload={"source_id": "x", "seed_index": 1},
                 run_at="2000-01-01T00:00:00+00:00",
             )

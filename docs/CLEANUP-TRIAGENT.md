@@ -14,7 +14,7 @@
 - **`kind=agency` : jamais cancellable par un timer.** Une mission est jugée
   sur le marqueur de patinage (`stall:<agent>`, écrit par l'agent lui-même),
   pas sur l'horloge.
-- **Jobs mécaniques** (verify/harvest/discover/warmup/watchdog/journal) : le
+- **Jobs mécaniques** (verify/discover/warmup/watchdog/journal) : le
   `wait_for` reste, car il protège la **vivacité de la boucle** — un handler
   mécanique hangé gèlerait `_tick` pour toujours (plus de watchdog, plus
   d'agency, plus de récupération de messages). Ce n'est pas une limite de

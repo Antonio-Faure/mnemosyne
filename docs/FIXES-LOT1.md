@@ -18,26 +18,7 @@ retry ; un 403 n'est pas réessayé (un refus explicite n'est pas transitoire) e
 (nouveau, le module n'avait aucun test) — 403 rapporté sans retry, 429 rapporté
 puis réessayé, 404 invisible au gouverneur.
 
-## 2. `engine.harvest()` / CLI — `enabled: false` ignoré
-
-**Problème** : `Engine.search()` filtre `descriptor.enabled`, mais
-`Engine.harvest()` (et `mnemosyne harvest <id>`) ne vérifiaient rien : on
-pouvait ingérer `musee_orsay`, `pop`, `mai_saint_etienne`… malgré leur
-désactivation.
-
-**Correctif** : garde dans `Engine.harvest()` (+ message CLI). Test :
-`test_harvest_refuses_disabled_source` (le connecteur n'est jamais construit).
-
-## 3. `db.save_assets()` — comptait les doublons comme des nouveaux
-
-**Problème** : `INSERT … ON CONFLICT(id) DO NOTHING` + `return len(assets)`
-→ une source déjà ingérée était re-comptée comme « nouvelle » et repassait en
-`CONNECTED` à chaque re-run.
-
-**Correctif** : comptage réel via `cursor.rowcount`. Test :
-`tests/test_db_assets.py` (nouveau).
-
-## 4. Connecteur IIIF — pagination `next` ignorée + taille v3 invalide
+## 2. Connecteur IIIF — pagination `next` ignorée + taille v3 invalide
 
 **Problème A** : `_manifest_urls()` ne lisait que la première page d'une
 collection ; le `next` (v2/v3) n'était jamais suivi. `bsb_collection`
@@ -53,7 +34,7 @@ profil `image/3`, `full` sinon). Tests : pagination exercée dans
 `tests/test_iiif.py` et `tests/test_bsb_collection.py` (le `next` du fixture
 est désormais suivi, le 2ᵉ manifeste vit page 2) ; attentes v3 passées à `max`.
 
-## 5. ANMT — scraping HTML supprimé (politique « pas de scraping »)
+## 3. ANMT — scraping HTML supprimé (politique « pas de scraping »)
 
 **Problème** : `_discover_arks()` fetchait la page HTML de recherche
 (`accept="text/html"`) sans `extra.scraping_consent` — violation de la
@@ -68,7 +49,7 @@ que les `seeds` via les manifestes IIIF programmatiques. Les marqueurs
 découverte HTML il faudra un consentement écrit tracé dans
 `extra.scraping_consent`.**
 
-## 6. POP — CC BY-NC / BY-ND classées « libres »
+## 4. POP — CC BY-NC / BY-ND classées « libres »
 
 **Problème** : les marqueurs libres (`cc by`, `creative commons`) étaient
 testés avant les restrictifs : `« Licence CC BY-NC 4.0 »` → `False`

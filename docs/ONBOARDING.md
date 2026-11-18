@@ -75,5 +75,5 @@ se relancent plus au démarrage (`disabled`).
   1-2 séances/jour sur `deepseek-v4.1-flash`, lecture seule, aucune
   inscription. Pour les suspendre : `warmup_per_day_min: 0` **et**
   `warmup_per_day_max: 0`, puis redémarrer le service.
-- **Harvest / verify / journal / watchdog** : HTTP + base de données,
+- **Verify / journal / watchdog** : HTTP + base de données,
   **zéro token LLM**.

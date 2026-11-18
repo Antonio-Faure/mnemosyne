@@ -11,10 +11,10 @@ Licensing is the real constraint: both the museum site and the regional WebMuseo
 portal are "all rights reserved". The descriptor is therefore declared
 ``enabled: false`` in ``docs/SOURCES.md`` (restrictive licence ⇒ stays off until
 the project policy allows it — see the existing ``vam`` / ``vatican`` cases).
-The connector and its tests are ready so that, once written authorization and a
-reuse licence (CC BY / CC BY-SA 4.0 or public domain) are granted, re-activation
-is a one-line change. While disabled, ``Engine.search`` never queries the source
-and the harvest scheduler skips it, so no file is ever re-hosted.
+The connector and its tests are ready so that, once the museum confirms
+programmatic access, re-activation is a one-line change. While disabled,
+``Engine.search`` never queries the source and the scheduler skips it, so no
+file is ever re-hosted.
 
 Provider quirks normalised here:
 

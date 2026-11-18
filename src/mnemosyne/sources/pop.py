@@ -44,7 +44,7 @@ FRONTEND_BASE = "https://pop.culture.gouv.fr"
 #: Databases targeted by this connector (photographs / objects).
 DEFAULT_DATABASES = ("memoire", "joconde")
 
-#: Free-text terms used when harvesting the industrial-heritage corpus.
+#: Free-text terms used when searching the industrial-heritage corpus.
 INDUSTRIAL_TERMS = (
     "usine",
     "machine",

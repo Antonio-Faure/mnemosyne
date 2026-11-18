@@ -144,7 +144,7 @@ CREATE INDEX IF NOT EXISTS idx_email_waits_status
 CREATE TABLE IF NOT EXISTS sessions (
     id         TEXT PRIMARY KEY,          -- 'task:<id>' | 'job:<id>'
     family     TEXT NOT NULL,             -- task | job
-    type       TEXT NOT NULL,             -- warmup, connexion, connect, harvest, agency…
+    type       TEXT NOT NULL,             -- warmup, connexion, connect, verify, agency…
     title      TEXT NOT NULL,
     agent      TEXT,                      -- starting agent (tasks) / null (jobs)
     status     TEXT NOT NULL,

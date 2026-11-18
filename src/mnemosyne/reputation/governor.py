@@ -24,7 +24,6 @@ log = get_logger("governor")
 
 #: action class -> warmup cap attribute
 _ACTION_CAPS = {
-    "harvest": "harvest_per_day",
     "outbound": "outbound_per_day",
     "search": "search_per_day",
 }
@@ -169,12 +168,10 @@ class Governor:
             },
             "warmup": {
                 "until_day": phase.until_day,
-                "harvest_per_day": phase.harvest_per_day,
                 "outbound_per_day": phase.outbound_per_day,
             },
             "today": {
                 "search": self.daily_count("search"),
-                "harvest": self.daily_count("harvest"),
                 "outbound": self.daily_count("outbound"),
             },
             "cooling_down": {
