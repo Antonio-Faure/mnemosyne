@@ -43,7 +43,7 @@ extra:
   media_endpoint: /media
   per_page_max: 100
   authorization_request:
-    sender: archivist.mnemosyne@gmail.com
+    sender: "<adresse e-mail de l'agent>"
     to: museedupetrole@wanadoo.fr
     cc: [musee.petrole@musees-vosges-nord.org, contact@parc-vosges-nord.fr]
     sent: "2026-11-08"

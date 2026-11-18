@@ -44,7 +44,7 @@ lowercased variable name:
 
 ```bash
 # .env (never committed)
-MNEMOSYNE_EMAIL_USER=archivist.mnemosyne@gmail.com
+MNEMOSYNE_EMAIL_USER=agent@example.com
 MNEMOSYNE_EMAIL_PASSWORD=xxxx-xxxx-xxxx-xxxx   # Gmail app password
 
 # or

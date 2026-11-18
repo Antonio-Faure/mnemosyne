@@ -69,7 +69,7 @@ rendez-vous.
 > Bien cordialement,
 > **Antonio-Faure (pseudonyme)** — projet Mnemosyne
 > https://github.com/Antonio-Faure/mnemosyne
-> archivist.mnemosyne@gmail.com
+> {adresse e-mail de l'agent}
 >
 > *Le fondateur signe sous le pseudonyme Antonio-Faure ; son identité civile reste
 > anonyme. Ce message a été préparé par l'assistant logiciel du projet ; les
