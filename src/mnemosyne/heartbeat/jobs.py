@@ -221,7 +221,7 @@ def _connexion_candidate(ctx: JobContext):
 
 @handler("agency")
 async def handle_agency(ctx: JobContext, job: Job) -> dict | None:
-    """Background bi-agent turn: run one pending agent message (turn-taking)."""
+    """Background agent turn: run one pending agent message (turn-taking)."""
     from mnemosyne.agents.supervisor import run_pending_once
 
     ran = await run_pending_once(ctx.config, journal=ctx.journal, vault_get=_vault_get(ctx))

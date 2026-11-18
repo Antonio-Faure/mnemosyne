@@ -15,7 +15,7 @@ import requests
 
 UA = (
     "mnemosyne-research-bot/1.0 "
-    "(https://github.com/Antonio-Faure/mnemosyne; opensource research aggregator)"
+    "(https://github.com/Antonio-Faure/mnemosyne; opensource archive image search engine)"
 )
 CHROME_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "

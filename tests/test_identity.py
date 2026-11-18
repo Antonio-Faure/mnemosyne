@@ -5,7 +5,9 @@ from mnemosyne.identity import disclosure
 def _identity() -> IdentityConfig:
     return IdentityConfig(
         name="mnemosyne",
-        purpose="an open archive aggregator",
+        agent_name="Archivist",
+        purpose="le moteur de recherche d'images d'archives",
+        purpose_en="the archive image search engine",
         repo_url="https://example.org/repo",
         language="fr",
     )
@@ -13,11 +15,15 @@ def _identity() -> IdentityConfig:
 
 def test_disclosure_states_identity_and_repo():
     text = disclosure(_identity())
-    assert "mnemosyne" in text
-    assert "an open archive aggregator" in text
+    assert "Archivist" in text
+    assert "Mnemosyne" in text
+    assert "moteur de recherche d'images d'archives" in text
     assert "https://example.org/repo" in text
 
 
 def test_english_variant():
     identity = IdentityConfig(language="en", repo_url="https://example.org/repo")
-    assert disclosure(identity).startswith("I am")
+    text = disclosure(identity)
+    assert text.startswith("I am Archivist")
+    assert "Mnemosyne" in text
+    assert "archive image search engine" in text

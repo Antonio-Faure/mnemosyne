@@ -25,7 +25,7 @@ import requests
 
 UA = (
     "mnemosyne-research-bot/1.0 "
-    "(https://github.com/Antonio-Faure/mnemosyne; opensource research aggregator)"
+    "(https://github.com/Antonio-Faure/mnemosyne; opensource archive image search engine)"
 )
 HEADERS = {
     "User-Agent": UA,

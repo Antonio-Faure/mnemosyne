@@ -118,8 +118,9 @@ puis reconnecte via `make vnc`.
 
 - **Transparence** : tout mail / formulaire inclut une phrase d'identité + l'URL du
   repo, construite depuis `config.identity` (`src/mnemosyne/identity.py`). Exemple :
-  « Je suis mnemosyne, un agent logiciel autonome qui développe un projet de
-  recherche ouvert… Open source : https://github.com/Antonio-Faure/mnemosyne ».
+  « Je suis Archivist, le système autonome qui ajoute les sources d'images
+  d'archives à Mnemosyne, le moteur de recherche d'images d'archives. Open source :
+  https://github.com/Antonio-Faure/mnemosyne ».
 - **Contexte borné** : un tour d'agent est une session Stirrup bornée
   (`agents.max_turns`), les sorties d'outils sont tronquées, et les tours passent
   par la boîte aux lettres durable au lieu de rejouer tout l'historique.

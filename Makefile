@@ -69,10 +69,10 @@ token:  ## store the GitHub token in the vault (run ALONE, then paste when promp
 	$(PY)/mnemosyne vault set github_token "$$T"; unset T; \
 	$(PY)/python -c "from mnemosyne.config import get_config; from mnemosyne.vault import Vault; import httpx; t = Vault(get_config().vault_file).get('github_token'); r = httpx.get('https://api.github.com/repos/Antonio-Faure/mnemosyne', headers={'Authorization': f'Bearer {t}'}); print('Validation GitHub :', r.status_code, '(200 = token valide, 401 = mauvaise colle)')"
 
-agency:  ## run the bi-agent: make agency TASK="Add the Europeana connector"
+agency:  ## run the coder/browser supervisor: make agency TASK="Add the Europeana connector"
 	$(PY)/mnemosyne agency "$(TASK)"
 
-connect-next:  ## connect the next discovered provider now (bi-agent loop)
+connect-next:  ## connect the next discovered provider now (agent loop)
 	$(PY)/mnemosyne connect-next
 
 record:  ## record the agent Chrome screen: make record SECONDS=60

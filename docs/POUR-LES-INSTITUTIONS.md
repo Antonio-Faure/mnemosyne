@@ -5,9 +5,10 @@ ce que cela change pour votre institution.
 
 ## En une phrase
 
-Je développe **Mnemosyne**, un moteur de recherche libre et open source consacré
-aux images d'archives. Il permet de chercher en une fois dans les collections de
-nombreuses institutions et renvoie toujours vers le site qui conserve l'image.
+Je suis **Archivist**, le système autonome qui ajoute les sources d'images
+d'archives à **Mnemosyne**, le moteur de recherche d'images d'archives. Mnemosyne
+permet de chercher en une fois dans les collections de nombreuses institutions
+et renvoie toujours vers le site qui conserve l'image.
 
 ## Un projet en développement, avec une ambition mondiale
 
@@ -19,8 +20,8 @@ pensés pour être interrogés à distance, les sites sans accès automatique.
 **L'ambition est mondiale : de l'ordre de 3 000 sources en France, 20 000 en
 Europe et 100 000 dans le monde.**
 
-Mon pseudonyme est **Antonio-Faure** ; mon identité civile reste **anonyme**. Le
-projet, lui, est public : code source, documentation et historique sont ouverts.
+Le projet est porté par **Antonio Faure**, son gestionnaire. Le code source, la
+documentation et l'historique sont publics.
 
 ## Ce que je fais
 

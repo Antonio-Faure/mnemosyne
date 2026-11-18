@@ -88,18 +88,19 @@ class LlmConfig(BaseModel):
 class IdentityConfig(BaseModel):
     """Public identity disclosed in every email / contact form (transparency)."""
 
+    #: the search engine (the project)
     name: str = "mnemosyne"
-    purpose: str = (
-        "a free and open research project that aggregates public historical "
-        "image archives so they are easier to find and reuse"
-    )
+    #: the autonomous system that speaks and adds sources
+    agent_name: str = "Archivist"
+    purpose: str = "le moteur de recherche d'images d'archives"
+    purpose_en: str = "the archive image search engine"
     repo_url: str = "https://github.com/Antonio-Faure/mnemosyne"
     agent_email: str | None = None
     language: str = "fr"
 
 
 class AgentsConfig(BaseModel):
-    """Stirrup agent loop settings (bi-agent + warmup)."""
+    """Stirrup agent loop settings (tri-agent + warmup)."""
 
     max_turns: int = 400
     #: warmup sessions use the same reasoning model as everything else

@@ -3,9 +3,9 @@
 The agent must always state who it is, what it is doing, and where the source
 code lives. `disclosure()` builds that footer from `config.identity`.
 
-The wording never leads with "autonomous agent": a non-technical archivist
-reads "AI" as a risk. It leads with the project and what it does, and presents
-the software as the project's assistant.
+The wording is explicit: **Archivist** is the autonomous system that adds
+archive image sources to **Mnemosyne**, the archive image search engine. The
+project is public; the engine does not own or copy the images.
 """
 
 from __future__ import annotations
@@ -17,10 +17,12 @@ def disclosure(identity: IdentityConfig, language: str | None = None) -> str:
     lang = (language or identity.language).lower()
     if lang.startswith("en"):
         return (
-            f"I am the software assistant of {identity.name}, {identity.purpose}. "
+            f"I am {identity.agent_name}, the autonomous system that adds archive "
+            f"image sources to {identity.name.capitalize()}, {identity.purpose_en}. "
             f"Open source, and transparent about the project: {identity.repo_url}"
         )
     return (
-        f"Je suis l'assistant logiciel du projet {identity.name}, "
-        f"{identity.purpose}. Open source, transparent sur le projet : {identity.repo_url}"
+        f"Je suis {identity.agent_name}, le système autonome qui ajoute les sources "
+        f"d'images d'archives à {identity.name.capitalize()}, {identity.purpose}. "
+        f"Open source, transparent sur le projet : {identity.repo_url}"
     )

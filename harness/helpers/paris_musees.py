@@ -89,7 +89,7 @@ SAMPLE_VISUEL_ID = "320025034"
 SAMPLE_MANIFEST = BASE + "/iiif/" + SAMPLE_VISUEL_ID + "/manifest"
 UA = (
     "mnemosyne-research-bot/1.0 "
-    "(https://github.com/Antonio-Faure/mnemosyne; opensource research aggregator)"
+    "(https://github.com/Antonio-Faure/mnemosyne; opensource archive image search engine)"
 )
 
 

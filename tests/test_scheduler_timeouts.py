@@ -63,7 +63,7 @@ async def test_running_agent_session_does_not_block_the_other_loop(cfg, monkeypa
     """A long activation (resolver) must not starve a job enqueued meanwhile.
 
     Before: `_tick` awaited every claimed job, so one resolver turn blocked the
-    whole heartbeat — the biagent job stayed pending for the session duration.
+    whole heartbeat — the agent job stayed pending for the session duration.
     """
 
     started = asyncio.Event()

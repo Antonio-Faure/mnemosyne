@@ -50,7 +50,7 @@ def build_objective(
         objective += f"Claim : {claim}\n"
     objective += (
         "Cherche dans la meta API, fais valider le candidat par l'opérateur, "
-        "et demande au biagent les sources manquantes si nécessaire."
+        "et demande aux agents les sources manquantes si nécessaire."
     )
     if sources:
         objective += "\n\nCatalogue actuel (source_id — nom — état) :\n"

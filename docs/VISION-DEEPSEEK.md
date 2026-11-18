@@ -23,12 +23,12 @@
   la vision native — l'heuristique punit un modèle capable par son nom, sans
   échappatoire (elle écrase un `use_vision=True` explicite).
 
-**Mais surtout : ce gate était doublement dormant.** Le bi-agent ne construit
+**Mais surtout : ce gate était doublement dormant.** Le tri-agent ne construit
 JAMAIS d'Agent browser-use (stirrup crée une `BrowserSession`, pas un Agent).
 Et plus fondamental encore : **l'agent navigateur ne recevait aucune image** —
 stirrup sait faire passer des captures d'écran au modèle
 (`tools/browser_use.py:555-571`, `ImageContentBlock`), mais rien n'était
-branché. La vision s'était **perdue dans la migration bi-agent**, pas coupée
+branché. La vision s'était **perdue dans la migration tri-agent**, pas coupée
 par une condition.
 
 ## 2. Le rebranchement (le vrai fix)

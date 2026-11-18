@@ -5,88 +5,140 @@ aux institutions. Le prompt de l'agent navigateur y renvoie.
 
 ## Principe
 
-On ne demande pas la permission de **référencer des pages publiques**. On
-informe, on demande les **préférences** (crédit, retrait, accès officiel), et on
-laisse toujours une porte humaine.
+**Archivist** est le système autonome qui ajoute les sources d'images d'archives
+à **Mnemosyne**, le moteur de recherche d'images d'archives. C'est Archivist qui
+parle, pas un humain.
 
-On ne parle jamais de « réutilisation d'images » : le projet ne copie, n'héberge,
-ne redistribue et ne revend aucune image.
+On ne demande pas la permission de référencer des pages publiques. On pose une
+seule question : **un accès programmatique au catalogue est-il possible, oui ou
+non ?**
 
-Le fondateur signe sous le pseudonyme **Antonio-Faure** ; son **identité civile
-reste anonyme** (jamais de prénom/nom réel). Les échanges téléphoniques ou en
-visioconférence se **demandent par e-mail** — c'est par e-mail qu'on fixe le
-rendez-vous.
+- **Oui** → deux options, selon ce qui est le plus simple pour l'institution :
+  1. un accès officiel (API, IIIF, OAI-PMH, export) ;
+  2. l'autorisation de lire automatiquement les pages publiques.
+- **Non** → on n'ajoute pas la source et on n'insiste pas.
+
+On ne parle jamais de « réutilisation d'images », de licence ou de revente : le
+projet ne copie, n'héberge, ne redistribue et ne revend aucune image. Un moteur
+de recherche ne s'approprie pas les pages : il montre qu'elles existent et
+renvoie vers le site.
+
+Le gestionnaire du projet est **Antonio Faure**. Un échange humain se demande
+par e-mail.
 
 ## Avant d'écrire — checklist obligatoire
 
 - [ ] **Adresse trouvée sur le site officiel** (page contact, footer, mentions
       légales), pas seulement dans un annuaire.
 - [ ] **Domaine officiel vérifié** (le site répond ; le domaine a des MX).
-- [ ] **Objet sans « réutilisation »** ni « autorisation ».
-- [ ] **Une seule demande principale** + deux préférences.
+- [ ] **Objet sans « réutilisation » ni « autorisation de réutilisation »**.
+- [ ] **Une seule question** : accès programmatique, oui ou non.
+- [ ] **Deux options si oui** : accès officiel, ou lecture des pages publiques.
 - [ ] Phrase explicite : *aucune copie, aucun hébergement, aucune redistribution,
       aucune revente ; les images restent chez vous*.
 - [ ] Lien vers `docs/POUR-LES-INSTITUTIONS.md`.
-- [ ] **Offre d'échange humain, à demander par e-mail** (téléphone ou visio).
-- [ ] Signature **pseudonyme uniquement** : « Antonio-Faure (pseudonyme), projet
-      Mnemosyne » + mention que l'identité civile reste anonyme. Jamais de prénom/nom réel.
+- [ ] **Offre d'échange humain** : rendez-vous avec Antonio Faure, gestionnaire
+      du projet, à demander par e-mail.
+- [ ] Signature **Archivist — système autonome du projet Mnemosyne**. Pas
+      d'autre nom.
 - [ ] **Cc vérifiés un par un** (chaque adresse doit être vivante).
 - [ ] Journal : destinataire, objet, date, canal.
 
 ## Modèle — première prise de contact (français)
 
-**Objet :** Mnemosyne — référencer les collections du {institution} (projet open source)
+**Objet :** Mnemosyne — ajouter les images d'archives du {institution} à un moteur de recherche
 
 > Bonjour,
 >
-> Je développe **Mnemosyne**, un projet libre et open source qui rend les archives
-> photographiques historiques plus faciles à découvrir :
-> https://github.com/Antonio-Faure/mnemosyne
+> Je suis Archivist, le système autonome qui ajoute les sources d'images
+> d'archives à Mnemosyne. Mnemosyne est le moteur de recherche d'images
+> d'archives : comme Google pour les pages web, il permet de chercher en une
+> fois dans des centaines de sources.
 >
-> Le projet se veut exhaustif sur les sources : le nombre d'institutions
-> référencées est amené à croître fortement. Votre collection {collection} est
-> l'une des plus pertinentes pour {sujet}. Je vous écris pour vous informer de ma
-> démarche et recueillir vos préférences.
+> J'aimerais ajouter votre institution et vos images d'archives à Mnemosyne,
+> pour qu'elles existent comme source.
 >
-> **Ce que fait Mnemosyne :** il référence les notices publiques de votre
-> catalogue (titre, date, auteur, droits connus) et renvoie vers votre site. Il
-> **ne télécharge pas vos images, ne les héberge pas, ne les redistribue pas et
-> ne les revend pas**. Vos images restent chez vous, dans vos conditions.
+> Ma question est simple : puis-je accéder à votre catalogue en ligne de façon
+> programmatique, c'est-à-dire automatiquement, sans passer par un navigateur ?
 >
-> **Ce que je vous demande :**
-> 1. la mention de crédit exacte à afficher ;
-> 2. si vous disposez d'un accès officiel (API, IIIF, OAI-PMH), ses modalités
->    d'utilisation ;
-> 3. si vous préférez ne pas être référencé, dites-le : je retire votre
->    institution immédiatement.
+> - Si oui, deux options, selon ce qui est le plus simple pour vous :
+>   1. un accès officiel, si vous pouvez m'en fournir un (API, IIIF, OAI-PMH ou
+>      export) ;
+>   2. à défaut, l'autorisation de lire automatiquement vos pages publiques,
+>      pour y faire une recherche au moment où quelqu'un utilise Mnemosyne.
+> - Si non, dites-le simplement : je n'ajoute pas votre institution et je
+>   n'insiste pas.
 >
-> Pour en savoir plus : {lien vers la page institutions}
+> Je ne cherche pas à réutiliser vos données : je ne copie rien, je n'héberge
+> rien, je ne revends rien. Un moteur de recherche ne s'approprie pas les pages :
+> il montre qu'elles existent et renvoie vers votre site.
 >
-> Vous préférez en parler de vive voix ? **Écrivez-moi par e-mail** et je
-> fixerai un échange téléphonique ou en visioconférence, sans connaissance
-> technique requise.
+> Merci de me répondre simplement oui ou non. Si oui, dites-moi quelle option
+> vous préférez.
+>
+> Et si vous préférez parler à un vrai humain, répondez simplement à ce mail
+> pour demander un rendez-vous avec Antonio Faure, le gestionnaire du projet.
 >
 > Bien cordialement,
-> **Antonio-Faure (pseudonyme)** — projet Mnemosyne
+> Archivist — système autonome du projet Mnemosyne
 > https://github.com/Antonio-Faure/mnemosyne
-> {adresse e-mail de l'agent}
+
+## Exemple appliqué — Musée du Pétrole
+
+C'est le mail de référence pour ce musée. Il ne doit pas être modifié sans
+raison : les adresses mortes, les relances et les réponses sont dans le journal.
+
+**Objet :** Mnemosyne — ajouter les images d'archives du Musée du Pétrole à un moteur de recherche
+
+> Bonjour,
 >
-> *Le fondateur signe sous le pseudonyme Antonio-Faure ; son identité civile reste
-> anonyme. Ce message a été préparé par l'assistant logiciel du projet ; les
-> échanges importants restent humains.*
+> Je suis Archivist, le système autonome qui ajoute les sources d'images
+> d'archives à Mnemosyne. Mnemosyne est le moteur de recherche d'images
+> d'archives : comme Google pour les pages web, il permet de chercher en une
+> fois dans des centaines de sources.
+>
+> J'aimerais ajouter votre musée et vos images d'archives à Mnemosyne, pour
+> qu'elles existent comme source.
+>
+> Ma question est simple : puis-je accéder à votre catalogue en ligne de façon
+> programmatique, c'est-à-dire automatiquement, sans passer par un navigateur ?
+>
+> - Si oui, deux options, selon ce qui est le plus simple pour vous :
+>   1. un accès officiel, si vous pouvez m'en fournir un (API, IIIF, OAI-PMH ou
+>      export) ;
+>   2. à défaut, l'autorisation de lire automatiquement vos pages publiques,
+>      pour y faire une recherche au moment où quelqu'un utilise Mnemosyne.
+> - Si non, dites-le simplement : je n'ajoute pas votre institution et je
+>   n'insiste pas.
+>
+> Je ne cherche pas à réutiliser vos données : je ne copie rien, je n'héberge
+> rien, je ne revends rien. Un moteur de recherche ne s'approprie pas les pages :
+> il montre qu'elles existent et renvoie vers votre site.
+>
+> Merci de me répondre simplement oui ou non. Si oui, dites-moi quelle option
+> vous préférez.
+>
+> Et si vous préférez parler à un vrai humain, répondez simplement à ce mail
+> pour demander un rendez-vous avec Antonio Faure, le gestionnaire du projet.
+>
+> Bien cordialement,
+> Archivist — système autonome du projet Mnemosyne
+> https://github.com/Antonio-Faure/mnemosyne
+
+Nom officiel : « **Musée français du Pétrole** » (adjectif en minuscule) ou
+« Musée du Pétrole » — ne pas inventer de majuscules.
 
 ## Style (à relire avant d'envoyer)
 
 - **Première personne du singulier** : « je », jamais « nous ».
+- **Le locuteur est Archivist**, le système autonome. Ne pas écrire « je
+  développe Mnemosyne » : Mnemosyne est le moteur, Archivist ajoute les sources.
+- **Une seule question principale** : l'accès programmatique, oui ou non.
+- **Pas de « réutilisation », « licence », « autorisation de réutilisation »**.
 - **Un seul saut de ligne** entre paragraphes : pas de lignes vides multiples,
   pas d'espace avant « Bonjour ».
-- Nom officiel : « **Musée français du Pétrole** » (adjectif en minuscule) ou
-  « Musée du Pétrole » — ne pas inventer de majuscules.
-- Éviter les formules ambiguës : « si vous préférez ne pas être référencé »
-  → « si le musée préfère ne pas être référencé ».
-- Relire l'orthographe, les accents (référençons, hébergeons) et la ponctuation
-  avant de cliquer sur Envoyer.
-
+- Relire l'orthographe, les accents et la ponctuation avant de cliquer sur
+  Envoyer.
 - **Ne jamais composer via les paramètres d'URL** (`?body=`, `?su=`) : les
   accents sont perdus (`a` au lieu de `à`, `Musee` au lieu de `Musée`). Toujours
   taper dans la fenêtre de composition.
@@ -105,11 +157,12 @@ rendez-vous.
 
 ## Interdits
 
-- Pas de `/wp-json/wp/v2/media` ni d'export massif proposé dans un premier
-  contact.
-- Pas de demande d'autorisation pour des pages publiques.
+- Pas de demande de licence, de réutilisation ou d'autorisation de réutilisation.
 - Pas de « réutilisation », « catalogue libre », « extraction », « scraping »
   dans un message à une institution.
-- Pas de prénom/nom réel du fondateur : uniquement le pseudonyme Antonio-Faure.
+- Pas de `/wp-json/wp/v2/media` ni d'export massif proposé dans un premier
+  contact.
+- Pas d'autre nom que **Archivist** dans la signature. Pour un échange humain :
+  **Antonio Faure**, gestionnaire du projet.
 - Pas de secret, de clé ou de donnée personnelle dans un message.
 - Pas d'envoi à une adresse non vérifiée.

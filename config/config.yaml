@@ -89,9 +89,9 @@ email:
   username_env: MNEMOSYNE_EMAIL_USER
   password_env: MNEMOSYNE_EMAIL_PASSWORD
 
-# Adversarial resolver: a second permanent loop, one session per sentence.
+# Adversarial resolver: its own permanent loop, one session per sentence.
 # It reads the catalog meta API, asks the operator to validate candidates, and
-# requests missing sources from the biagent queue.
+# requests missing sources from the agent queue.
 resolver:
   # Désactivé : aucune dépense autonome. On le rallume explicitement pour une phrase.
   enabled: false
@@ -104,9 +104,9 @@ resolver:
 # Public identity disclosed in every email / contact form (transparency).
 identity:
   name: mnemosyne
-  purpose: >-
-    a free and open source project that makes public historical image archives
-    easier to discover, pointing back to the institutions that hold them
+  agent_name: Archivist
+  purpose: le moteur de recherche d'images d'archives
+  purpose_en: the archive image search engine
   repo_url: https://github.com/Antonio-Faure/mnemosyne
   agent_email: archivist.mnemosyne@gmail.com
   language: fr
@@ -119,7 +119,7 @@ discovery:
   interval_s: 86400
   limit: 100
 
-# Coder agent (bi-agent; also reachable via `mnemosyne agency --to coder`).
+# Coder agent (tri-agent; also reachable via `mnemosyne agency --to coder`).
 dev:
   # GEL DE L'ONBOARDING (décision du 16/10/2026) : aucune source ne s'ajoute —
   # ni scan, ni mission de connexion, ni `connect-next`, ni tâche connect en
@@ -133,7 +133,7 @@ dev:
   fetch_max_chars: 3000
   # model: deepseek-v4.1-flash   # uncomment to use a cheaper model for dev
 
-# Stirrup agent loop (bi-agent + warmup).
+# Stirrup agent loop settings (tri-agent + warmup).
 agents:
   max_turns: 400
   # Modèle des séances de warmup : aligné sur le défaut DeepSeek V4.1 Flash.
@@ -168,7 +168,7 @@ agents:
   warmup_session_max: 12
   warmup_skip_probability: 0.2
   # Jambe CONNEXION du cycle (inscription portail + clé API + branchement) :
-  # OPT-IN — elle consomme des tokens des deux agents. false = warmups seuls,
+  # OPT-IN — elle consomme des tokens des agents. false = warmups seuls,
   # onboarding 100 % manuel (`mnemosyne connect-next`, `mnemosyne agency`).
   auto_connect: false
   warmup_sites:
