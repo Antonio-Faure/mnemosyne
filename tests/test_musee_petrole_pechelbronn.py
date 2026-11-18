@@ -172,7 +172,7 @@ async def test_non_list_response_returns_empty():
 
 
 def test_descriptor_is_disabled_pending_authorization():
-    """Restrictive licence: the source stays off until written authorization."""
+    """Restrictive licence: the source stays off until programmatic access."""
     path = (
         Path(__file__).resolve().parents[1]
         / "config"
@@ -185,6 +185,6 @@ def test_descriptor_is_disabled_pending_authorization():
     assert raw["enabled"] is False
     assert raw["license"] == "all-rights-reserved"
     assert raw["base_url"].endswith("/wp-json/wp/v2")
-    # the authorization request is on file (relayed by the browser agent)
-    request = raw["extra"]["authorization_request"]
+    # the access request is on file (relayed by the browser agent)
+    request = raw["extra"]["access_request"]
     assert request["sent"] and request["to"] and request["status"] == "pending"

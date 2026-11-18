@@ -8,7 +8,8 @@ Un projet libre et open source, en développement actif, que je développe seul 
 sans copier, héberger ni revendre les images des institutions.
 
 Mnemosyne est un moteur de recherche. Pas un musée, pas un site qui stocke des
-images, pas un vendeur de droits : un moteur de recherche.
+images, pas un vendeur de droits : un moteur de recherche. Les sources sont
+ajoutées par **Archivist**, le système autonome du projet.
 
 Comme un moteur de recherche ne possède pas les pages qu'il trouve, Mnemosyne ne
 possède pas les images d'archives qu'il référence. Il montre qu'elles existent,
@@ -94,8 +95,8 @@ collections ?
   réponse.** Aucune connaissance technique n'est nécessaire.
 - Vous voulez que votre institution soit retirée ? Dites-le : c'est immédiat.
 
-Mon pseudonyme est **Antonio-Faure** ; mon identité civile reste anonyme. Le
-projet, lui, est public : code source, documentation et historique sont ouverts.
+Le projet est porté par **Antonio Faure**, son gestionnaire. Le code source, la
+documentation et l'historique sont publics.
 
 ## Pour les développeurs
 
@@ -160,7 +161,8 @@ A free and open source project, under active development, built by one person �
 without copying, hosting or reselling the institutions' images.
 
 Mnemosyne is a search engine. Not a museum, not a site that stores images, not a
-seller of rights: a search engine.
+seller of rights: a search engine. Sources are added by **Archivist**, the
+project's autonomous system.
 
 Just as a search engine does not own the pages it finds, Mnemosyne does not own
 the archive images it references. It shows that they exist, displays the
@@ -240,8 +242,8 @@ collections?
   knowledge is needed.
 - Want your institution removed? Say so: it is immediate.
 
-My handle is **Antonio-Faure**; my civil identity remains anonymous. The project
-itself is public: source code, documentation and history are open.
+The project is led by **Antonio Faure**, its project manager. The source code,
+documentation and history are public.
 
 ### For developers
 

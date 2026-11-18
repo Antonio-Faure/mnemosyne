@@ -158,7 +158,7 @@ def _cmd_obs_backfill(args: argparse.Namespace) -> int:
 
 
 def _cmd_agency(args: argparse.Namespace) -> int:
-    """Run the bi-agent (coder + browser) under the deterministic supervisor."""
+    """Run the coder/browser supervisor (part of the tri-agent system)."""
     cfg = get_config()
     from mnemosyne.agents.supervisor import run_agency
 
@@ -430,7 +430,7 @@ def _cmd_discoveries(args: argparse.Namespace) -> int:
 
 
 def _cmd_connect_next(args: argparse.Namespace) -> int:
-    """Connect the next discovered provider through the bi-agent loop."""
+    """Connect the next discovered provider through the agent loop."""
     cfg = get_config()
     if cfg.dev.sources_freeze:
         print(
@@ -852,7 +852,7 @@ def build_parser() -> argparse.ArgumentParser:
     ppr.add_argument("--force", action="store_true", help="ignore the 1 h grace period")
     ppr.set_defaults(func=_cmd_prune)
 
-    pq = sub.add_parser("queue", help="the task queue (what the bi-agent works on)")
+    pq = sub.add_parser("queue", help="the task queue (what the agents work on)")
     qsub = pq.add_subparsers(dest="queue_cmd", required=True)
     qa = qsub.add_parser("add", help="enqueue a task: starting agent + objective")
     qa.add_argument("objective", help="the task's objective (first message)")
@@ -876,7 +876,7 @@ def build_parser() -> argparse.ArgumentParser:
     pw.add_argument("--minutes", type=float, default=5.0)
     pw.set_defaults(func=_cmd_warmup)
 
-    pagency = sub.add_parser("agency", help="run the bi-agent (coder + browser) on a task")
+    pagency = sub.add_parser("agency", help="run the coder/browser supervisor on a task")
     pagency.add_argument("task", help="what the agency must achieve")
     pagency.add_argument("--to", choices=["coder", "browser"], default=None,
                          help="force the starting agent (default: auto-routing)")
@@ -920,7 +920,7 @@ def build_parser() -> argparse.ArgumentParser:
     pdisc.add_argument("--status", default=None, help="filter: new/connecting/connected/failed")
     pdisc.set_defaults(func=_cmd_discoveries)
 
-    pcn = sub.add_parser("connect-next", help="connect the next discovery (via the bi-agent)")
+    pcn = sub.add_parser("connect-next", help="connect the next discovery (via the agent loop)")
     pcn.set_defaults(func=_cmd_connect_next)
 
     ptg = sub.add_parser("telegram", help="Telegram bot utilities")

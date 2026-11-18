@@ -113,7 +113,7 @@ async def test_one_hung_source_cannot_hold_the_whole_search(
 
     The resolver's catalog_search fires one request per source: before the cap,
     a single host that never answered kept the tool call pending for minutes and
-    (with the old tick) starved the biagent loop behind it.
+    (with the old tick) starved the agent loop behind it.
     """
     _add_second_source(sources_dir)
 

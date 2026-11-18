@@ -6,7 +6,7 @@ protocol: rest
 base_url: https://www.musee-du-petrole.com/wp-json/wp/v2
 auth: none
 license: all-rights-reserved
-rights: "© Musée français du Pétrole / Collection MFDP — reproduction interdite sans autorisation écrite"
+rights: "© Musée français du Pétrole / Collection MFDP — tous droits réservés"
 rate_limit_per_s: 0.5
 priority: 120
 tags: [france, petroleum, industrial-heritage, pechelbronn, alsace, rights-reserved]
@@ -26,26 +26,25 @@ notes: >-
   filtrage image côté client car `mime_type` n'est pas filtré côté serveur ;
   titres dérivés des noms de fichiers, caption/alt/description VIDES, pas de
   photographe ni de date d'origine ni de champ droits).
-  DÉSACTIVÉE : surface « tous droits réservés » (musee-du-petrole.com mentions
-  légales « © Musée du Pétrole » ; portail WebMuseo du Parc naturel régional des
-  Vosges du Nord : reproduction/représentation interdite). Aucune réutilisation
-  libre ni ré-hébergement sans autorisation écrite du musée ; le portail
-  catalogue inventorié WebMuseo (`/app/collection/*`) renvoie HTTP 403 (mur
-  anti-bot) et n'expose PAS d'OAI-PMH. Connecteur + tests prêts : l'activation
-  est un changement d'une ligne (`enabled: true` + licence CC/DP) dès réception
-  de l'autorisation. Prise de contact du 2026-11-08 : e-mail à
-  museedupetrole@wanadoo.fr = HTTP/SMTP 550 « destinataire invalide » ; copie à
-  musee.petrole@musees-vosges-nord.org = domaine mail cassé ; seul
-  contact@parc-vosges-nord.fr a été délivré (relance 18:10) ; formulaire de
-  contact du musée soumis avec accusé de réception. Aucune réponse à ce jour —
-  aucune adresse morte ne doit être réutilisée.
+  DÉSACTIVÉE : la source n'est ajoutée que si le musée confirme un accès
+  programmatique (API/IIIF/OAI-PMH ou autorisation de lire les pages publiques).
+  Aucune réutilisation d'images : le projet ne copie, n'héberge, ne redistribue
+  et ne revend rien. Le portail WebMuseo (`/app/collection/*`) renvoie HTTP 403
+  et n'expose pas d'OAI-PMH. Connecteur + tests prêts : l'activation est un
+  changement d'une ligne (`enabled: true`) après réponse positive du musée.
+  Prise de contact du 2026-11-08 : demande d'accès programmatique (pas de
+  réutilisation) ; museedupetrole@wanadoo.fr = 550, musee.petrole@... = domaine
+  cassé, seul contact@parc-vosges-nord.fr délivré ; formulaire avec accusé ;
+  aucune réponse à ce jour. Si le musée refuse l'accès, la source n'est pas
+  ajoutée.
 extra:
   media_endpoint: /media
   per_page_max: 100
-  authorization_request:
+  access_request:
     sender: "<adresse e-mail de l'agent>"
     to: museedupetrole@wanadoo.fr
     cc: [musee.petrole@musees-vosges-nord.org, contact@parc-vosges-nord.fr]
     sent: "2026-11-08"
-    status: pending
+    status: "pending"
+    question: "programmatic access: yes/no"
   hero_media_ids: [1436, 4285, 1092, 4380, 4125]

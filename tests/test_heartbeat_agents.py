@@ -1,4 +1,4 @@
-"""The heartbeat drives the bi-agent background turn (agency job)."""
+"""The heartbeat drives the agent background turn (agency job)."""
 
 import pytest
 

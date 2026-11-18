@@ -14,8 +14,8 @@ Quand un service expose un **accès programmatique** (API REST, IIIF, SRU,
 SPARQL, OAI-PMH, JSON…), c'est lui qui doit être utilisé : le scraping HTML est
 interdit. Un scraper HTML (`protocol: html`) n'est autorisé que pour une
 **petite structure sans aucun accès programmatique**, et seulement après
-**consentement écrit obtenu par e-mail** (l'agent navigateur demande
-l'autorisation ; la référence est stockée dans le descripteur sous
+**autorisation de lire les pages publiques obtenue par e-mail** (l'agent
+navigateur la demande ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
@@ -91,7 +91,7 @@ l'autorisation ; la référence est stockée dans le descripteur sous
 | loc_wwi_photos | Library of Congress — World War I photographs (Prints & Photographs) | Library of Congress | US | rest | varies | API JSON `?fo=json` officielle mais **403 Akamai** depuis l'IP d'exécution (2026-11-08) ; connecteur prêt, activation dès que l'accès est rétabli (même cas que Gallica/NGA) |
 | mai_saint_etienne | Musée d'Art et d'Industrie de Saint-Étienne | Musée d'Art et d'Industrie de Saint-Étienne (Pôle muséal) | FR | rest | © Musée d'Art et d'Industrie de Saint-Étienne | Mention globale réservant l'usage commercial des images (autorisation requise) — non commercial |
 | musee_orsay | Musée d'Orsay — Collections (IIIF) | Établissement public des musées d'Orsay et de l'Orangerie (EPMO) | FR | iiif | Droits réservés — © EPMO | Mentions légales EPMO : reproduction/représentation interdite sans autorisation expresse (droits réservés) — à confirmer par la politique du projet |
-| musee_petrole_pechelbronn | Musée français du Pétrole — Merkwiller-Pechelbronn (photothèque) | Association des Amis du Musée du Pétrole | FR | rest | Droits réservés — © Musée français du Pétrole | Tous droits réservés (musee-du-petrole.com + portail WebMuseo du Parc naturel régional des Vosges du Nord) : reproduction/représentation interdite. API WordPress `wp-json/wp/v2/media` ouverte (≈1109 médias, métadonnées minces) sans licence de réutilisation → aucun ré-hébergement ni ingestion ; connecteur + tests prêts, activation (CC BY / CC BY-SA 4.0 ou domaine public) dès autorisation écrite du musée — prise de contact 2026-11-08 : l'adresse publiée museedupetrole@wanadoo.fr renvoie 550 (destinataire invalide), musee.petrole@musees-vosges-nord.org a un domaine mail cassé, seul contact@parc-vosges-nord.fr a été délivré (+ formulaire du musée avec accusé) ; aucune réponse à ce jour, aucune adresse morte à réutiliser |
+| musee_petrole_pechelbronn | Musée français du Pétrole — Merkwiller-Pechelbronn (photothèque) | Association des Amis du Musée du Pétrole | FR | rest | Tous droits réservés — © Musée français du Pétrole | API WordPress `wp-json/wp/v2/media` ouverte (~1109 médias, métadonnées minces). Source désactivée : elle ne sera ajoutée que si le musée confirme un accès programmatique (accès officiel ou autorisation de lire les pages publiques). Aucune réutilisation d'images. Contact 2026-11-08 : demande d'accès programmatique ; museedupetrole@wanadoo.fr = 550, musee.petrole@... = domaine cassé, seul contact@parc-vosges-nord.fr délivré (+ formulaire avec accusé) ; aucune réponse. Si refus, source non ajoutée. |
 | musei_vaticani | Musei Vaticani — Catalogo Online | Musei Vaticani (Musei e Gallerie Pontificie) | VA | iiif | varies | Droits à confirmer par la politique du projet avant activation |
 | pop | POP — Plateforme ouverte du patrimoine | Ministère de la Culture (France) | FR | iiif | Licence Ouverte 2.0 (métadonnées) | Images par notice majoritairement restrictives (DIFF/DIFFU) — ne pas republier ; métadonnées réutilisables |
 | vam | Victoria and Albert Museum | Victoria and Albert Museum, London | GB | iiif | varies | V&A Terms and Conditions (restrictif) |

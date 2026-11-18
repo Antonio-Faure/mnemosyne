@@ -47,7 +47,8 @@ def test_session_text_is_frozen_per_task_and_agent(cfg):
     task = {"id": 3, "objective": "l'objectif de la tâche"}
     browser_text = session_task_text("browser", task)
     coder_text = session_task_text("coder", task)
-    assert browser_text != coder_text, "les deux têtes ont chacune leur cache"
+    resolver_text = session_task_text("resolver", task)
+    assert len({browser_text, coder_text, resolver_text}) == 3, "chaque agent a son cache"
     assert session_task_text("browser", task) == browser_text, "le texte ne bouge jamais"
     assert "l'objectif de la tâche" in browser_text
 

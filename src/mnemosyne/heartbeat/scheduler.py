@@ -24,7 +24,7 @@ VERIFY_INTERVAL_S = 21600
 WARMUP_INTERVAL_S = 3600
 JOURNAL_INTERVAL_S = 900
 WATCHDOG_INTERVAL_S = 300  # invariants check, inside the service (no side process)
-AGENCY_INTERVAL_S = 120  # check the bi-agent mailbox every 2 minutes (idle = free)
+AGENCY_INTERVAL_S = 120  # check the agent mailbox every 2 minutes (idle = free)
 OPERATOR_INTERVAL_S = 30  # poll the operator bots (answers wake parked tasks)
 
 #: Job runs whose real trace is the task session: keep them out of the sidebar

@@ -1,4 +1,4 @@
-"""Per-task temporary mailbox (bi-agent).
+"""Per-task temporary mailbox (agents).
 
 A task owns its mailbox: agents exchange messages ONLY inside the task they
 are working on, and the mailbox dies with the task (the journal keeps the

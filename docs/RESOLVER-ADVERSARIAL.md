@@ -42,9 +42,9 @@ Une tâche resolver est créée **par phrase** (ou par petit lot) à partir du
 corpus / golden dataset. Elle porte `sentence_id`, la phrase, le claim et
 les critères. Elle peut :
 
-1. interroger la **meta API du biagent** (`Engine.search`, le catalogue) ;
+1. interroger la **meta API de Mnemosyne** (`Engine.search`, le catalogue) ;
 2. demander une revue humaine ;
-3. demander l'ajout d'une ou plusieurs sources au biagent ;
+3. demander l'ajout d'une ou plusieurs sources au tri-agent ;
 4. se parquer en attendant ces sources, puis être réveillée.
 
 ### La boucle s'alimente elle-même
@@ -66,7 +66,7 @@ pour maintenir le flux ; l'opérateur n'intervient que sur les verdicts.
 
 ### Réveil par une source
 
-Quand une tâche biagent liée à une `resolver_requests` se ferme, le
+Quand une tâche agent liée à une `resolver_requests` se ferme, le
 superviseur marque la demande `done`/`failed` et poste `[SOURCES READY]` au
 résolveur dès qu'il n'attend plus aucune source. Le résolveur reprend alors la
 phrase avec la meta API à jour.
@@ -81,7 +81,7 @@ propres :
 | `catalog_search(query, limit)` | interroge la meta API (catalogue, connecteurs) |
 | `asset_details(asset_id)` | vérifie provenance, date, lieu, licence, image |
 | `propose_sources(claim)` | cherche des APIs/sources candidates (LLM/recherche) |
-| `request_source(source, reason)` | enqueue **une tâche biagent par source** + dépendance |
+| `request_source(source, reason)` | enqueue **une tâche agent par source** + dépendance |
 | `wait_for_sources()` | parke la session resolver jusqu'à complétion |
 | `submit_for_review(asset_id, evidence)` | demande la validation humaine (Telegram/CLI) |
 | `abstain(reason, missing)` | enregistre `no_match` + gap de couverture |
@@ -90,7 +90,7 @@ propres :
 Le resolver n'écrit pas dans le catalogue : il lit la meta API et produit des
 candidats, des verdicts et des demandes de sources.
 
-Comme le biagent, il peut poser une question à l'opérateur (`ask_operator`) :
+Comme les autres agents, il peut poser une question à l'opérateur (`ask_operator`) :
 questionnaire à boutons + réponse libre, attaché à sa session resolver. La
 réponse le réveille au tick suivant. Il peut aussi utiliser `wait_for_email`
 pour une réponse externe.
@@ -101,7 +101,7 @@ pour une réponse externe.
 ```text
 resolver task (sentence)
   └─ request_source("kbr.be")
-       └─ biagent task (coder/browser) : ajouter la source
+       └─ agent task (coder/browser) : ajouter la source
             └─ à la fermeture : resolver_requests.status = done
                  └─ si toutes les demandes sont terminales :
                       mailbox system → resolver
@@ -109,6 +109,9 @@ resolver task (sentence)
 ```
 
 Table `resolver_requests` :
+
+La colonne `biagent_task_id` garde son nom historique : elle pointe vers la
+tâche agent (coder/browser) qui ajoute la source.
 
 ```sql
 resolver_requests (
@@ -125,8 +128,8 @@ resolver_requests (
 )
 ```
 
-- `request_source` crée la tâche biagent et la ligne `resolver_requests`.
-- Le supervisor, à la fermeture d'une tâche biagent, marque la demande
+- `request_source` crée la tâche agent et la ligne `resolver_requests`.
+- Le supervisor, à la fermeture d'une tâche agent, marque la demande
   `done`/`failed`.
 - Quand toutes les demandes d'une session resolver sont terminales, il poste
   un message `system → resolver` et la session reprend.
@@ -438,7 +441,7 @@ Objectif : **maximiser les phrases correctement illustrées sans inventer**.
 2. Outils meta API (`catalog_search`, `asset_details`) + création d'une session
    resolver par phrase.
 3. `request_source` + `resolver_requests` + réveil à la fermeture des tâches
-   biagent (dépendances).
+   agents (dépendances).
 4. Revue humaine via `ask_operator` + `resolver_reviews` (et hard negatives).
 5. Panneau adversarial + juge + abstention.
 6. Ingestion des textes historiques + chunks/BM25.

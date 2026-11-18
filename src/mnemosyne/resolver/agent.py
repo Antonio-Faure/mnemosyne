@@ -1,7 +1,7 @@
 """Resolver agent (Stirrup): one session per historical sentence.
 
-It reads the biagent meta API (catalog search), asks the operator to validate
-candidates, and requests missing sources as ordinary biagent tasks. It is
+It reads the Mnemosyne meta API (catalog search), asks the operator to validate
+candidates, and requests missing sources as ordinary agent tasks. It is
 activated by its own permanent heartbeat job, in parallel with the agency.
 """
 
@@ -97,7 +97,7 @@ class RequestSourceParams(BaseModel):
     source_name: str = Field(description="Human-readable source name")
     reason: str = Field(description="Why this source is needed for the sentence")
     agent: Literal["coder", "browser"] = Field(
-        default="coder", description="Biagent to use (browser if auth/API research is needed)"
+        default="coder", description="Agent to use (browser if auth/API research is needed)"
     )
     api_url: str = Field(default="", description="Optional API/docs URL to attach to the task")
     specialisation: bool = Field(
@@ -185,7 +185,7 @@ class ResolverToolProvider(ToolProvider):
         """The catalogue as the resolver must see it before asking for a source.
 
         Reads the descriptor files (not the synced registry): a source added by
-        the biagent is known immediately, even before the next `catalog.sync()`.
+        the agent task is known immediately, even before the next `catalog.sync()`.
         """
         from mnemosyne.catalog import Catalog
 
@@ -266,7 +266,7 @@ class ResolverToolProvider(ToolProvider):
                     return _fail(
                         f"cette source est déjà demandée (request #{request['id']}, "
                         f"tâche #{request.get('biagent_task_id')}) : ne la redemande pas, "
-                        "elle sera ajoutée par le biagent."
+                        "elle sera ajoutée par l'agent."
                     )
             # Same host is allowed: a photo-only sibling of a text connector is
             # a legitimate specialisation (see wikimedia_commons_photos). The
@@ -318,7 +318,7 @@ class ResolverToolProvider(ToolProvider):
                     "précise dans la raison en quoi ce profil de recherche diffère."
                 )
             return _ok(
-                f"tâche biagent #{biagent_task_id} créée (request #{request_id}) pour "
+                f"tâche agent #{biagent_task_id} créée (request #{request_id}) pour "
                 f"{p.source_name} ; la session resolver sera parquée tant que la source "
                 f"n'est pas terminale.{note}"
             )
@@ -387,7 +387,7 @@ class ResolverToolProvider(ToolProvider):
             Tool(
                 name="catalog_search",
                 description=(
-                    "Search the biagent meta API (catalog connectors). Results are "
+                    "Search the Mnemosyne meta API (catalog connectors). Results are "
                     "relevance-ranked best-first and truncated: use source_ids to "
                     "drill into one provider, and vary the query wording."
                 ),
@@ -397,7 +397,7 @@ class ResolverToolProvider(ToolProvider):
             Tool(
                 name="request_source",
                 description=(
-                    "Ask the biagent to add one missing source; creates one biagent "
+                    "Ask the agents to add one missing source; creates one agent "
                     "task and one resolver dependency."
                 ),
                 parameters=RequestSourceParams,
@@ -468,7 +468,7 @@ async def run_resolver_agent(
             system_prompt=load_prompt(
                 config.root / "agents" / "resolver.md",
                 fallback=_FALLBACK,
-                name=config.identity.name,
+                name=config.identity.agent_name,
                 task=task,
             ),
             tools=[watched],

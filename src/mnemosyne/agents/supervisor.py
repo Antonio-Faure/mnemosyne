@@ -1,4 +1,4 @@
-"""Deterministic supervisor for the bi-agent: the TASK QUEUE.
+"""Deterministic supervisor for the agents: the TASK QUEUE.
 
 The operator touches only the queue (add, list, cancel). Everything else is a
 task's internal life: each task owns a temporary mailbox and at most one live
@@ -597,7 +597,7 @@ async def run_pending_once(
                     agent=agent,
                 )
                 if task["start_agent"] in ("coder", "browser"):
-                    # a biagent task may be the source another resolver session
+                    # an agent task may be the source another resolver session
                     # is parked on: mark the request and wake it (the missing
                     # half of the resolver cycle — only `queue cancel` did this).
                     _complete_resolver_dependencies(

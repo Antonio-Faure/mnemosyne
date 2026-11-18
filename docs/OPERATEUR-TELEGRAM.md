@@ -55,7 +55,7 @@ ET sort du cadre écrit**.
 ## Telegram : trois bots, une question à la fois
 
 - **Un bot par agent** (`coder`, `browser`, `resolver`) : tu sais toujours qui
-  parle, et deux sessions ne peuvent pas te poser une question en même temps.
+  parle, et les agents ne peuvent pas te poser une question en même temps.
 - **Une seule question à la fois** : la file d'attente est globale. Tant que la
   question envoyée n'a pas de réponse, aucune autre n'est expédiée — quel que
   soit l'agent ou la tâche. Dès que tu réponds, la suivante part.

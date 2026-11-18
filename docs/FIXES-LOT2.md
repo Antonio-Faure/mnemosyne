@@ -75,7 +75,7 @@ Chaque correctif est couvert par un test ; **344 tests verts, ruff OK**.
 - `supervisor.outcome_status_note` (+ son test) : jamais branché, logique
   divergente du code réel (fausse couverture).
 - `warmup_schedule.goal_weights` (test réécrit sur `WARMUP_GOALS`).
-- Références périmées : `docs/VISION-BIAGENT.md` (`warmup.py` supprimé),
+- Références périmées : `docs/VISION-TRIAGENT.md` (`warmup.py` supprimé),
   `tests/test_dev_guard.py` (chemin mort) ; `.pyc` orphelins nettoyés.
 
 ## C. Refactors

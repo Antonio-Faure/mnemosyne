@@ -57,7 +57,7 @@ def test_golden_get_and_result_roundtrip(config):
         db.close()
 
 
-def test_request_source_creates_biagent_task_and_dependency(config):
+def test_request_source_creates_agent_task_and_dependency(config):
     db = _db(config)
     try:
         task_id = _seed_task(db, config)
@@ -76,16 +76,16 @@ def test_request_source_creates_biagent_task_and_dependency(config):
             )
         )
         assert result.success is True
-        biagent = db.next_task(agents=("coder", "browser"))
-        assert biagent is not None
-        assert biagent["start_agent"] == "coder"
-        payload = json.loads(biagent["payload"])
+        agent_task = db.next_task(agents=("coder", "browser"))
+        assert agent_task is not None
+        assert agent_task["start_agent"] == "coder"
+        payload = json.loads(agent_task["payload"])
         assert payload["kind"] == "resolver_source"
         assert payload["resolver_task_id"] == task_id
         assert payload["source_id"] == "kbr_be"
         requests = db.resolver_requests(task_id)
         assert len(requests) == 1
-        assert requests[0]["biagent_task_id"] == biagent["id"]
+        assert requests[0]["biagent_task_id"] == agent_task["id"]
         assert db.task_waiting_on_sources(task_id) is True
         wait_msg = asyncio.run(by_name["wait_for_sources"].executor(EmptyParams()))
         assert wait_msg.success is True
@@ -208,7 +208,7 @@ def test_request_source_allows_a_same_host_specialisation(config):
         db.close()
 
 
-def test_closing_a_biagent_task_wakes_the_parked_resolver(config, monkeypatch):
+def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
     """The half that was missing: a finished source task must free the resolver."""
     from mnemosyne.agents import supervisor
     from mnemosyne.agents.outcome import AgentOutcome

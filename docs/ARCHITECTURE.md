@@ -93,16 +93,17 @@ descriptor never loses lifecycle progress.
     that provider (attempts, key obtained, email sent, blocks, escalations), so the
     operator can audit a single service without scanning the global log.
 17. **Stirrup for cognition, home-made for control.** The heartbeat stays a
-    deterministic durable scheduler. The bi-agent (coder + browser, **Stirrup**)
-    exchanges durable mailbox messages; a deterministic supervisor runs one agent
-    at a time. The browser drives real Chrome through **browser-harness**, never
-    the DOM directly. See `docs/VISION-BIAGENT.md`.
+    deterministic durable scheduler. The agent layer (coder + browser +
+    resolver, **Stirrup**) exchanges durable mailbox messages; a deterministic
+    supervisor runs one coder/browser agent at a time. The browser drives real
+    Chrome through **browser-harness**, never the DOM directly. See
+    `docs/VISION-TRIAGENT.md`.
 
 ## Milestones
 
 - **P0+P1** (this): heartbeat, catalog, governor, 5 keyless providers, normalize,
   unified API.
-- **P2** (superseded): onboarding/outreach agents → replaced by the bi-agent
-  (`docs/VISION-BIAGENT.md`).
+- **P2** (superseded): onboarding/outreach agents → replaced by the tri-agent
+  (`docs/VISION-TRIAGENT.md`).
 - **P3**: autonomous discovery (GLAM SPARQL, directories).
 - **P4**: connector self-repair, dashboard, scale to hundreds of providers.

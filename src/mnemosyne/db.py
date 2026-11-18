@@ -190,7 +190,9 @@ CREATE TABLE IF NOT EXISTS resolver_corpus (
 CREATE INDEX IF NOT EXISTS idx_resolver_corpus_video
     ON resolver_corpus(video_id);
 
--- Resolver -> biagent source dependencies: one row per source request.
+-- Resolver -> agent source dependencies: one row per source request.
+-- `biagent_task_id` is a historical column name: it points to the coder/browser
+-- task that adds the source. Kept as-is to avoid a database migration.
 CREATE TABLE IF NOT EXISTS resolver_requests (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     resolver_task_id  INTEGER NOT NULL,
@@ -477,7 +479,7 @@ class Database:
             ).fetchall()
         return [json.loads(row["payload"]) for row in rows]
 
-    # ── resolver source requests (resolver -> biagent dependencies) ───────
+    # ── resolver source requests (resolver -> agent dependencies) ───────
     def create_resolver_request(
         self,
         resolver_task_id: int,
@@ -515,7 +517,7 @@ class Database:
         return [dict(row) for row in rows]
 
     def open_resolver_requests(self) -> list[dict]:
-        """Every request still waiting on the biagent, all sentences mixed."""
+        """Every request still waiting on the agents, all sentences mixed."""
         with self._lock:
             rows = self._conn.execute(
                 "SELECT * FROM resolver_requests WHERE status IN ('pending', 'running') "
@@ -542,7 +544,7 @@ class Database:
         status: str = "done",
         note: str | None = None,
     ) -> list[int]:
-        """Mark the requests tied to one biagent task; return affected resolver ids."""
+        """Mark the requests tied to one agent task; return affected resolver ids."""
         if status not in ("done", "failed"):
             raise ValueError("resolver request status must be done or failed")
         with self._lock:
@@ -944,7 +946,7 @@ class Database:
             row = self._conn.execute("SELECT COUNT(*) AS n FROM discoveries").fetchone()
         return int(row["n"]) if row else 0
 
-    # ── task queue (bi-agent) ────────────────────────────────────────────
+    # ── task queue (agents) ─────────────────────────────────────────────
     def enqueue_task(
         self, start_agent: str, objective: str, turn_cap: int | None = None,
         payload: dict | None = None,
@@ -1670,7 +1672,7 @@ class Database:
         """Acquire `name` for `ttl_s` seconds. False if someone alive holds it.
 
         Leases are intentional and coarse: only one process may drive Chrome at
-        a time (bi-agent browser turn, warmup mission, picture/video work).
+        a time (agent browser turn, warmup mission, picture/video work).
         A lease whose holder died (kill, crash) is reclaimed immediately instead
         of blocking the driver for the whole TTL.
         """
@@ -1784,7 +1786,7 @@ class Database:
         """Hand OUR running jobs back to the queue (graceful shutdown).
 
         A SIGTERM'd container that left its jobs RUNNING made the next one wait
-        for the stale-lock window (~10 min) before the biagent and the resolver
+        for the stale-lock window (~10 min) before the agent loop and the resolver
         could run again. Requeueing keeps the loops immediate across restarts.
         """
         pattern = f'%"instance": "{_INSTANCE}"%'

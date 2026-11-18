@@ -38,7 +38,7 @@ Mécanique, à chaque pas, impossible à « oublier » par le LLM.
 de collègue : son Agent veut finir SA tâte. La coopération deviendrait un
 contournement autour de sa boucle. En stirrup, mailbox/vault/finish sont des
 outils ordinaires et le superviseur (déterministe, sans LLM) ordonnance les
-tours. C'est le cœur du bi-agent mnemosyne.
+tours. C'est le cœur du tri-agent mnemosyne.
 
 ### Exemple 4 — « Ton modèle est plus récent que les heuristiques de la lib »
 **→ stirrup + harness.** Le gate deepseek : browser-use désactivait la vision
@@ -96,26 +96,29 @@ agents — browser-use n'aurait aucun des quatre réflexes.
 Nuance d'honnêteté : on emprunte quand même ses *mains* (stirrup[browser] →
 `BrowserSession`) — on refuse son cerveau, pas sa couche CDP.
 
-## L'identité : archivist = l'archiviste à deux têtes
+## L'identité : Archivist = le système autonome à trois têtes
 
 Le personnage qui touche le web n'est pas « l'agent navigateur » : c'est le
-bi-agent ENTIER — **un archiviste à deux têtes**. `identity.agent_email`
+tri-agent ENTIER — **un système autonome à trois têtes**. `identity.agent_email`
 (adresse définie dans la configuration locale) est sa carte d'identité partagée :
 
 - la tête **navigateur** l'utilise pour tout ce qui touche le web (comptes,
   e-mails, livraisons) — c'est elle qui « signe » ;
 - la tête **codeur** signe ce qu'elle produit de son côté (branches `agent/*`,
   PRs) mais ne touche jamais au web ;
-- les deux têtes sont alternées par le superviseur : une seule travaille à la
-  fois, elles se passent le relais par la boîte de messages de la tâche.
+- la tête **resolver** cherche l'image d'une phrase, demande des sources aux
+  deux autres et ne touche pas au web directement ;
+- le codeur et le navigateur sont alternés par le superviseur : un seul
+  travaille à la fois, ils se passent le relais par la boîte de messages de la
+  tâche. Le resolver a sa propre boucle.
 
 Résultat : tout ce que le système fait sur le web est traçable à UNE identité
-cohérente — celle de l'archiviste — et jamais à deux identités concurrentes.
+cohérente — celle de l'archiviste — et jamais à des identités concurrentes.
 
 ## Et notre cas précis (mnemosyne)
 
 Nous sommes les exemples 2+3+4+5 réunis : règles de sécurité imposées,
-coopération bi-agent, modèle vision-coupé par la lib, self-extension des
+coopération tri-agent, modèle vision-coupé par la lib, self-extension des
 helpers. Le choix était donc clair. **Mais** browser-use n'est pas un choix
 « cheap » : c'est un cerveau autonome éprouvé (★117k) — excellent pour ce
 qu'il fait. Notre critique n'est pas « il est mauvais », c'est « il décide à

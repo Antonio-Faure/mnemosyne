@@ -1,6 +1,6 @@
 # AGENTS.md — mnemosyne
 
-Free and open source federated access to historical image archives — live queries, no image copies, provenance and rights attached.
+A free and open source search engine for historical archive images — live queries, no image copies, rights and provenance attached.
 
 # Opérateur humain
 
@@ -21,7 +21,7 @@ un test ou faire valider une action de routine. Détail :
 
 # Overview
 
-Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup agents** (coder + browser). Details in `docs/`.
+Runtime is a **deterministic heartbeat** (durable jobs) driving **three agents** (coder + browser + resolver). Details in `docs/`.
 
 - `main.py` — CLI entry (`python main.py`, or the `mnemosyne` script)
 - `src/mnemosyne/heartbeat/` — durable scheduler, job store (SQLite WAL), job handlers
@@ -29,8 +29,9 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup ag
 - `src/mnemosyne/catalog/` — provider registry + lifecycle state machine
 - `src/mnemosyne/connectors/` — connector contract (`base.py`)
 - `src/mnemosyne/sources/` — one connector per provider (`iiif.py` = generic IIIF)
-- `src/mnemosyne/agents/` — bi-agent: `mailbox.py`, `supervisor.py`, `browser_agent.py`, `warmup_schedule.py` (le warmup est une mission du navigateur)
+- `src/mnemosyne/agents/` — supervisor + mailbox: `supervisor.py`, `browser_agent.py`, `warmup_schedule.py` (le warmup est une mission du navigateur)
 - `src/mnemosyne/dev/` — coder agent: `agent.py`, `tools.py`, `guard.py`, `git_ops.py`, `worktree.py`
+- `src/mnemosyne/resolver/` — resolver agent: une phrase → une image, questions à l'opérateur, demandes de sources
 - `src/mnemosyne/discovery/` — find new providers (Wikidata IIIF hosts)
 - `src/mnemosyne/normalize/` — canonical `Asset`, dedup
 - `src/mnemosyne/api/` — FastAPI federated search service
@@ -46,8 +47,9 @@ Runtime is a **deterministic heartbeat** (durable jobs) driving **two Stirrup ag
 
 - **coder** → `agents/coder.md` (product code, tests, git/PR)
 - **browser** → `agents/browser.md` (browser-harness, helpers, video, accounts/keys)
+- **resolver** → `agents/resolver.md` (sentence → image, operator validation, source requests)
 
-The validated two-agent design is in **`docs/VISION-BIAGENT.md`** — read it before any agent work.
+The validated three-agent design is in **`docs/VISION-TRIAGENT.md`** — read it before any agent work.
 
 # Commands
 
@@ -55,7 +57,7 @@ The validated two-agent design is in **`docs/VISION-BIAGENT.md`** — read it be
 make up | down | logs          # single container: app + real Chrome (Xvfb/VNC/CDP)
 make cdp | vnc | record | egress
 mnemosyne run | serve | status | doctor | journal
-mnemosyne agency "<task>" [--to coder|browser] | messages      # bi-agent
+mnemosyne agency "<task>" [--to coder|browser] | messages      # coder/browser supervisor
 mnemosyne discover | connect-next | warmup
 mnemosyne llm test | telegram test | sources | search "<q>" | harvest
 make install-timer             # daily connect-next (systemd user timer)

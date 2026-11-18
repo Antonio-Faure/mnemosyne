@@ -48,7 +48,7 @@ log = get_logger("browser_agent")
 _MAX_OUTPUT = 4000
 _SKILLS_MAX_CHARS = 12000
 
-_FALLBACK = "You are {name}, the browser agent of mnemosyne. {disclosure} {skills}"
+_FALLBACK = "You are {name}, the browser agent of the Mnemosyne project. {disclosure} {skills}"
 
 
 class BrowserCodeParams(BaseModel):
@@ -602,7 +602,7 @@ async def run_browser_agent(
         system_prompt=load_prompt(
             provider.repo / "agents" / "browser.md",
             fallback=_FALLBACK,
-            name=config.identity.name,
+            name=config.identity.agent_name,
             disclosure=disclosure(config.identity),
             skills=skills,
         ),

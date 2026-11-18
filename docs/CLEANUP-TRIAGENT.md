@@ -1,7 +1,7 @@
-# Nettoyage bi-agent — chien de garde, patinage, purge, plafond
+# Nettoyage tri-agent — chien de garde, patinage, purge, plafond
 
 > Série de commits du 2026-10-02 (a57c1d1 → cf0c204). Objectif : aligner le
-> code sur la vision bi-agentique et éliminer le slop, en quatre chantiers
+> code sur la vision tri-agent et éliminer le slop, en quatre chantiers
 > éprouvés par la suite de tests (170) et la batterie.
 
 ## 1. Plus aucun plafond de temps sur les agents (a57c1d1)

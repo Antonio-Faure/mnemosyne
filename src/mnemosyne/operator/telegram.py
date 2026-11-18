@@ -7,7 +7,7 @@ Design (see docs/OPERATEUR-TELEGRAM.md):
 * a question is stored (`operator_asks`), posted in the task's mailbox
   (`agent → operator`) and sent with inline keyboard buttons;
 * questions are delivered ONE AT A TIME: the next one is only sent after the
-  previous answer, so two agents can never ask at the same time;
+  previous answer, so no two agents can ask at the same time;
 * a tap (or a free-text reply) is routed back into the mailbox
   (`operator → agent`) and the task resumes at the next heartbeat tick;
 * one process (the container) is the only update reader for the three bots.

@@ -1,4 +1,4 @@
-# Vision — mnemosyne, bi-agent autonome
+# Vision — mnemosyne, tri-agent autonome
 
 > Document de référence (validé). À lire **avant toute reprise** du chantier
 > agent, notamment après une compaction de session : il contient la vision
@@ -30,19 +30,26 @@ Règles :
 Fichiers : `Dockerfile`, `docker/entrypoint.sh`, `docker-compose.yml`.
 Commandes : `make up|down|logs`, `make cdp`, `make vnc|record`, `make egress`.
 
-## 2. Le bi-agent (vision validée)
+## 2. Le tri-agent (vision validée)
 
-**Deux sessions Stirrup distinctes**, même provider (OpenCode Go / Zen,
-`deepseek-v4.1-flash`), **un seul agent actif à la fois**.
+**Trois agents** : le **codeur** (produit), le **navigateur** (web) et le
+**resolver** (phrase → image). Les deux premiers partagent le superviseur et la
+boîte de tâches ; le resolver tourne dans sa propre boucle et demande des
+sources aux deux autres (`docs/RESOLVER-ADVERSARIAL.md`).
+
+**Sessions Stirrup distinctes** pour le codeur, le navigateur et le resolver,
+même provider (OpenCode Go / Zen, `deepseek-v4.1-flash`), **un seul agent
+codeur/navigateur actif à la fois**.
 
 Chaque agent a son **fichier de consignes** (prompt système), chargé au runtime
 depuis le repo (monté) — donc modifiable à chaud, sans rebuild :
-`agents/coder.md` et `agents/browser.md`. (Ne pas confondre avec `AGENTS.md`, qui
-s'adresse à un agent codeur travaillant **sur** ce dépôt.)
+`agents/coder.md`, `agents/browser.md` et `agents/resolver.md`. (Ne pas
+confondre avec `AGENTS.md`, qui s'adresse à un agent codeur travaillant **sur**
+ce dépôt.)
 
 ### 2.1 Agent CODEUR (le produit)
 
-Rôle : faire **le produit final** — l'API d'agrégation et ses connecteurs.
+Rôle : faire **le produit final** — le moteur de recherche et ses connecteurs.
 
 Outils/permissions :
 - éditer le code du produit, tests, `git` (commit/push/PR) avec le **token
@@ -71,7 +78,15 @@ Outils/permissions :
   (token GitHub) pour pousser les helpers ;
 - **il n'édite pas** le code du produit.
 
-### 2.3 Communication : la file de tâches et la boîte temporaire
+### 2.3 Agent RESOLVER (phrase → image)
+
+Rôle : trouver l'image d'archive la plus défendable pour une phrase, ou
+s'abstenir. Il lit la meta API de Mnemosyne, fait valider les candidats par
+l'opérateur, enregistre `match` / `partial` / `no_match` / `ambiguous`, et
+demande les sources manquantes aux deux autres agents (`resolver_requests`).
+Détail : `docs/RESOLVER-ADVERSARIAL.md`.
+
+### 2.4 Communication : la file de tâches et la boîte temporaire
 
 - **Deux couches séparées** :
   - **La file d'attente des tâches** (table `tasks`) est la couche
@@ -89,18 +104,24 @@ Outils/permissions :
   illimité** : chaque réponse est injectée dans la session EXISTANTE de
   l'agent concerné (cache stirrup, `resume=True`,
   `clear_cache_on_success=False`, sur le volume data) — chaque agent garde le
-  contexte complet de sa partie de la tâche. Plus de deux sessions :
-  uniquement la compaction native de stirrup (`context_summarization_cutoff`).
+  contexte complet de sa partie de la tâche. Pas de session en plus de celles
+  de la tâche : uniquement la compaction native de stirrup
+  (`context_summarization_cutoff`).
 - **Fin de tâche** : une activation se termine ET la boîte de la tâche est
   vide → la tâche se ferme (`done` si `finish` avec bilan, `review` sans
-  `finish`, `failed` sur erreur). Les caches des deux sessions et la boîte
-  sont jetés avec la tâche.
+  `finish`, `failed` sur erreur). Les caches des sessions de la tâche et la
+  boîte sont jetés avec la tâche.
 - **Crash** : la reprise est parfaite à tout moment — la tâche reste
   `running`, le tick suivant **réouvre la session** de départ (cache stirrup),
   sans perdre le travail déjà fait.
+- **Resolver (troisième agent)** : il a sa propre tâche et sa propre session.
+  Quand une source lui manque, il crée une tâche `coder`/`browser` via
+  `resolver_requests` et se met en attente (`wait_for_sources`) ; le supervisor
+  réveille sa tâche quand la source est ajoutée.
 - **Superviseur déterministe** (le heartbeat, PAS un LLM) : il draine la file,
-  UNE activation à la fois, séquentiellement (les deux têtes partagent Chrome
-  et le worktree git). Les agents ne se lancent **jamais** eux-mêmes.
+  UNE activation à la fois, séquentiellement (le codeur et le navigateur
+  partagent Chrome et le worktree git). Les agents ne se lancent **jamais**
+  eux-mêmes.
 - **Secrets via le vault, jamais dans les messages** : l'agent navigateur
   stocke la clé (`remember("europeana_api_key", …)`, réservé aux clés non
   critiques) et envoie une **référence** ; le moteur l'exporte en variable
@@ -116,7 +137,7 @@ Outils/permissions :
 - **Routage au lancement** : selon l'intention, `pick_agent` choisit l'agent
   de départ (heuristique), `--agent` force le choix.
 
-### 2.4 Exemple de référence (Europeana)
+### 2.5 Exemple de référence (Europeana)
 
 1. Opérateur : « lance l'agent codeur pour avoir accès à Europeana ».
 2. **Codeur** : recherche la doc, explore le produit, écrit le connecteur ;
@@ -148,7 +169,7 @@ Outils/permissions :
 - Variable d'env : `BU_CDP_URL=http://127.0.0.1:9222`, `BH_HOME=/app/data/browser-harness`
   (les enregistrements persistent dans `data/`).
 - Un seul stack navigateur : **browser-harness** via l'agent navigateur du
-  bi-agent (plus d'agent browser-use générique).
+  tri-agent (plus d'agent browser-use générique).
 
 ## 4. Ce qui existe / ce qui reste
 
@@ -160,7 +181,7 @@ Outils/permissions :
   découverte (`src/mnemosyne/discovery/`) + 1 connexion/jour (timer).
 - Warmup auto (1–2/jour, sites pondérés) : **une mission « lecture seule » postée au navigateur** (plafonnée en tours), vault, Telegram, journal.
 
-**Bi-agent (fait) :**
+**Tri-agent (fait) :**
 1. **File de tâches + boîte temporaire par tâche** : table `tasks` + messages
    rattachés à une tâche (`src/mnemosyne/db.py`) + `mailbox.py` (enveloppe).
 2. **Superviseur déterministe** : `src/mnemosyne/agents/supervisor.py`
@@ -178,7 +199,7 @@ Outils/permissions :
 7. Le **codeur** tourne aussi dans le conteneur (dépôt monté sur `/repo`,
    `MNEMOSYNE_DEV_REPO=/repo`, worktree isolé) → `agency` fait tourner les deux.
 
-**Bi-agent — suite (fait) :**
+**Tri-agent — suite (fait) :**
 - **Autonomie heartbeat** : job `agency` (toutes les 2 min, coût nul s'il n'y a
   rien) → `supervisor.run_pending_once()` exécute **une** activation (la tâche
   en cours d'abord, sinon la plus ancienne en file). Vérifié : un crash au
@@ -239,14 +260,14 @@ Outils/permissions :
   `finish` (note de la tâche), pas un message.
 
 **Reste :**
-- Exemple de référence de l'identité : **archivist** = l'archiviste **à deux
-  têtes** — le bi-agent ENTIER est le personnage ; `identity.agent_email`
+- Exemple de référence de l'identité : **Archivist** = le système autonome **à
+  trois têtes** — le tri-agent ENTIER est le personnage ; `identity.agent_email`
   (adresse définie dans la configuration locale) est sa carte d'identité partagée, utilisée
   par la tête navigateur quand elle touche le web. Voir aussi
   `docs/CHOIX-ARCHI-NAVIGATEUR.md`.
 **Reste :**
 - **Canal opérateur** : design validé et implémenté (`docs/OPERATEUR-TELEGRAM.md`) —
-  il reste à créer les deux bots BotFather, déposer les tokens au vault et
+  il reste à créer les trois bots BotFather, déposer les tokens au vault et
   renseigner les chat ids pour l'activer.
 - Éventuellement : d'autres sources de skills, et l'enrichissement du vocabulaire
   de routage (`pick_agent`).

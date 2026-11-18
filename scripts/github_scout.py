@@ -4,7 +4,7 @@ The purpose: feed the architect-taste corpus with real decision stories —
 small repos (like mnemosyne) whose README/docs/issues/commit messages show
 WHY a design was chosen and what was rejected. Discovery is an API problem
 (no browser): this script finds and ranks candidates; the deep reading is
-delegated to the bi-agent.
+delegated to the tri-agent.
 
 Usage (host, authenticated gh):
     python scripts/github_scout.py --out data/architect-corpus/candidates.jsonl
