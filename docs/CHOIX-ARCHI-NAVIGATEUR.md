@@ -100,7 +100,7 @@ Nuance d'honnêteté : on emprunte quand même ses *mains* (stirrup[browser] →
 
 Le personnage qui touche le web n'est pas « l'agent navigateur » : c'est le
 bi-agent ENTIER — **un archiviste à deux têtes**. `identity.agent_email`
-(`archivist.mnemosyne@gmail.com`) est sa carte d'identité partagée :
+(adresse définie dans la configuration locale) est sa carte d'identité partagée :
 
 - la tête **navigateur** l'utilise pour tout ce qui touche le web (comptes,
   e-mails, livraisons) — c'est elle qui « signe » ;

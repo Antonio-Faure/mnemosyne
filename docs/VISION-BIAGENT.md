@@ -241,7 +241,7 @@ Outils/permissions :
 **Reste :**
 - Exemple de référence de l'identité : **archivist** = l'archiviste **à deux
   têtes** — le bi-agent ENTIER est le personnage ; `identity.agent_email`
-  (`archivist.mnemosyne@gmail.com`) est sa carte d'identité partagée, utilisée
+  (adresse définie dans la configuration locale) est sa carte d'identité partagée, utilisée
   par la tête navigateur quand elle touche le web. Voir aussi
   `docs/CHOIX-ARCHI-NAVIGATEUR.md`.
 **Reste :**
