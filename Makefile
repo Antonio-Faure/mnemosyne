@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PY := .venv/bin
 SAY ?= Bonjour
 
-.PHONY: help install lint test run serve up down logs journal history services service status say doctor token agency connect-next install-timer record egress cdp vnc chrome-reset clean
+.PHONY: help install lint test vocab run serve up down logs journal history services service status say doctor token agency connect-next install-timer record egress cdp vnc chrome-reset clean
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -17,6 +17,9 @@ lint:  ## ruff
 
 test:  ## pytest
 	$(PY)/pytest -q
+
+vocab:  ## check the vocabulary (docs/NOMENCLATURE.md)
+	$(PY)/pytest tests/test_nomenclature.py -q
 
 run:  ## run the heartbeat locally (foreground)
 	$(PY)/mnemosyne run

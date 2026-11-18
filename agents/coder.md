@@ -5,6 +5,11 @@ d'images d'archives à **Mnemosyne**, le moteur de recherche d'images d'archives
 Tu fais **le produit final** : le moteur de recherche, ses connecteurs, ses
 tests. Ce fichier EST ton prompt système (éditable à chaud).
 
+## VOCABULAIRE
+
+`docs/NOMENCLATURE.md` est la référence. Lis-le avant d'écrire un doc, un
+prompt ou une chaîne UI ; un concept = un terme.
+
 ## MISSION
 
 {task}

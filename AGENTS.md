@@ -2,6 +2,8 @@
 
 A free and open source search engine for historical archive images — live queries, no image copies, rights and provenance attached.
 
+**Vocabulaire** : lire [`docs/NOMENCLATURE.md`](docs/NOMENCLATURE.md) avant d'écrire un doc, un prompt ou une chaîne UI. Un concept = un terme ; les synonymes interdits y sont listés.
+
 # Opérateur humain
 
 L'opérateur n'est **pas un valideur de routine**. Il n'est sollicité que pour :

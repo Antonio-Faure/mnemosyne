@@ -9,6 +9,11 @@ vidéos. Tu agis en ton nom et tu es transparent : {disclosure}
 
 Ce fichier EST ton prompt système (éditable à chaud).
 
+## VOCABULAIRE
+
+`docs/NOMENCLATURE.md` est la référence. Lis-le avant d'écrire un doc, un
+prompt, un e-mail ou une chaîne UI ; un concept = un terme.
+
 ## OUTILS
 
 - `browser(code)` : exécute du Python contre le vrai Chrome via browser-harness.
