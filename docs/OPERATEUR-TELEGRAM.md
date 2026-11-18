@@ -98,15 +98,23 @@ question.
    mnemosyne vault set mnemosyne_resolver_bot_token <token resolver>
    ```
 3. **Ouvrir chaque bot et appuyer sur /start** (un bot ne peut pas écrire le
-   premier). Récupérer ton chat id : `mnemosyne telegram updates`.
-4. **Renseigner `config/config.yaml`** :
+   premier). Ton chat id est le même que pour les alertes
+   (`MNEMOSYNE_TELEGRAM_CHAT_ID`) ; `mnemosyne telegram updates` l'affiche.
+4. **Renseigner les chat ids dans `.env`** :
+   ```bash
+   MNEMOSYNE_CODER_CHAT_ID=<ton id>
+   MNEMOSYNE_BROWSER_CHAT_ID=<ton id>
+   MNEMOSYNE_RESOLVER_CHAT_ID=<ton id>
+   ```
+   puis **activer le canal** dans `config/config.yaml` :
    ```yaml
    operator:
      enabled: true
-     coder:    { bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN,    chat_id: "123456789" }
-     browser:  { bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN,  chat_id: "123456789" }
-     resolver: { bot_token_env: MNEMOSYNE_RESOLVER_BOT_TOKEN, chat_id: "123456789" }
+     coder:    { bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN,    chat_id_env: MNEMOSYNE_CODER_CHAT_ID }
+     browser:  { bot_token_env: MNEMOSYNE_BROWSER_BOT_TOKEN,  chat_id_env: MNEMOSYNE_BROWSER_CHAT_ID }
+     resolver: { bot_token_env: MNEMOSYNE_RESOLVER_BOT_TOKEN, chat_id_env: MNEMOSYNE_RESOLVER_CHAT_ID }
    ```
+   (`chat_id` direct reste possible et prioritaire sur l'environnement.)
 5. Redémarrer le conteneur (`docker compose up -d`) — le job `telegram`
    (toutes les 30 s) apparaît dans le heartbeat.
 

@@ -229,6 +229,8 @@ class OperatorBotConfig(BaseModel):
     """One agent's Telegram bot for the operator channel (questions)."""
 
     bot_token_env: str
+    #: env var holding the operator's chat id (used when `chat_id` is empty)
+    chat_id_env: str = ""
     #: the operator's chat id — a bot cannot message anyone before /start
     chat_id: str = ""
 
@@ -245,13 +247,22 @@ class OperatorConfig(BaseModel):
 
     enabled: bool = False
     coder: OperatorBotConfig = Field(
-        default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_CODER_BOT_TOKEN")
+        default_factory=lambda: OperatorBotConfig(
+            bot_token_env="MNEMOSYNE_CODER_BOT_TOKEN",
+            chat_id_env="MNEMOSYNE_CODER_CHAT_ID",
+        )
     )
     browser: OperatorBotConfig = Field(
-        default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_BROWSER_BOT_TOKEN")
+        default_factory=lambda: OperatorBotConfig(
+            bot_token_env="MNEMOSYNE_BROWSER_BOT_TOKEN",
+            chat_id_env="MNEMOSYNE_BROWSER_CHAT_ID",
+        )
     )
     resolver: OperatorBotConfig = Field(
-        default_factory=lambda: OperatorBotConfig(bot_token_env="MNEMOSYNE_RESOLVER_BOT_TOKEN")
+        default_factory=lambda: OperatorBotConfig(
+            bot_token_env="MNEMOSYNE_RESOLVER_BOT_TOKEN",
+            chat_id_env="MNEMOSYNE_RESOLVER_CHAT_ID",
+        )
     )
 
 

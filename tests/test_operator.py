@@ -295,6 +295,15 @@ def test_resolver_has_its_own_bot(config):
     assert config.operator.resolver is not config.operator.browser
 
 
+def test_chat_id_can_come_from_env(config, monkeypatch):
+    """The operator chat id can stay out of the tracked config file."""
+    monkeypatch.setattr(config.operator.coder, "chat_id", "")
+    monkeypatch.setattr(config.operator.coder, "chat_id_env", "MNEMOSYNE_TEST_CODER_CHAT_ID")
+    monkeypatch.setenv("MNEMOSYNE_TEST_CODER_CHAT_ID", "42")
+    monkeypatch.setenv("MNEMOSYNE_CODER_BOT_TOKEN", "token")
+    assert telegram.resolve_bot(config, "coder", None) == ("token", "42")
+
+
 def test_reply_is_matched_within_the_right_bot(config):
     """Two bots can use the same message id: the reply must not cross them."""
     db = Database(config.db_file())

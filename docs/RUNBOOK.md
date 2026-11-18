@@ -188,9 +188,10 @@ Configuration (`.env`) :
 
 Les tokens peuvent aussi être déposés au vault (`mnemosyne vault set
 mnemosyne_coder_bot_token <token>`) ; l'environnement est prioritaire.
-Les `chat_id` des trois bots se renseignent dans `config/config.yaml`
-(`operator.coder.chat_id`, `operator.browser.chat_id`,
-`operator.resolver.chat_id`).
+Les `chat_id` des trois bots se renseignent dans `.env`
+(`MNEMOSYNE_CODER_CHAT_ID`, `MNEMOSYNE_BROWSER_CHAT_ID`,
+`MNEMOSYNE_RESOLVER_CHAT_ID`) ou dans `config/config.yaml`
+(`operator.coder.chat_id`, etc. — prioritaire sur l'environnement).
 
 Mise en service (une fois) : ouvre la conversation du bot dans Telegram et envoie
 `/start`. Sans ça, Telegram refuse que le bot écrive le premier (« chat not found »).
