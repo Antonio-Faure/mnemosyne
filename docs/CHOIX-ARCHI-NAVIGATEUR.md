@@ -62,7 +62,7 @@ patinage. En browser-use : l'historique de la lib, dans son format.
 
 - **Mission ponctuelle, un agent, pas de règles métier** → **browser-use**.
   Rapidité de mise en œuvre, la lib tout de s'occupe.
-- **L'agent fait partie d'un SYSTÈME** (orchestrateur déterministe, autres
+- **L'agent fait partie d'un SYSTÈME** (superviseur déterministe, autres
   agents, règles imposées, secrets, audit) → **stirrup + browser-harness**.
 
 ## La distinction qui compte : agent fermé vs agent de système
@@ -78,8 +78,8 @@ La formulation la plus juste (et celle qui décide vraiment) :
 - **stirrup + harness est un agent OUVERT** : les mains sont un **interpréteur
   Python**, pas un catalogue — l'agent peut écrire une fonction pendant sa
   mission, la réutiliser au pas suivant, la garder en git, en faire une PR.
-  Et il participe à un système : mailbox, vault, finish structuré, détection
-  de patinage, orchestrateur déterministe.
+  Et il participe à un système : boîte aux lettres, vault, finish structuré, détection
+  de patinage, superviseur déterministe.
 
 Le paradoxe à garder en tête : « beaucoup de ce que browser-use fait est très
 automatisé » est exact, et c'est une conséquence directe du catalogue. La
