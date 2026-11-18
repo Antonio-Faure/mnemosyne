@@ -114,6 +114,8 @@ GET /sources
 GET /sources/status
 ```
 
+Page de recherche locale : <http://127.0.0.1:8080/explorer>.
+
 Chaque résultat indique sa provenance (`source_id`, `page_url`, `image_url`,
 `thumbnail_url`, droits) et un identifiant stable. Les images ne sont jamais
 téléchargées : seules leurs adresses sont transmises.
@@ -259,6 +261,8 @@ GET /search?q=puits+de+Lacq&limit=20
 GET /sources
 GET /sources/status
 ```
+
+Local search page: <http://127.0.0.1:8080/explorer>.
 
 Each result carries its provenance (`source_id`, `page_url`, `image_url`,
 `thumbnail_url`, rights) and a stable identifier. Images are never downloaded:

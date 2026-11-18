@@ -366,3 +366,14 @@ def test_api_lists_and_serves_sessions(config, monkeypatch):
     assert rows[0]["kind"] == "session.created"
 
     assert client.get("/api/obs/sessions/task:999").status_code == 404
+
+
+def test_api_serves_the_search_page(config, monkeypatch):
+    import mnemosyne.api.app as app_module
+
+    monkeypatch.setattr(app_module, "get_config", lambda: config)
+    client = TestClient(app_module.create_app())
+    response = client.get("/explorer")
+    assert response.status_code == 200
+    assert "Mnemosyne" in response.text
+    assert 'id="search-form"' in response.text

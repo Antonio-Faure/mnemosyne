@@ -5,7 +5,8 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from mnemosyne.api.observatory import router as observatory_router
@@ -88,8 +89,36 @@ def create_app() -> FastAPI:
         path = engine.config.data_path / "chrome-profile" / "Default" / "History"
         return read_history(path, top=top)
 
+    @app.get("/explorer", include_in_schema=False)
+    async def explorer() -> FileResponse:
+        """The public search page: one field, live results, links to the sources."""
+        path = _search_page_path()
+        if path is None:
+            raise HTTPException(status_code=404, detail="page de recherche introuvable")
+        return FileResponse(path, media_type="text/html")
+
     _mount_frontend(app)
     return app
+
+
+def _search_page_path():
+    """Locate `web/search.html` in the repo, the container mount, or a custom path."""
+    import os
+    from pathlib import Path
+
+    candidates: list[Path] = []
+    if os.environ.get("MNEMOSYNE_SEARCH_PAGE"):
+        candidates.append(Path(os.environ["MNEMOSYNE_SEARCH_PAGE"]))
+    try:
+        candidates.append(Path(get_config().root) / "web" / "search.html")
+    except Exception:  # noqa: BLE001 - config is optional for the API module
+        pass
+    candidates.append(Path("/repo/web/search.html"))
+    candidates.append(Path(__file__).resolve().parents[3] / "web" / "search.html")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _mount_frontend(app: FastAPI) -> None:
