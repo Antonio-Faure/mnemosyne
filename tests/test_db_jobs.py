@@ -13,18 +13,18 @@ def test_has_open_job_singleton_and_source(config):
     assert db.has_open_job("journal") is True
     assert db.has_open_job("warmup") is False
 
-    db.enqueue(Job(kind="harvest", payload={"source_id": "gallica", "limit": 20}))
-    assert db.has_open_job("harvest", "gallica") is True
-    assert db.has_open_job("harvest", "wikidata") is False
+    db.enqueue(Job(kind="verify", payload={"source_id": "gallica", "limit": 20}))
+    assert db.has_open_job("verify", "gallica") is True
+    assert db.has_open_job("verify", "wikidata") is False
     db.close()
 
 
 def test_has_open_job_escapes_like_wildcards(config):
     """Source ids carry `_`: it must not act as a LIKE wildcard."""
     db = _db(config)
-    db.enqueue(Job(kind="harvest", payload={"source_id": "bsbXcollection", "limit": 20}))
-    assert db.has_open_job("harvest", "bsbXcollection") is True
-    assert db.has_open_job("harvest", "bsb_collection") is False
+    db.enqueue(Job(kind="verify", payload={"source_id": "bsbXcollection", "limit": 20}))
+    assert db.has_open_job("verify", "bsbXcollection") is True
+    assert db.has_open_job("verify", "bsb_collection") is False
     db.close()
 
 
@@ -95,8 +95,8 @@ def test_renew_own_jobs_only_touches_our_claims(config):
     import json
 
     db = _db(config)
-    ours = db.enqueue(Job(kind="harvest", payload={}, run_at="2000-01-01T00:00:00+00:00"))
-    theirs = db.enqueue(Job(kind="harvest", payload={}, run_at="2000-01-01T00:00:00+00:00"))
+    ours = db.enqueue(Job(kind="verify", payload={}, run_at="2000-01-01T00:00:00+00:00"))
+    theirs = db.enqueue(Job(kind="verify", payload={}, run_at="2000-01-01T00:00:00+00:00"))
     db.claim_due_jobs("2100-01-01T00:00:00+00:00", 5)
     stale = "2000-01-01T00:00:00+00:00"
     db._conn.execute(
@@ -104,7 +104,7 @@ def test_renew_own_jobs_only_touches_our_claims(config):
         (
             json.dumps(
                 {
-                    "who": "job:harvest",
+                    "who": "job:verify",
                     "pid": 1,
                     "host": "the-host",
                     "started": 1,

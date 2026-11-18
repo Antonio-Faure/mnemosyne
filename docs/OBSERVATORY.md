@@ -11,7 +11,7 @@ Une **session** = une unité de travail de premier niveau, visible dans la
 sidebar :
 
 1. une **tâche de la queue** (`tasks`) — warmup, connexion, mission… ;
-2. **un run de job système** (`jobs`) — agency, harvest, verify, discover,
+2. **un run de job système** (`jobs`) — agency, verify, discover,
    warmup, journal, watchdog. `job:<id>` = une exécution (la ligne de job est
    unique par run).
 
@@ -27,9 +27,9 @@ Les runs **`agency`** et **`warmup`** du planificateur sont des **wrappers** :
 leur trace réelle est la session `task` (activation, outils, transcript). Ils
 restent donc **silencieux par défaut** (visibles via « inclure les runs
 silencieux ») : la sidebar montre une session par vraie mission, pas trois.
-Les jobs mécaniques **sans activité** (harvest vide, verify OK, watchdog)
+Les jobs mécaniques **sans activité** (verify OK, watchdog)
 restent aussi silencieux ; seuls les runs qui produisent quelque chose
-(« harvest … → N nouveaux », source dégradée) apparaissent.
+(« verify … → OK », source dégradée) apparaissent.
 
 ## L'écran
 

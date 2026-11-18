@@ -16,7 +16,7 @@ from mnemosyne.db import TASK_TERMINAL, Database
 
 #: job kinds worth an entry in the sidebar (agency/journal/watchdog runs every
 #: minute: they are noise, the tasks they execute are the real sessions)
-NOTABLE_JOB_KINDS = ("warmup", "harvest", "verify", "discover")
+NOTABLE_JOB_KINDS = ("warmup", "verify", "discover")
 
 #: terminal task statuses that close a session (task.status events)
 _TERMINAL = set(TASK_TERMINAL)
@@ -28,7 +28,7 @@ def _task_type(start_agent: str, payload: dict) -> str:
 
 
 def _job_title(job: dict) -> str:
-    """`harvest gallica` reads better than `harvest` in the sidebar."""
+    """`verify gallica` reads better than `verify` in the sidebar."""
     try:
         payload = json.loads(job["payload"] or "{}")
     except ValueError:

@@ -86,8 +86,8 @@ class Engine:
             )
             return []
         if not self.governor.allowed("search"):
-            # read-only query: it must never eat the harvest budget (stored
-            # assets). The per-domain pacing is the politeness guard here.
+            # read-only query: it has its own daily budget. The per-domain
+            # pacing is the politeness guard here.
             log.debug("search cap reached for today; skipping %s", descriptor.id)
             return []
         rate = descriptor.rate_limit_per_s

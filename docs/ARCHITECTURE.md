@@ -41,7 +41,7 @@ descriptor never loses lifecycle progress.
    system when a provider fights back. Daily caps follow warmup phases.
 3. **Warmup is phase-based.** A brand-new agent account must not create accounts or
    send emails immediately. `account_created_at` in config drives
-   outbound/harvest caps (0 outbound for the first 3 days by default).
+   outbound/search caps (0 outbound for the first 3 days by default).
 4. **Real Chrome, not headless.** P2 attaches browser-use to a dedicated headful
    Chrome (Xvfb) with a persistent profile over CDP. Captcha resistance comes from
    a real profile + residential IP + human pacing, not from "no automation".

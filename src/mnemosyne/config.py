@@ -44,11 +44,7 @@ class HeartbeatConfig(BaseModel):
 class WarmupPhase(BaseModel):
     until_day: int | None = None
     outbound_per_day: int = 0
-    harvest_per_day: int = 200
-    #: Read-only provider searches (meta API / discovery). Separate from
-    #: `harvest_per_day`, which counts stored assets: a resolver sentence costs
-    #: ~50 searches but stores nothing, so counting them as harvest blinded the
-    #: catalog after ~20 sentences.
+    #: Read-only provider searches (meta API / discovery).
     search_per_day: int = 20000
 
 
@@ -59,15 +55,9 @@ class ReputationConfig(BaseModel):
     block_cooldown_s: int = 300
     warmup: list[WarmupPhase] = Field(
         default_factory=lambda: [
-            WarmupPhase(
-                until_day=3, outbound_per_day=0, harvest_per_day=50, search_per_day=1000
-            ),
-            WarmupPhase(
-                until_day=10, outbound_per_day=3, harvest_per_day=150, search_per_day=5000
-            ),
-            WarmupPhase(
-                until_day=None, outbound_per_day=20, harvest_per_day=1000, search_per_day=50000
-            ),
+            WarmupPhase(until_day=3, outbound_per_day=0, search_per_day=1000),
+            WarmupPhase(until_day=10, outbound_per_day=3, search_per_day=5000),
+            WarmupPhase(until_day=None, outbound_per_day=20, search_per_day=50000),
         ]
     )
 

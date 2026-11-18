@@ -6,7 +6,6 @@ export const TYPE_COLORS: Record<string, string> = {
   connect: "#a78bfa",
   browser: "#38bdf8",
   coder: "#818cf8",
-  harvest: "#34d399",
   verify: "#22d3ee",
   discover: "#f472b6",
   agency: "#60a5fa",

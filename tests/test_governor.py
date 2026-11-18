@@ -14,9 +14,9 @@ def test_warmup_phase_by_age(config):
     gov = Governor(ReputationConfig(account_created_at=_ago(0)), db)
     assert gov.phase().outbound_per_day == 0
     assert gov.allowed("outbound") is False
-    assert gov.allowed("harvest") is True
-    gov.record("harvest", 50)
-    assert gov.allowed("harvest") is False
+    assert gov.allowed("search") is True
+    gov.record("search", 1000)
+    assert gov.allowed("search") is False
     db.close()
 
 

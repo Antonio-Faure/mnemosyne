@@ -59,7 +59,7 @@ make cdp | vnc | record | egress
 mnemosyne run | serve | status | doctor | journal
 mnemosyne agency "<task>" [--to coder|browser] | messages      # coder/browser supervisor
 mnemosyne discover | connect-next | warmup
-mnemosyne llm test | telegram test | sources | search "<q>" | harvest
+mnemosyne llm test | telegram test | sources | search "<q>"
 make install-timer             # daily connect-next (systemd user timer)
 ```
 

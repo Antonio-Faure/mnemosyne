@@ -376,8 +376,8 @@ async def handle_journal(ctx: JobContext, job: Job) -> dict | None:
     """Periodic status digest written to the daily journal."""
     status = ctx.engine.status()
     ctx.journal.append(
-        f"status: {status['assets_total']} assets, "
-        f"{len(status['sources'])} sources, pressure {status['governor']['pressure']}",
+        f"status: {len(status['sources'])} sources, "
+        f"pressure {status['governor']['pressure']}",
         source="digest",
     )
     return None

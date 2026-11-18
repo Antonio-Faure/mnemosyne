@@ -74,7 +74,7 @@ Create the ``paris_musees`` source descriptor with:
       manifest: https://apicollections.parismusees.paris.fr/iiif/320025034/manifest
 
 Caveat: a single manifest yields a single object. The generic IIIF connector
-cannot enumerate this host (no collection); a broader harvest would need the
+cannot enumerate this host (no collection); a broader search would need the
 token-gated GraphQL API or per-object discovery.
 """
 

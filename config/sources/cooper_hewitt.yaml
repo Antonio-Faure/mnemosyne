@@ -9,7 +9,7 @@ license: CC0-1.0
 rights: >-
   Cooper Hewitt / Smithsonian Open Access — objects and media whose media-level
   flag multimedia[].cc0 is true are released under CC0 1.0 Universal (public
-  domain). Only CC0 media are harvested; the object-level legal.cc0 is not the
+  domain). Only CC0 media are returned; the object-level legal.cc0 is not the
   licence flag, the media-level cc0 is.
 rate_limit_per_s: 0.5
 priority: 50

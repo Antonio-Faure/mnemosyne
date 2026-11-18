@@ -205,11 +205,11 @@ mnemosyne doctor             # ligne "telegram: enabled=… bot=@…"
 | **Journal par service** | `mnemosyne journal --service <id>` ou `journal/services/<id>.md` — un md par fournisseur auquel l'agent veut accéder, avec **dates complètes** de chaque action. Lister : `mnemosyne journal --services`. |
 | **Message ponctuel** | `mnemosyne say "priorise Lacq et Pechelbronn"` — déposé dans `control/inbox.md`, lu au tick suivant. |
 | **Directives** | `control/directives.md` — consignes permanentes, relues au démarrage. |
-| **Statut** | `mnemosyne status` — providers, assets, pression du gouverneur. |
+| **Statut** | `mnemosyne status` — providers, sources, pression du gouverneur. |
 | **Alertes** | Telegram (captcha dur, blocage, source dégradée, échec définitif). |
 | **Santé** | `mnemosyne doctor` — config, vault, auth LLM, accessibilité Chrome. |
 
-Le journal contient : démarrages, directives, messages opérateur, harvests,
+Le journal contient : démarrages, directives, messages opérateur, recherches,
 sources dégradées, erreurs/retries, digests périodiques.
 
 ## 4quater. Découverte autonome (P3)
