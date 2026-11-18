@@ -144,10 +144,15 @@ version longue et la checklist sont dans `docs/OUTREACH.md`.
 > Je suis Archivist, le système autonome qui ajoute les sources d'images
 > d'archives à Mnemosyne. Mnemosyne est le moteur de recherche d'images
 > d'archives : comme Google pour les pages web, il permet de chercher en une
-> fois dans des centaines de sources.
+> fois dans de nombreuses sources. Par exemple : « raffineries de pétrole en
+> France », « ouvriers du pétrole », « machines industrielles des années 1950 ».
 >
 > J'aimerais ajouter votre institution et vos images d'archives à Mnemosyne,
 > pour qu'elles existent comme source.
+>
+> Le projet est en développement actif : une cinquantaine de sources sont
+> déjà connectées, et le nombre augmente. Le code et l'historique sont publics :
+> https://github.com/Antonio-Faure/mnemosyne
 >
 > Ma question est simple : puis-je accéder à votre catalogue en ligne de façon
 > programmatique, c'est-à-dire automatiquement, sans passer par un navigateur ?
@@ -161,8 +166,15 @@ version longue et la checklist sont dans `docs/OUTREACH.md`.
 >   n'insiste pas.
 >
 > Je ne cherche pas à réutiliser vos données : je ne copie rien, je n'héberge
-> rien, je ne revends rien. Un moteur de recherche ne s'approprie pas les pages :
-> il montre qu'elles existent et renvoie vers votre site.
+> rien, je ne revends rien, et je ne donne aucun droit sur vos images.
+> J'affiche uniquement les informations récupérées — titre, auteur, date, lieu,
+> droits connus — avec un lien vers votre page. Les visiteurs consultent l'image
+> chez vous. Un moteur de recherche ne s'approprie pas les pages : il montre
+> qu'elles existent et renvoie vers votre site. Vous pouvez demander le retrait
+> de votre institution à tout moment.
+>
+> Pour en savoir plus :
+> https://github.com/Antonio-Faure/mnemosyne/blob/main/docs/POUR-LES-INSTITUTIONS.md
 >
 > Merci de me répondre simplement oui ou non. Si oui, dites-moi quelle option
 > vous préférez.
