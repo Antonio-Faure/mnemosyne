@@ -8,7 +8,10 @@ newer pending tasks.
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
+
+import pytest
 
 from mnemosyne.agents import supervisor
 from mnemosyne.agents.mailbox import OPERATOR, Mailbox
@@ -346,3 +349,88 @@ def test_questions_from_before_the_channel_was_enabled_are_skipped(config):
         assert telegram.next_ask_to_send(db, since="2020-01-01T00:00:00+00:00")["id"] == "new"
     finally:
         db.close()
+
+
+def test_expired_callback_query_is_recognised():
+    assert telegram._is_stale_query(
+        "Bad Request: Query is too old and response timeout expired or query id is invalid"
+    )
+    assert not telegram._is_stale_query("Bad Request: message is not modified")
+
+
+@pytest.mark.asyncio
+async def test_render_edits_the_card_even_when_the_callback_ack_is_stale(monkeypatch):
+    """A tap on an old card must still update the card, not just log a toast error."""
+    calls: list[tuple[str, dict]] = []
+
+    async def fake_ack(*args, **kwargs):
+        return False
+
+    async def fake_post(token, method, payload, **kwargs):
+        calls.append((method, payload))
+        return {"ok": True}
+
+    monkeypatch.setattr(telegram, "_answer_callback", fake_ack)
+    monkeypatch.setattr(telegram, "_api_post", fake_post)
+    ask = {
+        "agent": "resolver",
+        "task_id": 173,
+        "question": "Question ?",
+        "options": json.dumps([{"label": "A"}, {"label": "B"}]),
+        "tg_message_id": 3,
+    }
+
+    await telegram._render(
+        "token", "42", {"kind": "answered", "ask": ask, "answer": "A", "callback_id": "cb"}
+    )
+
+    assert [method for method, _ in calls] == ["editMessageText"]
+    assert "✅ A" in calls[0][1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_edit_message_retries_a_transient_failure(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_post(token, method, payload, **kwargs):
+        calls.append(method)
+        return None if len(calls) == 1 else {"ok": True}
+
+    monkeypatch.setattr(telegram, "_api_post", fake_post)
+
+    assert await telegram._edit_message("token", "42", 3, "text") is True
+    assert calls == ["editMessageText", "editMessageText"]
+
+
+@pytest.mark.asyncio
+async def test_render_posts_a_note_when_the_card_cannot_be_edited(monkeypatch):
+    """If the card is gone, the operator still gets a confirmation in the chat."""
+    calls: list[tuple[str, dict]] = []
+
+    async def fake_ack(*args, **kwargs):
+        return False
+
+    async def fake_edit(*args, **kwargs):
+        return False
+
+    async def fake_post(token, method, payload, **kwargs):
+        calls.append((method, payload))
+        return {"ok": True}
+
+    monkeypatch.setattr(telegram, "_answer_callback", fake_ack)
+    monkeypatch.setattr(telegram, "_edit_message", fake_edit)
+    monkeypatch.setattr(telegram, "_api_post", fake_post)
+    ask = {
+        "agent": "resolver",
+        "task_id": 173,
+        "question": "Question ?",
+        "options": json.dumps([{"label": "A"}]),
+        "tg_message_id": 3,
+    }
+
+    await telegram._render(
+        "token", "42", {"kind": "answered", "ask": ask, "answer": "A", "callback_id": "cb"}
+    )
+
+    assert [method for method, _ in calls] == ["sendMessage"]
+    assert calls[0][1]["text"] == "✅ Réponse enregistrée : A"

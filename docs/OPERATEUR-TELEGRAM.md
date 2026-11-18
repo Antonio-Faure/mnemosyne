@@ -62,7 +62,10 @@ ET sort du cadre écrit**.
 - La question part avec des **boutons inline** (2 à 6 options) + un bouton
   **✏️ Autre réponse** (tu réponds au message, texte libre, max 500 caractères).
 - Seul **ton chat** est écouté ; tout autre expéditeur est ignoré.
-- Après ta réponse, le message Telegram est édité pour montrer le choix.
+- Après ta réponse, le message Telegram est édité pour montrer le choix. Un
+  bouton ancien reste utilisable : l'acquittement du clic peut expirer, la
+  carte est éditée quand même (et un message de confirmation est posté si
+  l'édition échoue).
 - Un seul lecteur d'updates : le conteneur (Telegram n'autorise qu'un lecteur
   par bot).
 
