@@ -85,7 +85,13 @@ question.
 1. **Créer trois bots** chez [@BotFather](https://t.me/BotFather) :
    `/newbot` → ex. `mnemosyne_coder_bot`, `mnemosyne_browser_bot` et
    `mnemosyne_resolver_bot`.
-2. **Déposer les tokens au vault** :
+2. **Déposer les tokens dans `.env`** (l'environnement est prioritaire) :
+   ```bash
+   MNEMOSYNE_CODER_BOT_TOKEN=<token coder>
+   MNEMOSYNE_BROWSER_BOT_TOKEN=<token browser>
+   MNEMOSYNE_RESOLVER_BOT_TOKEN=<token resolver>
+   ```
+   Variante vault :
    ```bash
    mnemosyne vault set mnemosyne_coder_bot_token <token coder>
    mnemosyne vault set mnemosyne_browser_bot_token <token browser>

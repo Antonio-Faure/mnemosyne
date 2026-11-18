@@ -179,8 +179,18 @@ Canal d'alerte **et** de dialogue : l'agent peut toujours poser une question à
 l'opérateur quand il est bloqué (captcha, phone verify, refus, action risquée).
 
 Configuration (`.env`) :
-- `MNEMOSYNE_TELEGRAM_BOT_TOKEN` — token du bot (BotFather) ;
-- `MNEMOSYNE_TELEGRAM_CHAT_ID` — **ton** id (destinataire).
+- **alertes** : `MNEMOSYNE_TELEGRAM_BOT_TOKEN` — token du bot (BotFather) ;
+- `MNEMOSYNE_TELEGRAM_CHAT_ID` — **ton** id (destinataire des alertes) ;
+- **questions des agents** — un bot par agent :
+  - `MNEMOSYNE_CODER_BOT_TOKEN` ;
+  - `MNEMOSYNE_BROWSER_BOT_TOKEN` ;
+  - `MNEMOSYNE_RESOLVER_BOT_TOKEN`.
+
+Les tokens peuvent aussi être déposés au vault (`mnemosyne vault set
+mnemosyne_coder_bot_token <token>`) ; l'environnement est prioritaire.
+Les `chat_id` des trois bots se renseignent dans `config/config.yaml`
+(`operator.coder.chat_id`, `operator.browser.chat_id`,
+`operator.resolver.chat_id`).
 
 Mise en service (une fois) : ouvre la conversation du bot dans Telegram et envoie
 `/start`. Sans ça, Telegram refuse que le bot écrive le premier (« chat not found »).
