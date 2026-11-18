@@ -238,31 +238,27 @@ export function BoardView() {
               </p>
             </div>
           </div>
-        ) : total === 0 ? (
-          <div className="mx-auto mt-16 max-w-md rounded-xl border border-dashed border-ink-700 bg-ink-900/60 px-5 py-8 text-center">
-            <div className="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-ink-800 text-slate-500">
-              <SearchX size={16} />
-            </div>
-            <h2 className="mt-2 text-[13px] font-medium text-slate-300">
-              Aucune carte sur ce tableau
-            </h2>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-slate-500">
-              {board === "resolver"
-                ? "Les nouvelles résolutions importées apparaîtront ici."
-                : "Les missions de source demandées par Le Résolveur apparaîtront ici."}
-            </p>
-          </div>
         ) : (
-          <div className="flex h-full min-w-[1400px] gap-2.5">
-            {columns.map((column) => (
-              <Column
-                key={column.id}
-                column={column}
-                board={board}
-                activeFilter={activeFilter}
-                onFilter={setActiveFilter}
-              />
-            ))}
+          <div className="flex h-full min-w-[1400px] flex-col gap-2.5">
+            {total === 0 ? (
+              <div className="flex items-center gap-2 rounded-lg border border-dashed border-ink-700 bg-ink-900/60 px-3 py-2 text-[10.5px] text-slate-500">
+                <SearchX size={13} className="shrink-0" />
+                {board === "resolver"
+                  ? "Aucune résolution pour l’instant — les nouvelles phrases importées apparaîtront ici."
+                  : "Aucune mission de source pour l’instant — les demandes du Résolveur apparaîtront ici."}
+              </div>
+            ) : null}
+            <div className="flex min-h-0 flex-1 gap-2.5">
+              {columns.map((column) => (
+                <Column
+                  key={column.id}
+                  column={column}
+                  board={board}
+                  activeFilter={activeFilter}
+                  onFilter={setActiveFilter}
+                />
+              ))}
+            </div>
           </div>
         )}
       </main>
