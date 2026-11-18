@@ -286,7 +286,7 @@ async def handle_telegram(ctx: JobContext, job: Job) -> dict | None:
 
     Kept so an old pending `telegram` job drains harmlessly after an upgrade.
     """
-    return None
+    return {"interval_s": 0}
 
 
 @handler("email_watch")
