@@ -299,17 +299,53 @@ def _cmd_resolve_enqueue(args: argparse.Namespace) -> int:
     cfg = get_config()
     db = Database(cfg.db_file())
     try:
-        from mnemosyne.resolver.queue import catalog_inventory
-
-        task_id, reason = enqueue_sentence(
-            db, args.segment_id, sources=catalog_inventory(cfg)
-        )
+        task_id, reason = enqueue_sentence(db, args.segment_id)
     finally:
         db.close()
     if task_id is None:
         print(f"{args.segment_id} : {reason}")
         return 0 if "déjà en cours" in reason else 1
     print(f"tâche resolver #{task_id} en file pour {args.segment_id} ({reason})")
+    return 0
+
+
+def _cmd_resolve_context(args: argparse.Namespace) -> int:
+    """Generate the stored global context card (summary/outline) per video."""
+    from mnemosyne.db import Database
+    from mnemosyne.resolver.context import generate_video_context
+
+    cfg = get_config()
+    db = Database(cfg.db_file())
+    try:
+        video_ids = [args.video] if args.video else db.list_resolver_video_ids()
+        if not video_ids:
+            print("aucune vidéo dans le corpus — importe d'abord un transcript")
+            return 0
+        for video_id in video_ids:
+            existing = db.get_video_context(video_id)
+            if existing and not args.force:
+                print(
+                    f"{video_id} : contexte déjà présent "
+                    f"({len(existing['summary'])} caractères) — --force pour régénérer"
+                )
+                continue
+            if args.dry_run:
+                count = len(db.list_resolver_corpus_for_video(video_id))
+                print(f"{video_id} : serait généré ({count} segments)")
+                continue
+            try:
+                context = asyncio.run(
+                    generate_video_context(cfg, db, video_id, force=args.force)
+                )
+            except Exception as exc:  # noqa: BLE001 - report and continue
+                print(f"{video_id} : échec — {exc}")
+                return 1
+            print(
+                f"{video_id} : résumé {len(context['summary'])} caractères, "
+                f"{len(context['outline'])} parties"
+            )
+    finally:
+        db.close()
     return 0
 
 
@@ -904,6 +940,13 @@ def build_parser() -> argparse.ArgumentParser:
     ren = rsub.add_parser("enqueue", help="enqueue one resolver task for a sentence")
     ren.add_argument("segment_id", help="corpus or golden segment id")
     ren.set_defaults(func=_cmd_resolve_enqueue)
+    rctx = rsub.add_parser(
+        "context", help="generate the global video context (summary + outline)"
+    )
+    rctx.add_argument("--video", default=None, help="one video id (default: all)")
+    rctx.add_argument("--force", action="store_true", help="regenerate an existing context")
+    rctx.add_argument("--dry-run", action="store_true")
+    rctx.set_defaults(func=_cmd_resolve_context)
 
     pdis = sub.add_parser("discover", help="P3: find new providers and store candidates")
     pdis.add_argument("--limit", type=int, default=100)

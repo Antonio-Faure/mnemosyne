@@ -9,7 +9,14 @@ from stirrup.core.models import EmptyParams
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.db import Database
-from mnemosyne.resolver.agent import RecordResultParams, RequestSourceParams, ResolverToolProvider
+from mnemosyne.resolver.agent import (
+    ReadTranscriptParams,
+    RecordResultParams,
+    RequestSourceParams,
+    ResolverToolProvider,
+    SearchTranscriptParams,
+    VideoContextParams,
+)
 
 
 def _db(config) -> Database:
@@ -366,6 +373,79 @@ def test_request_source_is_refused_while_onboarding_is_frozen(config):
         assert result.success is False
         assert "gelé" in result.content
         assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_context_and_transcript_tools(config):
+    """The resolver can widen the context and search the full transcript."""
+    db = _db(config)
+    try:
+        entries = [
+            {
+                "id": f"yt_ctx_{i}",
+                "text": "Le pétrole de Pechelbronn." if i == 2 else f"Phrase {i}.",
+                "start_s": float(i * 10),
+                "end_s": float(i * 10 + 8),
+                "video": {"id": "ctx", "title": "La France et le pétrole"},
+                "claim": {},
+            }
+            for i in range(6)
+        ]
+        db.upsert_resolver_corpus(entries)
+        db.upsert_video_context(
+            "ctx",
+            title="La France et le pétrole",
+            duration_s=60,
+            summary="Le pétrole français oublié.",
+            outline=[{"start_s": 0, "end_s": 60, "title": "Le gisement", "summary": ""}],
+            meta={"period": "1920", "places": ["Alsace"], "entities": ["Pechelbronn"]},
+            model="fake",
+        )
+        task_id = db.enqueue_task(
+            "resolver",
+            "illustrate the sentence",
+            payload={
+                "kind": "resolver",
+                "segment_id": "yt_ctx_2",
+                "corpus": entries[2],
+            },
+        )
+        db.set_task_status(task_id, "running", agent="resolver")
+
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = asyncio.run(provider.__aenter__())
+        by_name = {tool.name: tool for tool in tools}
+
+        context = asyncio.run(
+            by_name["video_context"].executor(VideoContextParams(before=1, after=1))
+        )
+        assert context.success is True
+        assert "Résumé : Le pétrole français oublié." in context.content
+        assert "← phrase" in context.content
+
+        found = asyncio.run(
+            by_name["search_transcript"].executor(
+                SearchTranscriptParams(query="Pechelbronn")
+            )
+        )
+        assert found.success is True
+        assert "yt_ctx_2" not in found.content  # compact display, not the raw id
+        assert "Pechelbronn" in found.content
+
+        window = asyncio.run(
+            by_name["read_transcript"].executor(
+                ReadTranscriptParams(start_s=10, end_s=20)
+            )
+        )
+        assert window.success is True
+        assert "Phrase 1." in window.content
+        assert "Pechelbronn" in window.content
+
+        catalog = asyncio.run(by_name["catalog_inventory"].executor(EmptyParams()))
+        assert catalog.success is True
+        assert "gallica" in catalog.content
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()

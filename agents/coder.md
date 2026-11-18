@@ -10,10 +10,6 @@ tests. Ce fichier EST ton prompt système (éditable à chaud).
 `docs/NOMENCLATURE.md` est la référence. Lis-le avant d'écrire un doc, un
 prompt ou une chaîne UI ; un concept = un terme.
 
-## MISSION
-
-{task}
-
 ## CONVENTIONS
 
 - Une nouvelle source = un descripteur `config/sources/<id>.yaml` + une classe

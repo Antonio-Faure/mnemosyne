@@ -207,19 +207,54 @@ def test_enqueue_prefers_the_golden_label_over_the_corpus(config):
         db.close()
 
 
-def test_the_objective_lists_the_catalog_so_nothing_is_asked_twice(config):
+def test_the_objective_carries_the_context_and_points_to_the_catalog_tool(config):
     from mnemosyne.resolver.queue import build_objective
 
     objective = build_objective(
         "yt_a_1",
         {"id": "yt_a_1", "video": {"id": "v"}, "claim": {}},
         "A sentence about Belgium.",
-        sources=[
-            {"id": "gallica", "name": "Gallica (BnF)", "enabled": True},
-            {"id": "wellcome", "name": "Wellcome Collection", "enabled": False},
-        ],
+        context="Contexte vidéo :\n- Titre : Demo\n- Résumé : 1914.",
     )
-    assert "Catalogue actuel" in objective
-    assert "gallica — Gallica (BnF) — active" in objective
-    assert "wellcome — Wellcome Collection — désactivée" in objective
-    assert "ne doit PAS" in objective
+    assert "Contexte vidéo" in objective
+    assert "Résumé : 1914." in objective
+    assert "catalog_inventory" in objective
+    assert "Catalogue actuel" not in objective
+
+
+def test_enqueue_injects_the_global_video_context(config):
+    from mnemosyne.resolver.queue import enqueue_sentence
+
+    db = Database(config.db_file())
+    try:
+        entries = [
+            {
+                "id": f"yt_ctx_{i}",
+                "text": "Le pétrole de Pechelbronn." if i == 2 else f"Phrase {i}.",
+                "start_s": float(i * 10),
+                "end_s": float(i * 10 + 8),
+                "video": {"id": "ctx", "title": "La France et le pétrole"},
+                "claim": {},
+            }
+            for i in range(5)
+        ]
+        db.upsert_resolver_corpus(entries)
+        db.upsert_video_context(
+            "ctx",
+            title="La France et le pétrole",
+            duration_s=50,
+            summary="Le pétrole français oublié.",
+            outline=[{"start_s": 0, "end_s": 50, "title": "Le gisement", "summary": ""}],
+            meta={"period": "1920"},
+            model="fake",
+        )
+
+        task_id, source = enqueue_sentence(db, "yt_ctx_2")
+        assert task_id is not None and source == "corpus"
+        objective = db.get_task(task_id)["objective"]
+        assert "Contexte vidéo" in objective
+        assert "Résumé : Le pétrole français oublié." in objective
+        assert "← phrase" in objective
+        assert "catalog_inventory" in objective
+    finally:
+        db.close()

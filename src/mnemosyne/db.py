@@ -190,6 +190,20 @@ CREATE TABLE IF NOT EXISTS resolver_corpus (
 CREATE INDEX IF NOT EXISTS idx_resolver_corpus_video
     ON resolver_corpus(video_id);
 
+-- Global video context: one summary/outline per video, generated once. It gives
+-- the resolver the narrative context a single sentence cannot carry.
+CREATE TABLE IF NOT EXISTS video_contexts (
+    video_id   TEXT PRIMARY KEY,
+    title      TEXT NOT NULL DEFAULT '',
+    duration_s REAL,
+    summary    TEXT NOT NULL,
+    outline    TEXT NOT NULL DEFAULT '[]',
+    meta       TEXT NOT NULL DEFAULT '{}',
+    model      TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 -- Resolver -> agent source dependencies: one row per source request.
 CREATE TABLE IF NOT EXISTS resolver_requests (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -656,6 +670,135 @@ class Database:
                 (max(0, int(limit)),),
             ).fetchall()
         return [json.loads(row["payload"]) for row in rows]
+
+    def list_resolver_video_ids(self) -> list[str]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT DISTINCT video_id FROM resolver_corpus "
+                "WHERE video_id <> '' ORDER BY video_id"
+            ).fetchall()
+        return [str(row["video_id"]) for row in rows]
+
+    def list_resolver_corpus_for_video(self, video_id: str) -> list[dict]:
+        """Every corpus segment of one video, ordered by its start time."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT payload FROM resolver_corpus WHERE video_id = ?",
+                (video_id,),
+            ).fetchall()
+        payloads = []
+        for row in rows:
+            try:
+                payloads.append(json.loads(row["payload"]))
+            except ValueError:
+                continue
+        return sorted(
+            payloads,
+            key=lambda payload: (
+                float(payload.get("start_s") or 0.0),
+                str(payload.get("id") or ""),
+            ),
+        )
+
+    def resolver_corpus_window(
+        self, video_id: str, *, start_s: float, end_s: float, limit: int = 20
+    ) -> list[dict]:
+        """Segments overlapping [start_s, end_s], capped and ordered."""
+        segments = self.list_resolver_corpus_for_video(video_id)
+        selected = [
+            segment
+            for segment in segments
+            if float(segment.get("end_s") or 0.0) >= start_s
+            and float(segment.get("start_s") or 0.0) <= end_s
+        ]
+        return selected[: max(1, int(limit))]
+
+    def search_resolver_corpus(
+        self, video_id: str, query: str, *, limit: int = 8
+    ) -> list[dict]:
+        """Simple, accent-tolerant-enough transcript search (casefold + tokens)."""
+        needle = query.strip().casefold()
+        if not needle:
+            return []
+        tokens = [token for token in needle.split() if len(token) >= 3]
+        segments = self.list_resolver_corpus_for_video(video_id)
+        scored: list[tuple[int, dict]] = []
+        for segment in segments:
+            text = str(segment.get("text") or "").casefold()
+            if needle in text:
+                score = 100
+            elif tokens and all(token in text for token in tokens):
+                score = 50 + len(tokens)
+            elif tokens and any(token in text for token in tokens):
+                score = 10 + sum(1 for token in tokens if token in text)
+            else:
+                continue
+            scored.append((score, segment))
+        scored.sort(
+            key=lambda item: (
+                -item[0],
+                float(item[1].get("start_s") or 0.0),
+            )
+        )
+        return [segment for _score, segment in scored[: max(1, int(limit))]]
+
+    def get_video_context(self, video_id: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM video_contexts WHERE video_id = ?", (video_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        try:
+            data["outline"] = json.loads(data.get("outline") or "[]")
+        except ValueError:
+            data["outline"] = []
+        try:
+            data["meta"] = json.loads(data.get("meta") or "{}")
+        except ValueError:
+            data["meta"] = {}
+        return data
+
+    def upsert_video_context(
+        self,
+        video_id: str,
+        *,
+        title: str,
+        duration_s: float | None,
+        summary: str,
+        outline: list[dict] | None = None,
+        meta: dict | None = None,
+        model: str | None = None,
+    ) -> None:
+        now = utcnow_iso()
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO video_contexts
+                   (video_id, title, duration_s, summary, outline, meta, model,
+                    created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(video_id) DO UPDATE SET
+                       title = excluded.title,
+                       duration_s = excluded.duration_s,
+                       summary = excluded.summary,
+                       outline = excluded.outline,
+                       meta = excluded.meta,
+                       model = excluded.model,
+                       updated_at = excluded.updated_at""",
+                (
+                    video_id,
+                    title,
+                    duration_s,
+                    summary,
+                    json.dumps(outline or [], ensure_ascii=False),
+                    json.dumps(meta or {}, ensure_ascii=False),
+                    model,
+                    now,
+                    now,
+                ),
+            )
+            self._conn.commit()
 
     def open_resolver_task(self, segment_id: str) -> int | None:
         """Id of a pending/running resolver task for this sentence, if any."""

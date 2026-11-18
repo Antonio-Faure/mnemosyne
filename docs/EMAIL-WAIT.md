@@ -61,7 +61,9 @@ the setting.
 
 ## Tool contract
 
-Available to the browser and coder agents:
+Available to the **browser agent only** — the coder deliberately does not get
+it: email is the browser's responsibility, and the coder must not park on an
+IMAP wait.
 
 ```text
 wait_for_email(

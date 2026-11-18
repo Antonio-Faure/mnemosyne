@@ -262,7 +262,7 @@ def _feed_resolver(ctx: JobContext) -> dict | None:
     `resolve enqueue` after every verdict.
     """
     from mnemosyne.db import Database
-    from mnemosyne.resolver.queue import catalog_inventory, enqueue_sentence
+    from mnemosyne.resolver.queue import enqueue_sentence
 
     db = Database(ctx.config.db_file())
     try:
@@ -270,9 +270,7 @@ def _feed_resolver(ctx: JobContext) -> dict | None:
         if entry is None:
             return None
         segment_id = str(entry.get("id") or "")
-        task_id, reason = enqueue_sentence(
-            db, segment_id, sources=catalog_inventory(ctx.config)
-        )
+        task_id, reason = enqueue_sentence(db, segment_id)
     finally:
         db.close()
     if not task_id:
