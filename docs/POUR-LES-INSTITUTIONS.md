@@ -18,7 +18,8 @@ technique, mais aussi les petites structures, les catalogues qui n'ont jamais é
 pensés pour être interrogés à distance, les sites sans accès automatique.
 
 **L'ambition est mondiale : de l'ordre de 3 000 sources en France, 20 000 en
-Europe et 100 000 dans le monde.**
+Europe et 100 000 dans le monde.** Une cinquantaine de sources sont déjà
+connectées, et le nombre augmente.
 
 Le projet est porté par **Antonio Faure**, son gestionnaire. Le code source, la
 documentation et l'historique sont publics.
