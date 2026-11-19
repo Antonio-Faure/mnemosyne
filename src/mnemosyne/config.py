@@ -219,6 +219,8 @@ class TelegramConfig(BaseModel):
     enabled: bool = False
     bot_token_env: str = "MNEMOSYNE_TELEGRAM_BOT_TOKEN"
     chat_id_env: str = "MNEMOSYNE_TELEGRAM_CHAT_ID"
+    #: send "heartbeat online" on every restart (noisy during deploys)
+    startup: bool = False
 
 
 class NotifyConfig(BaseModel):

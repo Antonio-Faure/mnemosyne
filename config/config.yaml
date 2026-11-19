@@ -192,6 +192,7 @@ agents:
 notify:
   telegram:
     enabled: true
+    startup: false   # pas de message "heartbeat online" à chaque redémarrage
     bot_token_env: MNEMOSYNE_TELEGRAM_BOT_TOKEN
     chat_id_env: MNEMOSYNE_TELEGRAM_CHAT_ID
 

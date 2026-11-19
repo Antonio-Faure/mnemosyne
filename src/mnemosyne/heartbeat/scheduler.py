@@ -122,7 +122,16 @@ class Heartbeat:
                 log.debug("skipping %s (no connector yet)", d.id)
                 continue
             supported += 1
-            if not self.engine.db.has_open_job("verify", d.id):
+            last_verify = self.engine.db.get_kv(f"verify_at:{d.id}")
+            fresh = False
+            if last_verify:
+                try:
+                    seen = datetime.fromisoformat(str(last_verify))
+                    age = (datetime.now(UTC) - seen).total_seconds()
+                    fresh = age < VERIFY_INTERVAL_S
+                except ValueError:
+                    fresh = False
+            if not fresh and not self.engine.db.has_open_job("verify", d.id):
                 self.engine.db.enqueue(
                     Job(kind="verify", payload={"source_id": d.id, "interval_s": VERIFY_INTERVAL_S},
                         priority=10)
@@ -209,7 +218,10 @@ class Heartbeat:
         )
         try:
             pending = self.engine.db.count_jobs(JobState.PENDING)
-            await self.notifier.send(f"mnemosyne heartbeat online — {pending} jobs pending")
+            if self.config.notify.telegram.startup:
+                await self.notifier.send(
+                    f"mnemosyne heartbeat online — {pending} jobs pending"
+                )
             while not self._stop.is_set():
                 try:
                     await self._tick()
