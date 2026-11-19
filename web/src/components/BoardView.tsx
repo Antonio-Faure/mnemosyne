@@ -70,7 +70,7 @@ function Column({
 
   return (
     <section
-      className={`flex min-h-0 min-w-[275px] flex-1 flex-col rounded-xl border border-t-2 border-ink-700/80 bg-ink-900/70 ${COLUMN_ACCENT[column.id]}`}
+      className={`flex min-h-0 min-w-[245px] flex-1 flex-col rounded-xl border border-t-2 border-ink-700/80 bg-ink-900/70 ${COLUMN_ACCENT[column.id]}`}
     >
       <header className="shrink-0 border-b border-ink-700/70 px-3 pb-2.5 pt-3">
         <div className="flex items-baseline justify-between gap-2">
@@ -239,7 +239,7 @@ export function BoardView() {
             </div>
           </div>
         ) : (
-          <div className="flex h-full min-w-[1400px] flex-col gap-2.5">
+          <div className="flex h-full min-w-[1265px] flex-col gap-2">
             {total === 0 ? (
               <div className="flex items-center gap-2 rounded-lg border border-dashed border-ink-700 bg-ink-900/60 px-3 py-2 text-[10.5px] text-slate-500">
                 <SearchX size={13} className="shrink-0" />
@@ -248,7 +248,7 @@ export function BoardView() {
                   : "Aucune mission de source pour l’instant — les demandes du Résolveur apparaîtront ici."}
               </div>
             ) : null}
-            <div className="flex min-h-0 flex-1 gap-2.5">
+            <div className="flex min-h-0 flex-1 gap-2">
               {columns.map((column) => (
                 <Column
                   key={column.id}
