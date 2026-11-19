@@ -20,6 +20,7 @@ import asyncio
 import json
 import os
 import secrets
+import time
 from typing import Any
 
 import httpx
@@ -201,13 +202,18 @@ async def ask_operator(
     task_id: int,
     question: str,
     options: list[dict[str, Any]],
-) -> str:
-    """Register the question and post it in the task mailbox.
+    wait: bool = True,
+    timeout_s: float = 900.0,
+) -> dict[str, Any]:
+    """Register a question and, by default, WAIT for the operator's answer.
 
-    Delivery is deliberately NOT immediate: the telegram job sends questions one
-    at a time (`send_next_ask`), and only after the previous answer. Telegram
-    being unavailable is not fatal: the question is in the mailbox and the
-    operator can answer with `mnemosyne answer`.
+    The call is synchronous for the agent: the tool does not return until the
+    operator answers (or the timeout expires), so the agent sees the answer in
+    the same turn. Delivery still goes through the one-at-a-time Telegram
+    sender; the listener writes the answer to ``operator_asks`` and the mailbox.
+
+    ``wait=False`` is reserved for tests/CLI helpers: it registers the ask and
+    returns immediately (the historical async behaviour).
     """
     ask_id = secrets.token_hex(5)
     mailbox = Mailbox(db)
@@ -216,7 +222,44 @@ async def ask_operator(
     )
     message_id = mailbox.post(agent, OPERATOR, body, task_id)
     db.create_ask(ask_id, task_id, agent, question, options, message_id=message_id)
-    return ask_id
+    if not wait:
+        return {"ask_id": ask_id, "status": "pending", "answer": None}
+
+    deadline = time.monotonic() + max(0.0, float(timeout_s))
+    while time.monotonic() < deadline:
+        ask = db.get_ask(ask_id)
+        if ask is None:
+            return {"ask_id": ask_id, "status": "missing", "answer": None}
+        if ask.get("status") == "answered":
+            answer = str(ask.get("answer") or "")
+            # The listener posted the answer into the mailbox. This synchronous
+            # tool consumes it, so the supervisor must not inject it again at
+            # the next activation.
+            for message in reversed(db.pending_task_messages(task_id, agent)):
+                if message.get("sender") == OPERATOR and message.get("body") == answer:
+                    db.mark_message(
+                        int(message["id"]),
+                        status="handled",
+                        note="réponse consommée par l'agent (ask_operator synchrone)",
+                    )
+                    break
+            return {"ask_id": ask_id, "status": "answered", "answer": answer}
+        if ask.get("status") not in ("pending", None, ""):
+            return {"ask_id": ask_id, "status": str(ask.get("status")), "answer": None}
+        await asyncio.sleep(0.5)
+
+    db.expire_ask(ask_id)
+    db.mark_message(
+        message_id,
+        status="handled",
+        note="question expirée sans réponse de l'opérateur",
+    )
+    return {
+        "ask_id": ask_id,
+        "status": "expired",
+        "answer": None,
+        "error": "aucune réponse de l'opérateur dans le délai imparti",
+    }
 
 
 def _awaiting_answer(ask: dict) -> bool:

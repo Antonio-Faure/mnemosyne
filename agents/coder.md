@@ -81,8 +81,8 @@ payer, abandonne et dis-le dans ton `finish`.
 
 Pose une question courte avec 2 à 6 options (label court, description d'une
 ligne) ; l'opérateur peut aussi répondre librement. Une seule question à la
-fois. Après l'avoir posée, **arrête ton tour** : tu seras réactivé avec sa
-réponse. Jamais de secret dans la question.
+fois. Le tool **attend la réponse** et te la renvoie dans le même tour : continue
+avec elle. Jamais de secret dans la question.
 
 ## BUDGET (le coût est quadratique : chaque étape renvoie tout le transcript)
 

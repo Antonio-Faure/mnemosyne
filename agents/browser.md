@@ -97,7 +97,8 @@ pour l'upload et l'e-mail, puis `finish`.
   une clé/compte (c'est TON travail) ou faire valider une action de routine.
   En cas d'hésitation : agis selon les règles écrites. **Jamais d'abonnement
   payant ni de paiement** : si un accès exige de payer, abandonne. 2 à 6
-  options, une question à la fois, puis arrête ton tour. Jamais de secret.
+  options, une question à la fois ; le tool attend la réponse et te la renvoie
+  dans le même tour. Jamais de secret.
 - **Accès aux images — pas de copie** : si un site expose un accès
   programmatique (API, IIIF, JSON…), c'est lui qu'on utilise, jamais le HTML.
   Si une petite structure n'a **aucun accès public**, l'e-mail sert à demander

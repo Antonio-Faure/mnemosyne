@@ -1,8 +1,8 @@
 # Canal opérateur — questions des agents via Telegram
 
-> Validé le 2026-10-04. Les agents posent des **questions à choix** à
-> l'opérateur (toi) ; la tâche se gare, ta réponse la réveille. Le canal vit
-> dans la **boîte de la tâche**, jamais dans la file.
+> Validé le 2026-10-04 ; `ask_operator` est devenu **synchrone** : l'agent
+> attend ta réponse et la reçoit dans le même tour. Le canal vit dans la
+> **boîte de la tâche**, jamais dans la file.
 
 ## Quand déranger l'opérateur (politique)
 
@@ -34,25 +34,28 @@ ET sort du cadre écrit**.
 - **Un troisième correspondant** dans la boîte : `operator`. Les agents
   écrivent `agent → operator` (une question), l'opérateur répond
   `operator → agent`. La question vit et meurt avec la tâche.
-- **« Attendre » n'est jamais bloquant** : l'agent pose sa question puis
-  **arrête son tour**. La tâche reste `running` mais **garée** — le superviseur
-  la saute, elle ne coûte rien et ne bloque pas la file.
-- **La réponse réveille la tâche** : elle atterrit dans la boîte ; le listener
-  Telegram (long poll permanent) réveille immédiatement l'agent concerné, avec
-  tout son contexte (session persistante), exactement où il s'était arrêté. Le
-  tick suivant reste le filet de sécurité si la tâche reprend dans un autre
-  worker.
+- **`ask_operator` est synchrone** : l'agent appelle le tool, **attend la
+  réponse dans le même tour**, et reçoit le libellé choisi. La tâche reste
+  `running` ; l'activation est bloquée sur le tool, mais la file et le canal
+  Telegram ne le sont pas — les autres workers continuent.
+- **La réponse est rendue au tool** : le listener Telegram (long poll permanent)
+  écrit la réponse dans `operator_asks` et la boîte ; le tool la consomme et
+  marque le message comme traité, pour que le superviseur ne la réinjecte pas
+  au tick suivant.
+- **Délai** : `operator.answer_timeout_s` (900 s par défaut). Sans réponse, la
+  question passe en `expired`, le message est marqué traité et le tool rend un
+  échec explicite ; l'agent peut réessayer ou s'abstenir.
 
-## Ordonnancement (les tâches garées libèrent la place)
+## Ordonnancement
 
 1. La tâche travaillée le plus récemment continue (sa session est chaude).
 2. Sinon, les tâches qui ont une **réponse/agent-message en attente**
-   (réponse de l'opérateur, reprise après crash) reprennent, la plus ancienne
+   (reprise après crash, ancien mode asynchrone) reprennent, la plus ancienne
    d'abord.
 3. Sinon, la plus ancienne tâche **nouvelle** (FIFO).
-4. Les tâches garées (question sans réponse) sont **sautées** — ta réponse ne
-   coupe jamais une tâche en cours : elle fait passer la tâche concernée en
-   tête de la prochaine place libre.
+4. Une activation bloquée sur `ask_operator` occupe un worker mais pas le
+   canal : les autres tâches avancent. Les éventuelles tâches garées par
+   l'ancien mode asynchrone ou par un timeout restent sautées.
 
 ## Telegram : trois bots, une question à la fois
 

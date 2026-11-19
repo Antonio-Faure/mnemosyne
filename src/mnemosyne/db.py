@@ -1829,6 +1829,15 @@ class Database:
             )
             self._conn.commit()
 
+    def expire_ask(self, ask_id: str) -> None:
+        """Close an unanswered question so the one-at-a-time queue moves on."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE operator_asks SET status = 'expired' WHERE id = ? AND status = 'pending'",
+                (ask_id,),
+            )
+            self._conn.commit()
+
     def list_asks(self, status: str | None = None) -> list[dict]:
         with self._lock:
             if status:
