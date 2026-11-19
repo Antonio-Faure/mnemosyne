@@ -117,15 +117,6 @@ class ReadTranscriptParams(BaseModel):
     limit: int = Field(default=20, ge=1, le=40)
 
 
-class InspectImageParams(BaseModel):
-    image_url: str = Field(
-        min_length=8, description="Exact image URL (http/https), not the notice page"
-    )
-    preview: bool = Field(
-        default=True, description="Attach a downscaled preview the model can see"
-    )
-
-
 class RecordIllustrationParams(BaseModel):
     image_url: str = Field(
         min_length=8, description="Exact image URL chosen for this sentence"
@@ -516,38 +507,6 @@ class ResolverToolProvider(ToolProvider):
                 "Le supervisor te réveillera quand toutes seront terminales."
             )
 
-        async def inspect_image_exec(p: InspectImageParams):
-            image_key = normalise_image_url(p.image_url)
-            result = await inspect_image(
-                image_key,
-                preview_max=self.config.resolver.inspect_preview_max,
-                min_side=self.config.resolver.min_image_side,
-                min_bytes=self.config.resolver.min_image_bytes,
-                max_fetch_bytes=self.config.resolver.inspect_max_bytes,
-                preview=p.preview,
-            )
-            self._image_cache[image_key] = result
-            lines = [
-                f"URL : {result.get('final_url') or p.image_url}",
-                f"type : {result.get('content_type') or '?'}",
-                f"format : {result.get('image_format') or '?'}",
-                f"dimensions : {result.get('width') or '?'}×{result.get('height') or '?'}",
-                f"poids : {result.get('image_bytes') or '?'} octets",
-            ]
-            if result.get("hard_failures"):
-                lines.append("ÉCHEC : " + " ; ".join(result["hard_failures"]))
-            if result.get("warnings"):
-                lines.append("Avertissements : " + " ; ".join(result["warnings"]))
-            content: list[Any] = ["\n".join(lines)]
-            preview = result.get("preview")
-            if p.preview and preview:
-                content.append(ImageContentBlock(data=preview))
-            return ToolResult(
-                content=content,
-                success=bool(result.get("ok")),
-                metadata=ToolUseCountMetadata(),
-            )
-
         async def record_illustration_exec(p: RecordIllustrationParams):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
@@ -567,13 +526,14 @@ class ResolverToolProvider(ToolProvider):
                     min_side=self.config.resolver.min_image_side,
                     min_bytes=self.config.resolver.min_image_bytes,
                     max_fetch_bytes=self.config.resolver.inspect_max_bytes,
-                    preview=False,
+                    preview=True,
                 )
                 self._image_cache[image_url] = checked
             if not checked.get("ok"):
-                return _fail(
-                    "image refusée : " + " ; ".join(checked.get("hard_failures") or ["inconnue"])
-                )
+                reasons = checked.get("hard_failures") or ["inconnue"]
+                if checked.get("warnings"):
+                    reasons = reasons + list(checked["warnings"])
+                return _fail("image refusée : " + " ; ".join(reasons))
             image_url = normalise_image_url(str(checked.get("final_url") or image_url))
 
             existing_url = self.db.get_resolver_illustration_by_url(image_url)
@@ -641,15 +601,26 @@ class ResolverToolProvider(ToolProvider):
             except Exception as exc:  # noqa: BLE001
                 return _fail(f"résultat non enregistré : {exc}")
             details = (
-                f"illustration enregistrée ({p.status}) : {image_url} — "
+                f"succès — illustration enregistrée ({p.status}) : {image_url} — "
                 f"{checked.get('width')}×{checked.get('height')}, "
-                f"{checked.get('image_bytes')} octets"
+                f"{checked.get('image_bytes')} octets. "
+                "Regarde l'aperçu : s'il ne correspond pas à la phrase, rappelle "
+                "record_illustration avec une autre image (la dernière illustration "
+                "remplace la précédente), ou record_result(no_match) si aucune ne convient."
             )
             if warnings:
-                details += " ; avertissements : " + " ; ".join(
+                details += " Avertissements : " + " ; ".join(
                     item["message"] for item in warnings
                 )
-            return _ok(details)
+            content: list[Any] = [details]
+            preview = checked.get("preview")
+            if preview:
+                content.append(ImageContentBlock(data=preview))
+            return ToolResult(
+                content=content,
+                success=True,
+                metadata=ToolUseCountMetadata(),
+            )
 
         async def record_result_exec(p: RecordResultParams):
             if self.task_id is None:
@@ -672,6 +643,8 @@ class ResolverToolProvider(ToolProvider):
                         "`record_result` pour le verdict."
                     )
             try:
+                if p.status in ("no_match", "ambiguous"):
+                    self.db.delete_resolver_illustration_for_task(self.task_id)
                 self.db.record_resolver_result(
                     self.task_id,
                     segment_id=self._segment_id(),
@@ -753,17 +726,6 @@ class ResolverToolProvider(ToolProvider):
                 ),
                 parameters=ReadTranscriptParams,
                 executor=read_transcript_exec,
-            ),
-            Tool(
-                name="inspect_image",
-                description=(
-                    "Fetch and inspect a candidate image URL: content type, "
-                    "format, dimensions, weight, quality warnings, and a preview "
-                    "image the model can actually see. Use it before choosing an "
-                    "image."
-                ),
-                parameters=InspectImageParams,
-                executor=inspect_image_exec,
             ),
             Tool(
                 name="request_source",
