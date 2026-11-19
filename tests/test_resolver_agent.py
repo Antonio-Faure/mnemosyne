@@ -646,3 +646,36 @@ def test_no_match_clears_a_provisional_illustration(config, monkeypatch):
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def test_pending_operator_question_writes_nothing(config):
+    """A validation guard is not an image: it must leave the database untouched."""
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        db.create_ask(
+            "pending-1",
+            task_id,
+            "resolver",
+            "Valide ?",
+            [{"label": "Oui"}, {"label": "Non"}],
+        )
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/photo.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="troupes",
+                )
+            )
+        )
+        assert result.success is False
+        assert "en attente" in result.content
+        assert db.get_resolver_illustration_for_task(task_id) is None
+        assert db.get_resolver_result(task_id) is None
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
