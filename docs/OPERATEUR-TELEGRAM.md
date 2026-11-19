@@ -42,9 +42,9 @@ ET sort du cadre écrit**.
   écrit la réponse dans `operator_asks` et la boîte ; le tool la consomme et
   marque le message comme traité, pour que le superviseur ne la réinjecte pas
   au tick suivant.
-- **Délai** : `operator.answer_timeout_s` (900 s par défaut). Sans réponse, la
-  question passe en `expired`, le message est marqué traité et le tool rend un
-  échec explicite ; l'agent peut réessayer ou s'abstenir.
+- **Aucune expiration** : le tool attend jusqu'à la réponse. Une question sans
+  réponse garde un worker et la place dans la file « une question à la fois » ;
+  il faut répondre (Telegram ou `mnemosyne answer`) ou annuler la tâche.
 
 ## Ordonnancement
 
@@ -55,7 +55,7 @@ ET sort du cadre écrit**.
 3. Sinon, la plus ancienne tâche **nouvelle** (FIFO).
 4. Une activation bloquée sur `ask_operator` occupe un worker mais pas le
    canal : les autres tâches avancent. Les éventuelles tâches garées par
-   l'ancien mode asynchrone ou par un timeout restent sautées.
+   l'ancien mode asynchrone restent sautées.
 
 ## Telegram : trois bots, une question à la fois
 

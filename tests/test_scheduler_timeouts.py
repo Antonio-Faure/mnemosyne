@@ -120,3 +120,20 @@ async def test_shutdown_requeues_running_jobs_instead_of_parking_them(cfg, monke
     assert job is not None and job.state is JobState.PENDING, job
     assert job.locked_at is None
     await hb.aclose()
+
+
+async def test_resolver_session_outlives_the_mechanical_timeout(cfg, monkeypatch):
+    """Waiting for an operator answer is not a hung mechanical job."""
+    async def slow_resolver(ctx, job):
+        await asyncio.sleep(0.5)
+        return None
+
+    monkeypatch.setitem(jobs_mod.HANDLERS, "resolver", slow_resolver)
+    cfg.heartbeat.job_timeout_s = 0.1
+    hb = Heartbeat(cfg)
+    resolver_id = hb.engine.db.enqueue(Job(kind="resolver", payload={}, priority=1))
+    await hb._tick()
+    await hb._drain()
+    job = hb.engine.db.get_job(resolver_id)
+    assert job is not None and job.state is JobState.DONE, job
+    await hb.aclose()

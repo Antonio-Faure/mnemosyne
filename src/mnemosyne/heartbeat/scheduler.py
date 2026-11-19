@@ -333,9 +333,10 @@ class Heartbeat:
         db.open_job_session(job.id, job.kind, payload=job.payload)
         started = time.monotonic()
         try:
-            if job.kind == "agency":
-                # An agent session is judged on progress (the stall marker),
-                # never on a clock: no wall cap, whatever the mission length.
+            if job.kind in ("agency", "resolver"):
+                # Agent sessions are judged on progress (the stall marker),
+                # never on a clock. The resolver may wait indefinitely on an
+                # operator answer; it must not be killed by a mechanical timeout.
                 updates = await handler(self.ctx, job)
             else:
                 # Mechanical jobs are internally bounded (httpx 30s/request,
