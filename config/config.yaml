@@ -102,6 +102,12 @@ resolver:
   interval_s: 60
   # remplir la file tout seul avec la phrase suivante du corpus (boucle permanente)
   auto_feed: true
+  # Qualité minimale acceptée par record_illustration (URL d'image réelle,
+  # dimensions et poids), et bornes de l'inspection d'image.
+  min_image_side: 240
+  min_image_bytes: 8000
+  inspect_max_bytes: 8000000
+  inspect_preview_max: 1280
 
 # Public identity disclosed in every email / contact form (transparency).
 identity:

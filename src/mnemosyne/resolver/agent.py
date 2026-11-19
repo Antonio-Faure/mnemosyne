@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from stirrup import Agent
 from stirrup.core.models import (
     EmptyParams,
+    ImageContentBlock,
     Tool,
     ToolProvider,
     ToolResult,
@@ -33,6 +34,7 @@ from mnemosyne.journal import Journal
 from mnemosyne.logger import get_logger
 from mnemosyne.operator.models import AskOperatorParams
 from mnemosyne.operator.telegram import ask_operator
+from mnemosyne.resolver.imagecheck import inspect_image, normalise_image_url
 from mnemosyne.resolver.ranking import rank as rank_assets
 from mnemosyne.util import ensure_dir, finish_text, load_prompt
 
@@ -115,6 +117,46 @@ class ReadTranscriptParams(BaseModel):
     limit: int = Field(default=20, ge=1, le=40)
 
 
+class InspectImageParams(BaseModel):
+    image_url: str = Field(
+        min_length=8, description="Exact image URL (http/https), not the notice page"
+    )
+    preview: bool = Field(
+        default=True, description="Attach a downscaled preview the model can see"
+    )
+
+
+class RecordIllustrationParams(BaseModel):
+    image_url: str = Field(
+        min_length=8, description="Exact image URL chosen for this sentence"
+    )
+    sentence: str = Field(
+        min_length=1, description="The sentence this image illustrates"
+    )
+    context: str = Field(
+        min_length=1,
+        description="The source context the image must illustrate (video/site/text)",
+    )
+    image_context: str = Field(
+        min_length=1,
+        description="What the image shows and why it fits the sentence",
+    )
+    status: Literal["match", "partial"] = Field(
+        default="match",
+        description="match = literal/defendable; partial = contextual illustration",
+    )
+    asset_id: str | None = Field(
+        default=None, description="Catalog asset id, when the candidate came from a search"
+    )
+    page_url: str | None = Field(
+        default=None, description="Institution notice/page URL"
+    )
+    source_id: str | None = Field(default=None, description="Catalog source id")
+    evidence: str = Field(
+        default="", description="Provenance, date, license and why it is defendable"
+    )
+
+
 class RequestSourceParams(BaseModel):
     source_id: str = Field(description="Stable proposed source id, e.g. 'kbr_be'")
     source_name: str = Field(description="Human-readable source name")
@@ -182,6 +224,8 @@ class ResolverToolProvider(ToolProvider):
         self.task_id = task_id
         self.journal = journal
         self.vault_get = vault_get
+        # inspect_image -> record_illustration should not download twice.
+        self._image_cache: dict[str, dict[str, Any]] = {}
 
     async def __aenter__(self):
         return self._tools()
@@ -214,6 +258,22 @@ class ResolverToolProvider(ToolProvider):
             if isinstance(video, dict) and video.get("id"):
                 return str(video["id"])
         return None
+
+    def _source_info(self) -> tuple[str | None, str | None]:
+        """(source_key, source_kind) for the duplicate-image guard."""
+        payload = self._payload()
+        entry = payload.get("corpus") or payload.get("label") or {}
+        if not isinstance(entry, dict):
+            entry = {}
+        video = entry.get("video") if isinstance(entry.get("video"), dict) else {}
+        key = (
+            video.get("id")
+            or entry.get("document_id")
+            or entry.get("source_id")
+            or payload.get("segment_id")
+        )
+        kind = "youtube" if video.get("id") else entry.get("kind") or "corpus"
+        return (str(key) if key else None, str(kind) if kind else None)
 
     def _known_sources(self) -> dict[str, object]:
         """The catalogue as the resolver must see it before asking for a source.
@@ -456,6 +516,141 @@ class ResolverToolProvider(ToolProvider):
                 "Le supervisor te réveillera quand toutes seront terminales."
             )
 
+        async def inspect_image_exec(p: InspectImageParams):
+            image_key = normalise_image_url(p.image_url)
+            result = await inspect_image(
+                image_key,
+                preview_max=self.config.resolver.inspect_preview_max,
+                min_side=self.config.resolver.min_image_side,
+                min_bytes=self.config.resolver.min_image_bytes,
+                max_fetch_bytes=self.config.resolver.inspect_max_bytes,
+                preview=p.preview,
+            )
+            self._image_cache[image_key] = result
+            lines = [
+                f"URL : {result.get('final_url') or p.image_url}",
+                f"type : {result.get('content_type') or '?'}",
+                f"format : {result.get('image_format') or '?'}",
+                f"dimensions : {result.get('width') or '?'}×{result.get('height') or '?'}",
+                f"poids : {result.get('image_bytes') or '?'} octets",
+            ]
+            if result.get("hard_failures"):
+                lines.append("ÉCHEC : " + " ; ".join(result["hard_failures"]))
+            if result.get("warnings"):
+                lines.append("Avertissements : " + " ; ".join(result["warnings"]))
+            content: list[Any] = ["\n".join(lines)]
+            preview = result.get("preview")
+            if p.preview and preview:
+                content.append(ImageContentBlock(data=preview))
+            return ToolResult(
+                content=content,
+                success=bool(result.get("ok")),
+                metadata=ToolUseCountMetadata(),
+            )
+
+        async def record_illustration_exec(p: RecordIllustrationParams):
+            if self.task_id is None:
+                return _fail("aucune session resolver ouverte")
+            pending = self.db.pending_asks_for(self.task_id)
+            if pending:
+                return _fail(
+                    "une question est en attente auprès de l'opérateur "
+                    f"(#{pending[0]['id']}) : attends sa réponse avant "
+                    "d'enregistrer une illustration."
+                )
+            image_url = normalise_image_url(p.image_url)
+            checked = self._image_cache.get(image_url)
+            if checked is None:
+                checked = await inspect_image(
+                    image_url,
+                    preview_max=self.config.resolver.inspect_preview_max,
+                    min_side=self.config.resolver.min_image_side,
+                    min_bytes=self.config.resolver.min_image_bytes,
+                    max_fetch_bytes=self.config.resolver.inspect_max_bytes,
+                    preview=False,
+                )
+                self._image_cache[image_url] = checked
+            if not checked.get("ok"):
+                return _fail(
+                    "image refusée : " + " ; ".join(checked.get("hard_failures") or ["inconnue"])
+                )
+            image_url = normalise_image_url(str(checked.get("final_url") or image_url))
+
+            existing_url = self.db.get_resolver_illustration_by_url(image_url)
+            if (
+                existing_url is not None
+                and int(existing_url["resolver_task_id"]) != self.task_id
+            ):
+                return _fail(
+                    "cette image est déjà utilisée pour la phrase "
+                    f"« {existing_url['sentence']} » (tâche #{existing_url['resolver_task_id']}, "
+                    f"segment {existing_url.get('segment_id') or '?'}, source "
+                    f"{existing_url.get('source_key') or '?'}). Choisis une autre image."
+                )
+            if p.asset_id:
+                existing_asset = self.db.get_resolver_illustration_by_asset(p.asset_id)
+                if (
+                    existing_asset is not None
+                    and int(existing_asset["resolver_task_id"]) != self.task_id
+                ):
+                    return _fail(
+                        "cet asset est déjà utilisé pour la phrase "
+                        f"« {existing_asset['sentence']} » (tâche "
+                        f"#{existing_asset['resolver_task_id']}). Choisis un autre asset."
+                    )
+
+            source_key, source_kind = self._source_info()
+            warnings = [
+                {"level": "warning", "message": message}
+                for message in checked.get("warnings") or []
+            ]
+            evidence = p.evidence or f"{p.image_context} — {image_url}"
+            try:
+                self.db.upsert_resolver_illustration(
+                    self.task_id,
+                    segment_id=self._segment_id(),
+                    sentence=p.sentence,
+                    context=p.context,
+                    image_url=image_url,
+                    image_context=p.image_context,
+                    source_key=source_key,
+                    source_kind=source_kind,
+                    asset_id=p.asset_id,
+                    page_url=p.page_url,
+                    source_id=p.source_id,
+                    content_type=checked.get("content_type"),
+                    image_format=checked.get("image_format"),
+                    width=checked.get("width"),
+                    height=checked.get("height"),
+                    image_bytes=checked.get("image_bytes"),
+                    quality=warnings,
+                    evidence=evidence[:4000],
+                )
+            except ValueError as exc:
+                return _fail(str(exc))
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"illustration non enregistrée : {exc}")
+            try:
+                self.db.record_resolver_result(
+                    self.task_id,
+                    segment_id=self._segment_id(),
+                    status=p.status,
+                    asset_id=p.asset_id,
+                    evidence=evidence[:4000],
+                )
+            except Exception as exc:  # noqa: BLE001
+                return _fail(f"résultat non enregistré : {exc}")
+            details = (
+                f"illustration enregistrée ({p.status}) : {image_url} — "
+                f"{checked.get('width')}×{checked.get('height')}, "
+                f"{checked.get('image_bytes')} octets"
+            )
+            if warnings:
+                details += " ; avertissements : " + " ; ".join(
+                    item["message"] for item in warnings
+                )
+            return _ok(details)
+
         async def record_result_exec(p: RecordResultParams):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
@@ -468,6 +663,13 @@ class ResolverToolProvider(ToolProvider):
                         "une question est en attente auprès de l'opérateur "
                         f"(#{pending[0]['id']}) : attends sa réponse avant "
                         "d'enregistrer un match/partial."
+                    )
+                if self.db.get_resolver_illustration_for_task(self.task_id) is None:
+                    return _fail(
+                        "aucune illustration enregistrée : utilise "
+                        "`record_illustration` avec l'URL exacte de l'image, la "
+                        "phrase, le contexte, le contexte de l'image, puis "
+                        "`record_result` pour le verdict."
                     )
             try:
                 self.db.record_resolver_result(
@@ -553,6 +755,17 @@ class ResolverToolProvider(ToolProvider):
                 executor=read_transcript_exec,
             ),
             Tool(
+                name="inspect_image",
+                description=(
+                    "Fetch and inspect a candidate image URL: content type, "
+                    "format, dimensions, weight, quality warnings, and a preview "
+                    "image the model can actually see. Use it before choosing an "
+                    "image."
+                ),
+                parameters=InspectImageParams,
+                executor=inspect_image_exec,
+            ),
+            Tool(
                 name="request_source",
                 description=(
                     "Ask the agents to add one missing source; creates one agent "
@@ -571,8 +784,23 @@ class ResolverToolProvider(ToolProvider):
                 executor=wait_for_sources_exec,
             ),
             Tool(
+                name="record_illustration",
+                description=(
+                    "Record the exact image chosen for this sentence, with the "
+                    "sentence, the source context and what the image shows. Refuses "
+                    "dead/non-image links, images that are too small, images already "
+                    "used by another resolution, or a record while an operator "
+                    "question is open. Stores the illustration and the match/partial verdict."
+                ),
+                parameters=RecordIllustrationParams,
+                executor=record_illustration_exec,
+            ),
+            Tool(
                 name="record_result",
-                description="Store the structured resolver result for this sentence.",
+                description=(
+                    "Store the structured verdict. Use it for no_match/ambiguous; "
+                    "for match/partial, record_illustration must have stored the image first."
+                ),
                 parameters=RecordResultParams,
                 executor=record_result_exec,
             ),

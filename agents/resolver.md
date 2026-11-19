@@ -52,6 +52,9 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
      Belgium ») alors que l'image montre autre chose : lis la `description` et
      juge sur elle. Si titre et description divergent, la description gagne et
      le candidat n'est au mieux qu'un `partial`.
+   - **Regarde l'image** avec `inspect_image` (URL exacte) : le tool renvoie
+     type, dimensions, poids, avertissements et un aperçu visuel. Refuse une
+     URL morte, une page non-image, une vignette ou une image trop petite.
 4. **Faire valider par l'humain** : pour le meilleur candidat, appelle
    `ask_operator` avec des options :
    - `Valide — l'image correspond`
@@ -59,13 +62,22 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    - `Ambigu — à revoir`
    Explique le résultat, la source, la date, la licence et pourquoi c'est
    défendable. **Cite la description de l'image**, pas seulement son titre.
-   **Arrête ton tour** après la question.
-5. **Enregistrer le résultat** avec `record_result` :
-   - `match` si l'humain a validé ;
-   - `partial` si l'image illustre une partie seulement ;
-   - `no_match` si aucune image ne convient ;
-   - `ambiguous` si la réponse humaine est Ambigu.
-   Fournis `asset_id` et `evidence` (liens, date, source, raisons).
+   Donne aussi **l'URL exacte de l'image**. **Arrête ton tour** après la question.
+5. **Enregistrer l'image choisie** avec `record_illustration` (obligatoire pour
+   `match` et `partial`) :
+   - `image_url` : l'URL exacte de l'image, pas la page de la fiche ;
+   - `sentence` : la phrase illustrée ;
+   - `context` : le contexte source (vidéo, transcription, texte) ;
+   - `image_context` : ce que montre l'image et pourquoi elle convient ;
+   - `status` : `match` ou `partial` ;
+   - `asset_id`, `page_url`, `source_id`, `evidence` si disponibles.
+
+   Le tool vérifie que le lien est une image, que ses dimensions/poids passent
+   le minimum, et que **la même image n'est pas déjà utilisée par une autre
+   phrase** (toutes sources confondues). S'il refuse, choisis une autre image ;
+   ne contourne pas avec `record_result`.
+   `record_result` ne sert plus qu'à `no_match` ou `ambiguous` : pour un
+   `match`/`partial`, c'est `record_illustration` qui enregistre le verdict.
 6. **Si aucune image n'est défendable** : identifie la source/API manquante
    (pays, période, type), puis appelle `request_source` **une fois par source**
    avec un `source_id` stable, un nom, une raison et une URL d'API/docs. Tu
