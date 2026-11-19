@@ -64,7 +64,8 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    - `Ambigu — à revoir`
    Explique le résultat, la source, la date, la licence et pourquoi c'est
    défendable. **Cite la description de l'image**, pas seulement son titre.
-   Donne aussi **l'URL exacte de l'image**. **Arrête ton tour** après la question.
+   Donne aussi **l'URL exacte de l'image**. Le tool `ask_operator` **attend la
+   réponse** et te la renvoie dans le même tour : continue avec elle.
 5. **Enregistrer l'image choisie** avec `record_illustration` (obligatoire pour
    `match` et `partial`) :
    - `image_url` : l'URL exacte de l'image, pas la page de la fiche ;

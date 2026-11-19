@@ -128,9 +128,9 @@ Détail : `docs/RESOLVER-ADVERSARIAL.md`.
   d'environnement au démarrage (`docs/CREDENTIALS.md`).
 - **Canal opérateur** (nouveau) : l'opérateur est le **troisième
   correspondant** de la boîte — les agents posent une question à choix
-  (`ask_operator`, boutons Telegram, un bot par agent), la tâche se gare et
-  libère la place, la réponse la réveille au tick suivant. Jamais bloquant,
-  jamais dans la file. Voir `docs/OPERATEUR-TELEGRAM.md`.
+  (`ask_operator`, boutons Telegram, un bot par agent) ; le tool **attend la
+  réponse** dans le même tour et la renvoie à l'agent. La file et le canal ne
+  sont pas bloqués. Voir `docs/OPERATEUR-TELEGRAM.md`.
 - **Aucune limite de ping-pong** : volontaire — le contexte persistant fait
   que chaque agent sait où il en est ; l'interventionnabilité de la file
   (annuler une tâche) est le garde-fou.

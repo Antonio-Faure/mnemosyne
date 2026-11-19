@@ -61,6 +61,7 @@ operator:
   enabled: true
   poll_timeout_s: 25   # long-poll idle ceiling; an update returns immediately
   send_interval_s: 2   # how often the sender looks for a queued question
+  answer_timeout_s: 900  # ask_operator blocks the agent turn up to this long
   coder:
     bot_token_env: MNEMOSYNE_CODER_BOT_TOKEN
     chat_id_env: MNEMOSYNE_CODER_CHAT_ID

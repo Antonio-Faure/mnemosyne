@@ -94,9 +94,9 @@ factuels complets, et le ping-pong permet de demander la précision.
 
 Les agents peuvent poser une question à l'opérateur (`ask_operator`) : un
 message `agent → operator` dans la boîte + des boutons Telegram (un bot par
-agent). La tâche **se gare** (sautée par l'ordonnanceur, coût nul) et **libère
-la place** ; la réponse (`operator → agent`) la réveille au tick suivant, avant
-les tâches nouvelles. Détail : `docs/OPERATEUR-TELEGRAM.md`.
+agent). Le tool **attend la réponse** dans le même tour ; la file et le canal
+restent disponibles pour les autres tâches. Détail :
+`docs/OPERATEUR-TELEGRAM.md`.
 
 ## Le cycle automatique (warmup ↔ connexion)
 

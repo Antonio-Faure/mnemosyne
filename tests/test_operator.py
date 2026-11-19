@@ -225,7 +225,7 @@ def test_resolver_question_is_stored_for_resolver_mailbox(config):
     db = Database(config.db_file())
     db.enqueue_task("resolver", "illustrate a sentence")
     try:
-        ask_id = asyncio.run(
+        response = asyncio.run(
             telegram.ask_operator(
                 config,
                 db,
@@ -234,8 +234,11 @@ def test_resolver_question_is_stored_for_resolver_mailbox(config):
                 task_id=1,
                 question="Valide ce candidat ?",
                 options=[{"label": "Valide"}, {"label": "Refuse"}],
+                wait=False,
             )
         )
+        ask_id = response["ask_id"]
+        assert response["status"] == "pending"
         assert db.get_ask(ask_id)["agent"] == "resolver"
         asked = db.pending_task_messages(1, "operator")
         assert len(asked) == 1
@@ -265,7 +268,7 @@ def test_questions_are_delivered_one_at_a_time(config):
 
 
 def test_ask_operator_does_not_send_immediately(config, monkeypatch):
-    """The agent only registers; the telegram job owns delivery order."""
+    """The synchronous tool waits, but delivery still belongs to the sender."""
     sent: list[str] = []
 
     async def fake_send(cfg, agent, ask, vault_get):
@@ -276,7 +279,7 @@ def test_ask_operator_does_not_send_immediately(config, monkeypatch):
     db = Database(config.db_file())
     try:
         db.enqueue_task("resolver", "mission")
-        ask_id = asyncio.run(
+        response = asyncio.run(
             telegram.ask_operator(
                 config,
                 db,
@@ -285,10 +288,12 @@ def test_ask_operator_does_not_send_immediately(config, monkeypatch):
                 task_id=1,
                 question="Valide ?",
                 options=[{"label": "Oui"}, {"label": "Non"}],
+                wait=False,
             )
         )
+        assert response["status"] == "pending"
         assert sent == []
-        assert db.get_ask(ask_id)["tg_message_id"] is None
+        assert db.get_ask(response["ask_id"])["tg_message_id"] is None
     finally:
         db.close()
 
@@ -466,5 +471,67 @@ async def test_route_update_wakes_the_task_before_editing_the_card(config, monke
         assert handled is True
         assert calls == ["wake", "render"]
         assert db.get_ask("a1")["status"] == "answered"
+    finally:
+        db.close()
+
+
+@pytest.mark.asyncio
+async def test_ask_operator_returns_the_answer_in_the_same_turn(config):
+    """The agent waits inside the tool; it does not park and resume a tick later."""
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("resolver", "mission")
+        caller = asyncio.create_task(
+            telegram.ask_operator(
+                config,
+                db,
+                None,
+                agent="resolver",
+                task_id=1,
+                question="Valide ?",
+                options=[{"label": "Oui"}, {"label": "Non"}],
+                timeout_s=2,
+            )
+        )
+        ask = None
+        for _ in range(100):
+            pending = db.list_asks("pending")
+            if pending:
+                ask = pending[0]
+                break
+            await asyncio.sleep(0.01)
+        assert ask is not None
+        Mailbox(db).post(OPERATOR, "resolver", "Oui", 1)
+        db.answer_ask(ask["id"], "Oui")
+        response = await caller
+        assert response["status"] == "answered"
+        assert response["answer"] == "Oui"
+        assert not [
+            message
+            for message in db.pending_task_messages(1, "resolver")
+            if message["body"] == "Oui"
+        ], "the synchronous tool consumes the answer message"
+    finally:
+        db.close()
+
+
+@pytest.mark.asyncio
+async def test_ask_operator_expires_without_an_answer(config):
+    db = Database(config.db_file())
+    try:
+        db.enqueue_task("resolver", "mission")
+        response = await telegram.ask_operator(
+            config,
+            db,
+            None,
+            agent="resolver",
+            task_id=1,
+            question="Valide ?",
+            options=[{"label": "Oui"}],
+            timeout_s=0.1,
+        )
+        assert response["status"] == "expired"
+        assert db.get_ask(response["ask_id"])["status"] == "expired"
+        assert db.pending_task_messages(1, "operator") == []
     finally:
         db.close()

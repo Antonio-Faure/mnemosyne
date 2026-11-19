@@ -123,7 +123,7 @@ def _ok(text: str) -> ToolResult:
     return ToolResult[ToolUseCountMetadata](content=text)
 
 
-async def test_every_browser_tool_goes_through_the_single_watch(config):
+async def test_every_browser_tool_goes_through_the_single_watch(config, monkeypatch):
     """One funnel for both agents: the browser provider is wrapped as a whole,
     not tool by tool by hand (the old per-tool copy covered 3 tools out of 7)."""
     pytest.importorskip("stirrup")
@@ -143,6 +143,12 @@ async def test_every_browser_tool_goes_through_the_single_watch(config):
     from mnemosyne.db import Database
     from mnemosyne.operator.models import AskOperatorParams, WaitForEmailParams
 
+    async def fake_ask(*args, **kwargs):
+        return {"ask_id": "test-ask", "status": "answered", "answer": "A"}
+
+    monkeypatch.setattr(
+        "mnemosyne.operator.telegram.ask_operator", fake_ask
+    )
     db = Database(config.db_file())
     provider = BrowserAgentToolProvider(config, Mailbox(db))
     try:

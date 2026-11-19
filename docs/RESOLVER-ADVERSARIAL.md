@@ -169,7 +169,8 @@ resolver_requests (
 - Quand toutes les demandes d'une session resolver sont terminales, il poste
   un message `system → resolver` et la session reprend.
 - Pendant l'attente, `next_task()` parke la session resolver (zéro token,
-  file non bloquée), exactement comme un `ask_operator`.
+  file non bloquée). Contrairement à `ask_operator`, qui attend la réponse
+  dans le même tour, une demande de source parque la session.
 
 ## Vérification humaine / anti-triche
 

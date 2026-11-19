@@ -343,7 +343,7 @@ class DevToolProvider(ToolProvider):
             from mnemosyne.operator.telegram import ask_operator
 
             try:
-                ask_id = await ask_operator(
+                response = await ask_operator(
                     self.app_config,
                     self.mailbox.db,
                     self.vault_get,
@@ -351,12 +351,18 @@ class DevToolProvider(ToolProvider):
                     task_id=self.task_id,
                     question=p.question,
                     options=[o.model_dump() for o in p.options],
+                    timeout_s=self.app_config.operator.answer_timeout_s,
                 )
             except Exception as exc:  # noqa: BLE001 - never break the session
                 return _fail(f"question non enregistrée : {exc}")
+            if response.get("status") != "answered":
+                return _fail(
+                    f"pas de réponse de l'opérateur ({response.get('status')}) : "
+                    + str(response.get("error") or "réessaie ou abstiens-toi.")
+                )
             return _ok(
-                f"question #{ask_id} posée à l'opérateur — arrête ton tour, "
-                "tu seras réactivé avec sa réponse."
+                f"réponse de l'opérateur à #{response['ask_id']} : "
+                f"{response.get('answer')} — continue avec cette réponse."
             )
 
         tools = [
