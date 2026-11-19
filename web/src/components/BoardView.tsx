@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 
 import { BoardCard } from "./BoardCard";
+const SessionDrawer = lazy(() =>
+  import("./SessionDrawer").then((module) => ({ default: module.SessionDrawer })),
+);
 import {
   BOARD_LABELS,
   COLUMN_HINTS,
@@ -59,11 +62,13 @@ function Column({
   board,
   activeFilter,
   onFilter,
+  onOpen,
 }: {
   column: BoardColumn;
   board: BoardId;
   activeFilter: string | null;
   onFilter: (filter: string | null) => void;
+  onOpen: (card: BoardCardModel) => void;
 }) {
   const cards = column.cards.filter((card) => matchesFilter(card, activeFilter));
   const hint = COLUMN_HINTS[board][column.id];
@@ -110,7 +115,9 @@ function Column({
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
         {cards.length > 0 ? (
-          cards.map((card) => <BoardCard key={card.id} card={card} />)
+          cards.map((card) => (
+            <BoardCard key={card.id} card={card} onOpen={() => onOpen(card)} />
+          ))
         ) : (
           <div className="rounded-lg border border-dashed border-ink-700/70 px-3 py-6 text-center text-[10.5px] text-slate-500">
             {activeFilter ? "Aucune carte pour ce filtre." : "Rien ici pour l’instant."}
@@ -124,6 +131,7 @@ function Column({
 export function BoardView() {
   const [board, setBoard] = useState<BoardId>(storedBoard);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [openCard, setOpenCard] = useState<BoardCardModel | null>(null);
 
   useEffect(() => {
     localStorage.setItem("obs.board", board);
@@ -141,6 +149,14 @@ export function BoardView() {
   });
 
   const columns = query.data?.columns ?? [];
+  const openedCard = useMemo(() => {
+    if (!openCard) return null;
+    for (const column of columns) {
+      const found = column.cards.find((card) => card.id === openCard.id);
+      if (found) return found;
+    }
+    return openCard;
+  }, [columns, openCard]);
   const total = useMemo(
     () => columns.reduce((sum, column) => sum + column.count, 0),
     [columns],
@@ -256,12 +272,24 @@ export function BoardView() {
                   board={board}
                   activeFilter={activeFilter}
                   onFilter={setActiveFilter}
+                  onOpen={setOpenCard}
                 />
               ))}
             </div>
           </div>
         )}
       </main>
+      {openedCard ? (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[60] grid place-items-center bg-ink-950/80 text-[11px] text-slate-400 backdrop-blur-sm">
+              Chargement de la session…
+            </div>
+          }
+        >
+          <SessionDrawer card={openedCard} onClose={() => setOpenCard(null)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

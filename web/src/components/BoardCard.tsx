@@ -5,6 +5,7 @@ import {
   KeyRound,
   Layers,
   Mail,
+  PanelRight,
   ScanSearch,
   UserRound,
 } from "lucide-react";
@@ -131,13 +132,33 @@ function ResolutionRow({ resolution }: { resolution: BoardResolution }) {
   );
 }
 
-export function BoardCard({ card }: { card: BoardCardModel }) {
+export function BoardCard({
+  card,
+  onOpen,
+}: {
+  card: BoardCardModel;
+  onOpen?: () => void;
+}) {
   const waiting = card.waiting ?? [];
   const dependencyCount =
     card.kind === "resolution" ? card.missions.length : card.resolutions.length;
 
   return (
-    <article className="group rounded-lg border border-ink-700/80 bg-ink-850/95 p-2.5 shadow-sm transition hover:border-ink-600 hover:bg-ink-800">
+    <article
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (!onOpen) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className={`group rounded-lg border border-ink-700/80 bg-ink-850/95 p-2.5 shadow-sm transition hover:border-ink-600 hover:bg-ink-800 ${
+        onOpen ? "cursor-pointer focus-visible:ring-1 focus-visible:ring-sky-500/60" : ""
+      }`}
+    >
       <div className="flex items-start gap-2">
         <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-ink-800 text-slate-400 ring-1 ring-inset ring-ink-700">
           {card.kind === "resolution" ? (
@@ -218,7 +239,12 @@ export function BoardCard({ card }: { card: BoardCardModel }) {
 
       <footer className="mt-2 flex items-center justify-between border-t border-ink-700/60 pt-1.5 text-[9.5px] text-slate-500">
         <span>tâche #{card.task_id}</span>
-        <span title={card.updated_at}>{relativeTime(card.updated_at)}</span>
+        <span className="inline-flex items-center gap-1" title={onOpen ? "Ouvrir la session" : card.updated_at}>
+          {relativeTime(card.updated_at)}
+          {onOpen ? (
+            <PanelRight size={10} className="opacity-0 transition group-hover:opacity-100" />
+          ) : null}
+        </span>
       </footer>
     </article>
   );

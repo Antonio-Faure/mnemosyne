@@ -38,10 +38,20 @@ export function orderEvents(events: ObsEvent[]): ObsEvent[] {
   );
 }
 
+export async function fetchSession(sessionId: string): Promise<Session | null> {
+  const response = await fetch(
+    `/api/obs/sessions/${encodeURIComponent(sessionId)}`,
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`session: HTTP ${response.status}`);
+  return (await response.json()) as Session;
+}
+
 export async function fetchSessionEvents(sessionId: string): Promise<ObsEvent[]> {
   const response = await fetch(
     `/api/obs/sessions/${encodeURIComponent(sessionId)}/events?limit=20000`,
   );
+  if (response.status === 404) return [];
   if (!response.ok) throw new Error(`events: HTTP ${response.status}`);
   const data = (await response.json()) as { events: ObsEvent[] };
   return orderEvents(data.events);
