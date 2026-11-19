@@ -301,6 +301,12 @@ class ResolverConfig(BaseModel):
     #: When the resolver has nothing to do, queue the next corpus sentence so
     #: the loop never needs a human to keep feeding it.
     auto_feed: bool = True
+    #: Minimum image quality accepted by `record_illustration`.
+    min_image_side: int = 240
+    min_image_bytes: int = 8000
+    #: Maximum bytes fetched when inspecting a candidate image / preview size.
+    inspect_max_bytes: int = 8_000_000
+    inspect_preview_max: int = 1280
 
 
 class Config(BaseModel):

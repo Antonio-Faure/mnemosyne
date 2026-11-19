@@ -231,6 +231,37 @@ CREATE TABLE IF NOT EXISTS resolver_results (
     updated_at       TEXT NOT NULL
 );
 
+-- The chosen illustration of one resolution. One image per resolution, and
+-- one resolution per image: this is what prevents every sentence of a video
+-- from being illustrated by the same photograph.
+CREATE TABLE IF NOT EXISTS resolver_illustrations (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    resolver_task_id INTEGER NOT NULL UNIQUE,
+    segment_id       TEXT,
+    sentence         TEXT NOT NULL,
+    context          TEXT NOT NULL,
+    image_url        TEXT NOT NULL UNIQUE,
+    image_context    TEXT NOT NULL,
+    source_key       TEXT,
+    source_kind      TEXT,
+    asset_id         TEXT UNIQUE,
+    page_url         TEXT,
+    source_id        TEXT,
+    content_type     TEXT,
+    image_format     TEXT,
+    width            INTEGER,
+    height           INTEGER,
+    image_bytes      INTEGER,
+    quality          TEXT,
+    evidence         TEXT,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_resolver_illustrations_source
+    ON resolver_illustrations(source_key);
+CREATE INDEX IF NOT EXISTS idx_resolver_illustrations_asset
+    ON resolver_illustrations(asset_id);
+
 """
 
 
@@ -883,6 +914,133 @@ class Database:
                 (resolver_task_id,),
             ).fetchone()
         return dict(row) if row else None
+
+    # ── chosen illustration (one image per resolution, one use per image) ──
+    def _illustration_row(self, row: Any) -> dict | None:
+        if row is None:
+            return None
+        data = dict(row)
+        try:
+            data["quality"] = json.loads(data.get("quality") or "[]")
+        except ValueError:
+            data["quality"] = []
+        return data
+
+    def get_resolver_illustration_by_url(self, image_url: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM resolver_illustrations WHERE image_url = ?",
+                (image_url,),
+            ).fetchone()
+        return self._illustration_row(row)
+
+    def get_resolver_illustration_by_asset(self, asset_id: str) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM resolver_illustrations WHERE asset_id = ?",
+                (asset_id,),
+            ).fetchone()
+        return self._illustration_row(row)
+
+    def get_resolver_illustration_for_task(self, resolver_task_id: int) -> dict | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM resolver_illustrations WHERE resolver_task_id = ?",
+                (resolver_task_id,),
+            ).fetchone()
+        return self._illustration_row(row)
+
+    def list_resolver_illustrations(self, limit: int = 100) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM resolver_illustrations ORDER BY id DESC LIMIT ?",
+                (max(0, int(limit)),),
+            ).fetchall()
+        return [self._illustration_row(row) for row in rows]  # type: ignore[misc]
+
+    def upsert_resolver_illustration(
+        self,
+        resolver_task_id: int,
+        *,
+        segment_id: str | None,
+        sentence: str,
+        context: str,
+        image_url: str,
+        image_context: str,
+        source_key: str | None = None,
+        source_kind: str | None = None,
+        asset_id: str | None = None,
+        page_url: str | None = None,
+        source_id: str | None = None,
+        content_type: str | None = None,
+        image_format: str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        image_bytes: int | None = None,
+        quality: list[dict] | None = None,
+        evidence: str | None = None,
+    ) -> int:
+        now = utcnow_iso()
+        try:
+            with self._lock:
+                self._conn.execute(
+                    """INSERT INTO resolver_illustrations
+                       (resolver_task_id, segment_id, sentence, context, image_url,
+                        image_context, source_key, source_kind, asset_id, page_url,
+                        source_id, content_type, image_format, width, height,
+                        image_bytes, quality, evidence, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(resolver_task_id) DO UPDATE SET
+                           segment_id = excluded.segment_id,
+                           sentence = excluded.sentence,
+                           context = excluded.context,
+                           image_url = excluded.image_url,
+                           image_context = excluded.image_context,
+                           source_key = excluded.source_key,
+                           source_kind = excluded.source_kind,
+                           asset_id = excluded.asset_id,
+                           page_url = excluded.page_url,
+                           source_id = excluded.source_id,
+                           content_type = excluded.content_type,
+                           image_format = excluded.image_format,
+                           width = excluded.width,
+                           height = excluded.height,
+                           image_bytes = excluded.image_bytes,
+                           quality = excluded.quality,
+                           evidence = excluded.evidence,
+                           updated_at = excluded.updated_at""",
+                    (
+                        resolver_task_id,
+                        segment_id,
+                        sentence,
+                        context,
+                        image_url,
+                        image_context,
+                        source_key,
+                        source_kind,
+                        asset_id or None,
+                        page_url or None,
+                        source_id or None,
+                        content_type,
+                        image_format,
+                        width,
+                        height,
+                        image_bytes,
+                        json.dumps(quality or [], ensure_ascii=False),
+                        evidence,
+                        now,
+                        now,
+                    ),
+                )
+                self._conn.commit()
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                "cette image est déjà utilisée par une autre résolution"
+            ) from exc
+        row = self.get_resolver_illustration_for_task(resolver_task_id)
+        if row is None:  # pragma: no cover - defensive
+            raise RuntimeError("illustration non enregistrée")
+        return int(row["id"])
 
     # ── jobs ─────────────────────────────────────────────────────────────
     def enqueue(self, job: Job) -> int:

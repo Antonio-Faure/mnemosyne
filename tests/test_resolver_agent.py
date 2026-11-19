@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 
+from PIL import Image
 from stirrup.core.models import EmptyParams
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.db import Database
 from mnemosyne.resolver.agent import (
+    InspectImageParams,
     ReadTranscriptParams,
+    RecordIllustrationParams,
     RecordResultParams,
     RequestSourceParams,
     ResolverToolProvider,
@@ -289,6 +293,15 @@ def test_record_result_cannot_self_validate_while_a_question_is_open(config):
         assert db.get_resolver_result(task_id) is None
 
         db.answer_ask("ask-1", "Valide")
+        db.upsert_resolver_illustration(
+            task_id,
+            segment_id="yt_demo_1",
+            sentence="In 1914, Belgium was invaded.",
+            context="Vidéo de démonstration",
+            image_url="https://example.org/chosen.jpg",
+            image_context="Troupes belges",
+            asset_id="a1",
+        )
         allowed = asyncio.run(
             by_name["record_result"].executor(
                 RecordResultParams(status="match", asset_id="a1", evidence="validé")
@@ -446,6 +459,138 @@ def test_context_and_transcript_tools(config):
         catalog = asyncio.run(by_name["catalog_inventory"].executor(EmptyParams()))
         assert catalog.success is True
         assert "gallica" in catalog.content
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def _png_bytes() -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", (1, 1), (0, 0, 0)).save(out, format="PNG")
+    return out.getvalue()
+
+
+def _fake_image_check(url: str, **kwargs):
+    return {
+        "ok": True,
+        "image_url": url,
+        "final_url": url,
+        "content_type": "image/jpeg",
+        "image_format": "JPEG",
+        "width": 800,
+        "height": 600,
+        "image_bytes": 50000,
+        "hard_failures": [],
+        "warnings": [],
+        "preview": _png_bytes(),
+    }
+
+
+def test_record_illustration_records_the_exact_image_and_result(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        params = RecordIllustrationParams(
+            image_url="https://example.org/photo.jpg#frag",
+            sentence="In 1914, Belgium was invaded.",
+            context="Vidéo de démonstration",
+            image_context="Troupes belges traversant une place",
+            status="partial",
+            asset_id="asset-photo",
+            page_url="https://example.org/notice",
+            source_id="wikimedia",
+            evidence="Domaine public, 1914",
+        )
+        result = asyncio.run(tools["record_illustration"].executor(params))
+        assert result.success is True
+        stored = db.get_resolver_illustration_for_task(task_id)
+        assert stored["image_url"] == "https://example.org/photo.jpg"
+        assert stored["sentence"] == params.sentence
+        assert stored["image_context"] == params.image_context
+        assert stored["quality"] == []
+        assert db.get_resolver_result(task_id)["status"] == "partial"
+        assert db.get_resolver_result(task_id)["asset_id"] == "asset-photo"
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_record_illustration_refuses_a_reused_image(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        first = _seed_task(db, config)
+        second = db.enqueue_task(
+            "resolver",
+            "another sentence",
+            payload={"kind": "resolver", "segment_id": "yt_demo_1"},
+        )
+        db.set_task_status(second, "running", agent="resolver")
+        for task_id, asset in ((first, "asset-a"), (second, "asset-b")):
+            provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+            tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+            params = RecordIllustrationParams(
+                image_url="https://example.org/same.jpg",
+                sentence=f"sentence {task_id}",
+                context="contexte",
+                image_context="même image",
+                asset_id=asset,
+            )
+            result = asyncio.run(tools["record_illustration"].executor(params))
+            if task_id == first:
+                assert result.success is True
+            else:
+                assert result.success is False
+                assert "déjà utilisée" in result.content
+            asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_record_result_match_requires_an_illustration(config):
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["record_result"].executor(
+                RecordResultParams(status="match", asset_id="a1", evidence="ok")
+            )
+        )
+        assert result.success is False
+        assert "record_illustration" in result.content
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_inspect_image_tool_returns_quality_and_preview(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["inspect_image"].executor(
+                InspectImageParams(image_url="https://example.org/photo.jpg")
+            )
+        )
+        assert result.success is True
+        assert "800×600" in str(result.content)
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()

@@ -83,13 +83,33 @@ propres :
 | `video_context(before, after)` | résumé global, plan et fenêtre plus large autour de la phrase |
 | `search_transcript(query)` | retrouve un terme, un lieu ou une personne dans la transcription |
 | `read_transcript(start_s, end_s)` | lit la transcription entre deux timecodes |
+| `inspect_image(image_url)` | vérifie le lien, le format, les dimensions, le poids et renvoie un aperçu visuel |
+| `record_illustration(image_url, sentence, context, image_context)` | enregistre l'image exacte, vérifie sa qualité et refuse une image déjà utilisée |
 | `request_source(source, reason)` | enqueue **une tâche agent par source** + dépendance |
 | `wait_for_sources()` | parke la session resolver jusqu'à complétion |
-| `record_result(status, asset_id, evidence)` | enregistre le verdict structuré |
+| `record_result(status, asset_id, evidence)` | enregistre un `no_match`/`ambiguous` (le `match`/`partial` passe par `record_illustration`) |
 | `ask_operator` | demande la validation humaine (Telegram/CLI) |
 
 Le résolveur n'écrit pas dans le registre des sources : il lit la meta API et produit des
 candidats, des verdicts et des demandes de sources.
+
+### Une image par phrase, une phrase par image
+
+`record_illustration` est le **tool de réussite**. Il exige :
+
+- l'URL exacte de l'image (pas la fiche) ;
+- la phrase et le contexte source qu'elle illustre ;
+- le contexte de l'image (ce qu'elle montre et pourquoi elle convient) ;
+- un statut `match` ou `partial`.
+
+Il vérifie que le lien renvoie une image réelle, que ses dimensions et son
+poids passent le minimum (`resolver.min_image_side`, `resolver.min_image_bytes`),
+et que l'image **n'est pas déjà utilisée par une autre résolution** — toutes
+sources confondues. La contrainte est aussi en base (`image_url UNIQUE`,
+`asset_id UNIQUE`, `resolver_task_id UNIQUE`) : impossible de réutiliser la
+même photo pour toutes les phrases d'une vidéo. L'aperçu d'`inspect_image` est
+attaché au tour pour que le modèle puisse réellement regarder l'image avant de
+la choisir.
 
 ### Contexte vidéo
 
