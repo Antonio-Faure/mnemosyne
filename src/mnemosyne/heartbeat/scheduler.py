@@ -123,18 +123,24 @@ class Heartbeat:
                 continue
             supported += 1
             last_verify = self.engine.db.get_kv(f"verify_at:{d.id}")
-            fresh = False
+            due_at = utcnow_iso()
             if last_verify:
                 try:
                     seen = datetime.fromisoformat(str(last_verify))
-                    age = (datetime.now(UTC) - seen).total_seconds()
-                    fresh = age < VERIFY_INTERVAL_S
+                    if (datetime.now(UTC) - seen).total_seconds() < VERIFY_INTERVAL_S:
+                        # Keep the periodic verification scheduled, but in the
+                        # future: a restart must not trigger a 56-source burst.
+                        due_at = (seen + timedelta(seconds=VERIFY_INTERVAL_S)).isoformat()
                 except ValueError:
-                    fresh = False
-            if not fresh and not self.engine.db.has_open_job("verify", d.id):
+                    pass
+            if not self.engine.db.has_open_job("verify", d.id):
                 self.engine.db.enqueue(
-                    Job(kind="verify", payload={"source_id": d.id, "interval_s": VERIFY_INTERVAL_S},
-                        priority=10)
+                    Job(
+                        kind="verify",
+                        payload={"source_id": d.id, "interval_s": VERIFY_INTERVAL_S},
+                        priority=10,
+                        run_at=due_at,
+                    )
                 )
             # Providers that need access are onboarded by the browser agent, and
             # get their own dated journal (`journal/services/<id>.md`).
