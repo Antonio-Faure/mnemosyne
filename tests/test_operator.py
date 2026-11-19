@@ -490,7 +490,6 @@ async def test_ask_operator_returns_the_answer_in_the_same_turn(config):
                 task_id=1,
                 question="Valide ?",
                 options=[{"label": "Oui"}, {"label": "Non"}],
-                timeout_s=2,
             )
         )
         ask = None
@@ -511,27 +510,5 @@ async def test_ask_operator_returns_the_answer_in_the_same_turn(config):
             for message in db.pending_task_messages(1, "resolver")
             if message["body"] == "Oui"
         ], "the synchronous tool consumes the answer message"
-    finally:
-        db.close()
-
-
-@pytest.mark.asyncio
-async def test_ask_operator_expires_without_an_answer(config):
-    db = Database(config.db_file())
-    try:
-        db.enqueue_task("resolver", "mission")
-        response = await telegram.ask_operator(
-            config,
-            db,
-            None,
-            agent="resolver",
-            task_id=1,
-            question="Valide ?",
-            options=[{"label": "Oui"}],
-            timeout_s=0.1,
-        )
-        assert response["status"] == "expired"
-        assert db.get_ask(response["ask_id"])["status"] == "expired"
-        assert db.pending_task_messages(1, "operator") == []
     finally:
         db.close()

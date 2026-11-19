@@ -20,7 +20,6 @@ import asyncio
 import json
 import os
 import secrets
-import time
 from typing import Any
 
 import httpx
@@ -203,7 +202,6 @@ async def ask_operator(
     question: str,
     options: list[dict[str, Any]],
     wait: bool = True,
-    timeout_s: float = 900.0,
 ) -> dict[str, Any]:
     """Register a question and, by default, WAIT for the operator's answer.
 
@@ -212,8 +210,9 @@ async def ask_operator(
     the same turn. Delivery still goes through the one-at-a-time Telegram
     sender; the listener writes the answer to ``operator_asks`` and the mailbox.
 
-    ``wait=False`` is reserved for tests/CLI helpers: it registers the ask and
-    returns immediately (the historical async behaviour).
+    There is no timeout: the tool waits until the operator answers. The task
+    keeps one worker, but the queue and the Telegram channel stay available for
+    other tasks. ``wait=False`` is reserved for tests/CLI helpers.
     """
     ask_id = secrets.token_hex(5)
     mailbox = Mailbox(db)
@@ -225,8 +224,7 @@ async def ask_operator(
     if not wait:
         return {"ask_id": ask_id, "status": "pending", "answer": None}
 
-    deadline = time.monotonic() + max(0.0, float(timeout_s))
-    while time.monotonic() < deadline:
+    while True:
         ask = db.get_ask(ask_id)
         if ask is None:
             return {"ask_id": ask_id, "status": "missing", "answer": None}
@@ -247,19 +245,6 @@ async def ask_operator(
         if ask.get("status") not in ("pending", None, ""):
             return {"ask_id": ask_id, "status": str(ask.get("status")), "answer": None}
         await asyncio.sleep(0.5)
-
-    db.expire_ask(ask_id)
-    db.mark_message(
-        message_id,
-        status="handled",
-        note="question expirée sans réponse de l'opérateur",
-    )
-    return {
-        "ask_id": ask_id,
-        "status": "expired",
-        "answer": None,
-        "error": "aucune réponse de l'opérateur dans le délai imparti",
-    }
 
 
 def _awaiting_answer(ask: dict) -> bool:

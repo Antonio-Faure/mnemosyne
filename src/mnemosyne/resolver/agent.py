@@ -673,7 +673,6 @@ class ResolverToolProvider(ToolProvider):
                     task_id=self.task_id,
                     question=p.question,
                     options=[o.model_dump() for o in p.options],
-                    timeout_s=self.config.operator.answer_timeout_s,
                 )
             except Exception as exc:  # noqa: BLE001 - never break the session
                 return _fail(f"question non enregistrée : {exc}")
