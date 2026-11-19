@@ -70,6 +70,9 @@ async def handle_verify(ctx: JobContext, job: Job) -> dict | None:
     source_id = job.payload["source_id"]
     ok = await ctx.engine.verify(source_id)
     state = "ok" if ok else "degraded"
+    from mnemosyne.util import utcnow_iso
+
+    ctx.engine.db.set_kv(f"verify_at:{source_id}", utcnow_iso())
     log.info("verify %s → %s", source_id, state)
     if not ok:
         ctx.journal.append(f"source `{source_id}` degraded/failing", level="warn", source="verify")
