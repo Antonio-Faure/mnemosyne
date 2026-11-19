@@ -599,6 +599,11 @@ class ResolverToolProvider(ToolProvider):
                     evidence=evidence[:4000],
                 )
             except Exception as exc:  # noqa: BLE001
+                # All-or-nothing: a failed verdict must not leave a lone illustration.
+                try:
+                    self.db.delete_resolver_illustration_for_task(self.task_id)
+                except Exception:  # noqa: BLE001 - preserve the original failure
+                    pass
                 return _fail(f"résultat non enregistré : {exc}")
             details = (
                 f"succès — illustration enregistrée ({p.status}) : {image_url} — "
