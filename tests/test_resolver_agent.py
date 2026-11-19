@@ -12,7 +12,6 @@ from stirrup.core.models import EmptyParams
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.db import Database
 from mnemosyne.resolver.agent import (
-    InspectImageParams,
     ReadTranscriptParams,
     RecordIllustrationParams,
     RecordResultParams,
@@ -509,6 +508,7 @@ def test_record_illustration_records_the_exact_image_and_result(config, monkeypa
         )
         result = asyncio.run(tools["record_illustration"].executor(params))
         assert result.success is True
+        assert isinstance(result.content, list) and len(result.content) == 2
         stored = db.get_resolver_illustration_for_task(task_id)
         assert stored["image_url"] == "https://example.org/photo.jpg"
         assert stored["sentence"] == params.sentence
@@ -574,7 +574,47 @@ def test_record_result_match_requires_an_illustration(config):
         db.close()
 
 
-def test_inspect_image_tool_returns_quality_and_preview(config, monkeypatch):
+def test_record_illustration_refusal_carries_the_reason(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return {
+            "ok": False,
+            "image_url": url,
+            "final_url": url,
+            "content_type": "text/html",
+            "image_format": None,
+            "width": None,
+            "height": None,
+            "image_bytes": 60,
+            "hard_failures": ["le lien ne renvoie pas une image"],
+            "warnings": [],
+            "preview": None,
+        }
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/notice",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="une page",
+                )
+            )
+        )
+        assert result.success is False
+        assert "ne renvoie pas une image" in result.content
+        assert db.get_resolver_illustration_for_task(task_id) is None
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_no_match_clears_a_provisional_illustration(config, monkeypatch):
     async def fake(url, **kwargs):
         return _fake_image_check(url)
 
@@ -584,13 +624,25 @@ def test_inspect_image_tool_returns_quality_and_preview(config, monkeypatch):
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        recorded = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/photo.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="troupes",
+                )
+            )
+        )
+        assert recorded.success is True
+        assert db.get_resolver_illustration_for_task(task_id) is not None
         result = asyncio.run(
-            tools["inspect_image"].executor(
-                InspectImageParams(image_url="https://example.org/photo.jpg")
+            tools["record_result"].executor(
+                RecordResultParams(status="no_match", evidence="finalement non")
             )
         )
         assert result.success is True
-        assert "800×600" in str(result.content)
+        assert db.get_resolver_illustration_for_task(task_id) is None
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()

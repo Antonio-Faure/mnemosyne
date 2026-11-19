@@ -950,6 +950,15 @@ class Database:
             ).fetchone()
         return self._illustration_row(row)
 
+    def delete_resolver_illustration_for_task(self, resolver_task_id: int) -> None:
+        """Drop a provisional illustration when the final verdict is no_match/ambiguous."""
+        with self._lock:
+            self._conn.execute(
+                "DELETE FROM resolver_illustrations WHERE resolver_task_id = ?",
+                (resolver_task_id,),
+            )
+            self._conn.commit()
+
     def list_resolver_illustrations(self, limit: int = 100) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(

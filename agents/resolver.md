@@ -52,9 +52,11 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
      Belgium ») alors que l'image montre autre chose : lis la `description` et
      juge sur elle. Si titre et description divergent, la description gagne et
      le candidat n'est au mieux qu'un `partial`.
-   - **Regarde l'image** avec `inspect_image` (URL exacte) : le tool renvoie
-     type, dimensions, poids, avertissements et un aperçu visuel. Refuse une
-     URL morte, une page non-image, une vignette ou une image trop petite.
+   - **Passe le candidat à `record_illustration`** (URL exacte) : le tool
+     vérifie que le lien est une image, ses dimensions/poids, l'unicité, puis
+     te renvoie un **aperçu visuel** et enregistre le succès. S'il refuse, la
+     raison est explicite : corrige le lien ou choisis une autre image et
+     rappelle le tool.
 4. **Faire valider par l'humain** : pour le meilleur candidat, appelle
    `ask_operator` avec des options :
    - `Valide — l'image correspond`
@@ -74,8 +76,13 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
 
    Le tool vérifie que le lien est une image, que ses dimensions/poids passent
    le minimum, et que **la même image n'est pas déjà utilisée par une autre
-   phrase** (toutes sources confondues). S'il refuse, choisis une autre image ;
-   ne contourne pas avec `record_result`.
+   phrase** (toutes sources confondues). S'il refuse, la raison est dans le
+   résultat : choisis une autre image et rappelle le tool ; ne contourne pas
+   avec `record_result`.
+   En cas de succès technique, **regarde l'aperçu renvoyé** : s'il ne
+   correspond pas à la phrase, rappelle `record_illustration` avec une autre
+   image (la dernière illustration remplace la précédente), ou
+   `record_result(no_match)` si aucune ne convient.
    `record_result` ne sert plus qu'à `no_match` ou `ambiguous` : pour un
    `match`/`partial`, c'est `record_illustration` qui enregistre le verdict.
 6. **Si aucune image n'est défendable** : identifie la source/API manquante
