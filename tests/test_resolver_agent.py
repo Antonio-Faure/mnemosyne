@@ -6,12 +6,15 @@ import asyncio
 import io
 import json
 
+import yaml
 from PIL import Image
 from stirrup.core.models import EmptyParams
 
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.db import Database
 from mnemosyne.resolver.agent import (
+    CatalogSearchParams,
+    CatalogToggleParams,
     ReadTranscriptParams,
     RecordIllustrationParams,
     RecordResultParams,
@@ -679,3 +682,126 @@ def test_pending_operator_question_writes_nothing(config):
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def _write_source(sources_dir, source_id: str, *, enabled: bool, notes: str) -> None:
+    (sources_dir / f"{source_id}.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": source_id,
+                "name": source_id.title(),
+                "protocol": "rest",
+                "base_url": f"https://{source_id}.example.invalid/api",
+                "auth": "none",
+                "enabled": enabled,
+                "notes": notes,
+                "seeds": ["test seed"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_catalog_toggle_flips_the_session_perimeter(config, sources_dir):
+    _write_source(
+        sources_dir,
+        "local",
+        enabled=False,
+        notes="Fonds local désactivé pour raison de licence.",
+    )
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+
+        inventory = asyncio.run(tools["catalog_inventory"].executor(EmptyParams()))
+        assert inventory.success is True
+        assert "global=activée" in inventory.content
+        assert "global=désactivée" in inventory.content
+        assert "recherche=oui" in inventory.content
+        assert "contexte: Bibliothèque nationale de France" in inventory.content
+        assert "contexte: Fonds local désactivé" in inventory.content
+
+        blocked = asyncio.run(
+            tools["catalog_toggle"].executor(CatalogToggleParams(source_ids=["local"]))
+        )
+        assert blocked.success is False
+        assert "désactivée globalement" in blocked.content
+
+        off = asyncio.run(
+            tools["catalog_toggle"].executor(CatalogToggleParams(source_ids=["gallica"]))
+        )
+        assert off.success is True
+        assert "désactivée(s) : gallica" in off.content
+        assert "0/1" in off.content
+
+        empty = asyncio.run(
+            tools["catalog_search"].executor(CatalogSearchParams(query="1900"))
+        )
+        assert empty.success is False
+        assert "périmètre de recherche vide" in empty.content
+
+        on = asyncio.run(
+            tools["catalog_toggle"].executor(CatalogToggleParams(source_ids=["gallica"]))
+        )
+        assert on.success is True
+        assert "activée(s) : gallica" in on.content
+        assert "1/1" in on.content
+
+        listed = asyncio.run(tools["catalog_inventory"].executor(EmptyParams()))
+        assert "recherche=oui" in listed.content
+    finally:
+        db.close()
+
+
+def test_catalog_toggle_flips_several_sources_and_search_uses_the_perimeter(
+    config, sources_dir, monkeypatch
+):
+    _write_source(sources_dir, "other", enabled=True, notes="Autre fonds.")
+    seen: list[list[str] | None] = []
+
+    async def fake_search(self, query, source_ids=None, limit=20):
+        seen.append(source_ids)
+        return []
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.Engine.search", fake_search)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+
+        both_off = asyncio.run(
+            tools["catalog_toggle"].executor(
+                CatalogToggleParams(source_ids=["gallica", "other"])
+            )
+        )
+        assert both_off.success is True
+        assert "désactivée(s) : gallica, other" in both_off.content
+        assert "0/2" in both_off.content
+
+        asyncio.run(tools["catalog_search"].executor(CatalogSearchParams(query="1900")))
+        assert seen == []  # the empty perimeter never reaches the engine
+
+        asyncio.run(
+            tools["catalog_toggle"].executor(CatalogToggleParams(source_ids=["gallica"]))
+        )
+        asyncio.run(tools["catalog_search"].executor(CatalogSearchParams(query="1900")))
+        assert seen[-1] == ["gallica"]
+
+        both_on = asyncio.run(
+            tools["catalog_toggle"].executor(
+                CatalogToggleParams(source_ids=["gallica", "other"])
+            )
+        )
+        assert "activée(s) : other" in both_on.content
+        assert "désactivée(s) : gallica" in both_on.content
+        assert "1/2" in both_on.content
+    finally:
+        db.close()
+
+
+def test_catalog_search_has_no_source_switch():
+    assert "source_ids" not in CatalogSearchParams.model_fields
+    assert "source_ids" in CatalogToggleParams.model_fields

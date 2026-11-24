@@ -78,8 +78,9 @@ propres :
 
 | Outil | Rôle |
 |---|---|
-| `catalog_search(query, limit)` | interroge la meta API (registre des sources, connecteurs) |
-| `catalog_inventory()` | liste les sources connues avant d'en demander une |
+| `catalog_inventory()` | liste toutes les sources avec état global, présence dans le périmètre et contexte (institution, pays, licence, tags, notes) |
+| `catalog_toggle(source_ids)` | bascule l'état des sources **pour cette session** (active ↔ inactive), plusieurs d'un coup ; une source désactivée globalement ne peut pas être activée |
+| `catalog_search(query, limit)` | interroge la meta API **dans le périmètre courant** uniquement |
 | `video_context(before, after)` | résumé global, plan et fenêtre plus large autour de la phrase |
 | `search_transcript(query)` | retrouve un terme, un lieu ou une personne dans la transcription |
 | `read_transcript(start_s, end_s)` | lit la transcription entre deux timecodes |

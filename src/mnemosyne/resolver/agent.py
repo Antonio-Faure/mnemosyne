@@ -89,8 +89,17 @@ def _same_source(a: set[str], b: set[str], threshold: float = 0.6) -> bool:
 class CatalogSearchParams(BaseModel):
     query: str = Field(description="Historical search query (entities, place, period, synonyms)")
     limit: int = Field(default=10, ge=1, le=30)
-    source_ids: list[str] | None = Field(
-        default=None, description="Optional source ids to restrict the search"
+
+
+class CatalogToggleParams(BaseModel):
+    """Flip the search state of the listed sources for this session."""
+
+    source_ids: list[str] = Field(
+        min_length=1,
+        description=(
+            "Source ids whose search state is flipped: an active source is "
+            "deactivated, an inactive one is activated"
+        ),
     )
 
 
@@ -217,6 +226,8 @@ class ResolverToolProvider(ToolProvider):
         self.vault_get = vault_get
         # inspect_image -> record_illustration should not download twice.
         self._image_cache: dict[str, dict[str, Any]] = {}
+        # Search perimeter for this session. None = every enabled source.
+        self._source_scope: set[str] | None = None
 
     async def __aenter__(self):
         return self._tools()
@@ -277,26 +288,50 @@ class ResolverToolProvider(ToolProvider):
         catalog = Catalog(self.config.sources_path, self.db)
         return {descriptor.id: descriptor for descriptor in catalog.load_descriptors()}
 
+    def _enabled_source_ids(self) -> set[str]:
+        return {
+            descriptor.id
+            for descriptor in self._known_sources().values()
+            if descriptor.enabled
+        }
+
+    def _scope_ids(self) -> list[str] | None:
+        """`None` means every enabled source; a list is the explicit perimeter."""
+        if self._source_scope is None:
+            return None
+        return sorted(self._source_scope)
+
     def _tools(self):
         async def catalog_search_exec(p: CatalogSearchParams):
+            scope = self._scope_ids()
+            if scope is not None and not scope:
+                return _fail(
+                    "périmètre de recherche vide : réactive des sources avec "
+                    "catalog_toggle(source_ids=[...])."
+                )
             engine = Engine(self.config)
             try:
                 assets = await engine.search(
-                    p.query, source_ids=p.source_ids, limit=p.limit
+                    p.query, source_ids=scope, limit=p.limit
                 )
             except Exception as exc:  # noqa: BLE001 - a search failure is recoverable
                 return _fail(f"recherche catalogue impossible : {exc}")
             finally:
                 await engine.aclose()
                 engine.db.close()
+            where = (
+                f"le périmètre ({len(scope)} source(s))"
+                if scope is not None
+                else "la meta API (toutes les sources activées)"
+            )
             if not assets:
-                return _ok(f"aucun résultat pour {p.query!r} dans la meta API.")
+                return _ok(f"aucun résultat pour {p.query!r} dans {where}.")
             ranked = rank_assets(p.query, assets)
             rows = [_compact_row(asset) for asset in ranked[:_MAX_ROWS]]
             shown = _fit_rows(rows)
             header = (
                 f"{len(assets)} résultat(s) — {len(shown)} meilleurs candidats par "
-                f"pertinence (titres/dates), sources du catalogue."
+                f"pertinence (titres/dates), {where}."
             )
             payload = header + "\n" + json.dumps(shown, ensure_ascii=False)
             hidden = len(ranked) - len(shown)
@@ -304,18 +339,94 @@ class ResolverToolProvider(ToolProvider):
                 payload += f"\n… {hidden} autre(s) candidat(s) non affiché(s)."
             return _ok(payload)
 
-        async def catalog_inventory_exec(_p: EmptyParams):
-            from mnemosyne.resolver.queue import catalog_inventory
+        async def catalog_toggle_exec(p: CatalogToggleParams):
+            descriptors = self._known_sources()
+            if not descriptors:
+                return _fail("aucune source déclarée")
+            wanted = sorted(
+                {source_id.strip() for source_id in p.source_ids if source_id.strip()}
+            )
+            if not wanted:
+                return _fail("aucun identifiant de source fourni")
+            unknown = sorted(set(wanted) - set(descriptors))
+            if unknown:
+                return _fail("source(s) inconnue(s) : " + ", ".join(unknown))
+            enabled = self._enabled_source_ids()
+            blocked = sorted(set(wanted) - enabled)
+            if blocked:
+                return _fail(
+                    "bascule impossible : "
+                    + ", ".join(f"{sid} (désactivée globalement)" for sid in blocked)
+                    + ". Seul l'opérateur peut l'activer globalement "
+                    "(config/sources/<id>.yaml)."
+                )
+            current = set(enabled) if self._source_scope is None else set(self._source_scope)
+            turned_on: list[str] = []
+            turned_off: list[str] = []
+            for source_id in wanted:
+                if source_id in current:
+                    current.discard(source_id)
+                    turned_off.append(source_id)
+                else:
+                    current.add(source_id)
+                    turned_on.append(source_id)
+            self._source_scope = current
+            changes: list[str] = []
+            if turned_on:
+                changes.append("activée(s) : " + ", ".join(turned_on))
+            if turned_off:
+                changes.append("désactivée(s) : " + ", ".join(turned_off))
+            summary = " · ".join(changes) if changes else "aucun changement"
+            suffix = (
+                " Périmètre vide : aucune recherche ne renverra de résultat."
+                if not current
+                else ""
+            )
+            return _ok(
+                f"{summary} — périmètre : {len(current)}/{len(enabled)} source(s)."
+                + suffix
+            )
 
-            sources = catalog_inventory(self.config)
-            if not sources:
+        async def catalog_inventory_exec(_p: EmptyParams):
+            descriptors = sorted(
+                self._known_sources().values(), key=lambda descriptor: descriptor.id
+            )
+            if not descriptors:
                 return _ok("aucune source déclarée")
-            lines = [
-                f"- {source['id']} — {source['name']} — "
-                f"{'active' if source.get('enabled', True) else 'désactivée'}"
-                for source in sorted(sources, key=lambda item: item["id"])
-            ]
-            return _ok(f"{len(sources)} source(s) connue(s) :\n" + "\n".join(lines))
+            enabled = {descriptor.id for descriptor in descriptors if descriptor.enabled}
+            scope = enabled if self._source_scope is None else self._source_scope
+            lines: list[str] = []
+            for descriptor in descriptors:
+                in_scope = descriptor.enabled and descriptor.id in scope
+                bits = [
+                    f"{descriptor.id} — {descriptor.name}",
+                    f"global={'activée' if descriptor.enabled else 'désactivée'}",
+                    f"recherche={'oui' if in_scope else 'non'}",
+                ]
+                place = " · ".join(
+                    value
+                    for value in (
+                        descriptor.institution,
+                        descriptor.country,
+                        descriptor.license,
+                    )
+                    if value
+                )
+                if place:
+                    bits.append(place)
+                if descriptor.tags:
+                    bits.append("tags: " + ", ".join(descriptor.tags[:5]))
+                context = " ".join((descriptor.notes or "").split())
+                if context:
+                    if len(context) > 140:
+                        context = context[:137].rstrip() + "…"
+                    bits.append("contexte: " + context)
+                lines.append("- " + " — ".join(bits))
+            header = (
+                f"{len(descriptors)} source(s) — {len(enabled)} activée(s) "
+                f"globalement · périmètre de recherche : {len(scope)}."
+            )
+            return _ok(header + "\n" + "\n".join(lines))
 
         async def video_context_exec(p: VideoContextParams):
             segment_id = self._segment_id()
@@ -401,12 +512,19 @@ class ResolverToolProvider(ToolProvider):
             wanted = _name_tokens(p.source_id, p.source_name)
             if p.source_id in known:
                 descriptor = known[p.source_id]
-                state = "activée" if descriptor.enabled else "désactivée"
+                if not descriptor.enabled:
+                    return _fail(
+                        f"la source {p.source_id} est déjà au catalogue mais "
+                        "désactivée globalement : seul l'opérateur peut l'activer "
+                        "(licence ou qualité). Ne la redemande pas."
+                    )
                 return _fail(
-                    f"la source {p.source_id} est déjà au catalogue ({state}). "
-                    "Interroge-la avec catalog_search(source_ids=[...]) au lieu de "
-                    "la redemander ; si elle ne renvoie rien, c'est un trou de "
-                    "couverture interne, pas une source manquante."
+                    f"la source {p.source_id} est déjà au catalogue (activée). "
+                    f"Bascule-la dans ton périmètre avec "
+                    f"catalog_toggle(source_ids=['{p.source_id}']) si elle n'y est "
+                    "pas, puis interroge-la avec catalog_search ; "
+                    "si elle ne renvoie rien, c'est un trou de couverture interne, "
+                    "pas une source manquante."
                 )
             requested_id = p.source_id.strip().lower()
             for descriptor in known.values():
@@ -418,15 +536,21 @@ class ResolverToolProvider(ToolProvider):
                 if (same_family and not p.specialisation) or _same_source(
                     wanted, _name_tokens(descriptor.id, descriptor.name)
                 ):
-                    state = "activée" if descriptor.enabled else "désactivée"
+                    if not descriptor.enabled:
+                        return _fail(
+                            f"la source demandée ({p.source_name}) est déjà couverte "
+                            f"par `{descriptor.id}`, désactivée globalement : seul "
+                            "l'opérateur peut l'activer. Ne la redemande pas."
+                        )
                     return _fail(
                         f"la source demandée ({p.source_name}) est déjà couverte par "
-                        f"`{descriptor.id}` — {state}. Interroge-la avec "
-                        f"catalog_search(source_ids=['{descriptor.id}']) ; un "
-                        "résultat vide n'autorise pas à recréer la même source. "
-                        "Si c'est une vraie spécialisation (périmètre différent), "
-                        "rappelle request_source avec specialisation=true et "
-                        "explique la différence dans `reason`."
+                        f"`{descriptor.id}` (activée). Bascule-la dans ton périmètre "
+                        f"avec catalog_toggle(source_ids=['{descriptor.id}']) si elle "
+                        "n'y est pas, puis interroge-la avec catalog_search ; un "
+                        "résultat vide n'autorise pas à recréer la même source. Si "
+                        "c'est une vraie spécialisation (périmètre différent), "
+                        "rappelle request_source avec specialisation=true et explique "
+                        "la différence dans `reason`."
                     )
             for request in self.db.open_resolver_requests():
                 if request.get("source_id") == p.source_id or _same_source(
@@ -690,9 +814,10 @@ class ResolverToolProvider(ToolProvider):
             Tool(
                 name="catalog_search",
                 description=(
-                    "Search the Mnemosyne meta API (catalog connectors). Results are "
-                    "relevance-ranked best-first and truncated: use source_ids to "
-                    "drill into one provider, and vary the query wording."
+                    "Search the Mnemosyne meta API (catalog connectors) inside the "
+                    "current search perimeter. Results are relevance-ranked "
+                    "best-first and truncated; vary the query wording. Use "
+                    "catalog_toggle first to choose which sources are queried."
                 ),
                 parameters=CatalogSearchParams,
                 executor=catalog_search_exec,
@@ -700,12 +825,26 @@ class ResolverToolProvider(ToolProvider):
             Tool(
                 name="catalog_inventory",
                 description=(
-                    "List the sources already known to Mnemosyne, with their state. "
-                    "Check it before requesting a source: an absent source can be "
+                    "List every source with its global state (enabled/disabled), "
+                    "whether it is in the current search perimeter, and a short "
+                    "context (institution, country, licence, tags, notes). Check "
+                    "it before requesting a source: an absent source can be "
                     "requested, an existing one must not be requested again."
                 ),
                 parameters=EmptyParams,
                 executor=catalog_inventory_exec,
+            ),
+            Tool(
+                name="catalog_toggle",
+                description=(
+                    "Flip the search state of the listed sources for this session "
+                    "only. An active source becomes inactive for catalog_search, "
+                    "an inactive one becomes active again; several ids are flipped "
+                    "in one call. A globally disabled source cannot be activated "
+                    "here. Read catalog_inventory to see the current state."
+                ),
+                parameters=CatalogToggleParams,
+                executor=catalog_toggle_exec,
             ),
             Tool(
                 name="video_context",
