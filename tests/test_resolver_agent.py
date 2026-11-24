@@ -13,6 +13,7 @@ from stirrup.core.models import EmptyParams
 from mnemosyne.agents.mailbox import Mailbox
 from mnemosyne.db import Database
 from mnemosyne.resolver.agent import (
+    MAX_CATALOG_SEARCHES,
     CatalogSearchParams,
     CatalogToggleParams,
     ReadTranscriptParams,
@@ -805,3 +806,36 @@ def test_catalog_toggle_flips_several_sources_and_search_uses_the_perimeter(
 def test_catalog_search_has_no_source_switch():
     assert "source_ids" not in CatalogSearchParams.model_fields
     assert "source_ids" in CatalogToggleParams.model_fields
+
+
+def test_catalog_search_budget_stops_the_loop(config, monkeypatch):
+    calls: list[str] = []
+
+    async def fake_search(self, query, source_ids=None, limit=20):
+        calls.append(query)
+        return []
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.Engine.search", fake_search)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+
+        for number in range(1, MAX_CATALOG_SEARCHES + 1):
+            result = asyncio.run(
+                tools["catalog_search"].executor(
+                    CatalogSearchParams(query=f"query {number}")
+                )
+            )
+            assert result.success is True
+            assert f"recherche {number}/{MAX_CATALOG_SEARCHES}" in result.content
+
+        blocked = asyncio.run(
+            tools["catalog_search"].executor(CatalogSearchParams(query="one too many"))
+        )
+        assert blocked.success is False
+        assert "budget" in blocked.content
+        assert len(calls) == MAX_CATALOG_SEARCHES
+    finally:
+        db.close()

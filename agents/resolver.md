@@ -49,7 +49,9 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    globalement. Ensuite, `catalog_search` n'interroge que le périmètre courant.
    Fais 2 à 5 requêtes différentes : entités exactes, synonymes d'époque, lieu +
    période, type (portrait, carte, scène de rue, machine…). Ne te limite pas à
-   la phrase brute.
+   la phrase brute. **Maximum 6 `catalog_search` par session** : ensuite le tool
+   refuse et tu dois choisir parmi les candidats déjà vus ou enregistrer une
+   abstention.
 3. **Examiner les candidats** : titre, **description**, créateur, date, lieu,
    licence, source, URL de la page et de l'image. Rejette tout ce qui est
    manifestement anachronique, hors-sujet, ou sans provenance.

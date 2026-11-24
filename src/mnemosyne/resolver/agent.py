@@ -46,6 +46,10 @@ log = get_logger("resolver.agent")
 _RESULT_BUDGET = 12000
 _MAX_ROWS = 40
 
+#: A hard sentence must not scan the whole catalog for an hour. After this many
+#: searches the agent decides with what it has seen, or abstains.
+MAX_CATALOG_SEARCHES = 6
+
 _FALLBACK = (
     "You are {name}, the adversarial resolver. MISSION: {task}. "
     "Use catalog_search, ask the operator, request sources, then wait_for_sources."
@@ -228,6 +232,8 @@ class ResolverToolProvider(ToolProvider):
         self._image_cache: dict[str, dict[str, Any]] = {}
         # Search perimeter for this session. None = every enabled source.
         self._source_scope: set[str] | None = None
+        #: Hard cap so one sentence cannot scan the catalog forever.
+        self._search_calls = 0
 
     async def __aenter__(self):
         return self._tools()
@@ -309,13 +315,21 @@ class ResolverToolProvider(ToolProvider):
                     "périmètre de recherche vide : réactive des sources avec "
                     "catalog_toggle(source_ids=[...])."
                 )
+            if self._search_calls >= MAX_CATALOG_SEARCHES:
+                return _fail(
+                    f"budget de {MAX_CATALOG_SEARCHES} recherches épuisé : "
+                    "choisis le meilleur candidat déjà vu, ou termine par "
+                    "record_result(no_match) / record_result(ambiguous)."
+                )
+            self._search_calls += 1
+            attempt = f"recherche {self._search_calls}/{MAX_CATALOG_SEARCHES}"
             engine = Engine(self.config)
             try:
                 assets = await engine.search(
                     p.query, source_ids=scope, limit=p.limit
                 )
             except Exception as exc:  # noqa: BLE001 - a search failure is recoverable
-                return _fail(f"recherche catalogue impossible : {exc}")
+                return _fail(f"{attempt} — recherche catalogue impossible : {exc}")
             finally:
                 await engine.aclose()
                 engine.db.close()
@@ -325,18 +339,23 @@ class ResolverToolProvider(ToolProvider):
                 else "la meta API (toutes les sources activées)"
             )
             if not assets:
-                return _ok(f"aucun résultat pour {p.query!r} dans {where}.")
+                return _ok(f"{attempt} — aucun résultat pour {p.query!r} dans {where}.")
             ranked = rank_assets(p.query, assets)
             rows = [_compact_row(asset) for asset in ranked[:_MAX_ROWS]]
             shown = _fit_rows(rows)
             header = (
-                f"{len(assets)} résultat(s) — {len(shown)} meilleurs candidats par "
-                f"pertinence (titres/dates), {where}."
+                f"{attempt} — {len(assets)} résultat(s) — {len(shown)} meilleurs "
+                f"candidats par pertinence (titres/dates), {where}."
             )
             payload = header + "\n" + json.dumps(shown, ensure_ascii=False)
             hidden = len(ranked) - len(shown)
             if hidden > 0:
                 payload += f"\n… {hidden} autre(s) candidat(s) non affiché(s)."
+            if self._search_calls >= MAX_CATALOG_SEARCHES:
+                payload += (
+                    "\nDernière recherche autorisée : décide avec ces candidats "
+                    "ou enregistre une abstention."
+                )
             return _ok(payload)
 
         async def catalog_toggle_exec(p: CatalogToggleParams):
