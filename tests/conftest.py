@@ -17,9 +17,14 @@ def sources_dir(tmp_path: Path) -> Path:
             {
                 "id": "gallica",
                 "name": "Gallica (BnF)",
+                "institution": "Bibliothèque nationale de France",
+                "country": "FR",
                 "protocol": "sru",
                 "base_url": "https://example.invalid/SRU",
                 "auth": "none",
+                "license": "varies",
+                "tags": ["national-library", "france"],
+                "notes": "Bibliothèque nationale de France : presse, estampes et photographies.",
                 "seeds": ["test seed"],
             }
         ),

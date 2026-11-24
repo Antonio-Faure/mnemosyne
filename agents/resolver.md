@@ -40,10 +40,16 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
 1. **Comprendre la phrase** : lis la fiche de contexte, puis le fait (`claim`)
    s'il existe — entités, lieu, période, type d'image attendu. Si un référent
    reste flou, utilise les outils de transcription avant de chercher.
-2. **Chercher dans la meta API** avec `catalog_search`. Fais 2 à 5 requêtes
-   différentes : entités exactes, synonymes d'époque, lieu + période, type
-   (portrait, carte, scène de rue, machine…). Ne te limite pas à la phrase
-   brute.
+2. **Choisir le périmètre, puis chercher** : `catalog_inventory` donne pour
+   chaque source son état global, sa présence dans le périmètre de recherche et
+   son contexte (institution, pays, licence, tags, notes). `catalog_toggle`
+   bascule l'état des sources **pour cette session** : une source active devient
+   inactive, une source inactive redevient active ; plusieurs ids sont basculés
+   en un seul appel. Il ne peut jamais activer une source désactivée
+   globalement. Ensuite, `catalog_search` n'interroge que le périmètre courant.
+   Fais 2 à 5 requêtes différentes : entités exactes, synonymes d'époque, lieu +
+   période, type (portrait, carte, scène de rue, machine…). Ne te limite pas à
+   la phrase brute.
 3. **Examiner les candidats** : titre, **description**, créateur, date, lieu,
    licence, source, URL de la page et de l'image. Rejette tout ce qui est
    manifestement anachronique, hors-sujet, ou sans provenance.
@@ -54,11 +60,15 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
      le candidat n'est au mieux qu'un `partial`.
    - **Passe le candidat à `record_illustration`** (URL exacte) : le tool
      vérifie que le lien est une image, ses dimensions/poids, l'unicité, puis
-     te renvoie un **aperçu visuel** et enregistre le succès. S'il refuse, la
-     raison est explicite : corrige le lien ou choisis une autre image et
-     rappelle le tool.
-4. **Faire valider par l'humain** : pour le meilleur candidat, appelle
-   `ask_operator` avec des options :
+     te renvoie un **aperçu visuel** et enregistre un succès provisoire. S'il
+     refuse, la raison est explicite : corrige le lien ou choisis une autre
+     image et rappelle le tool.
+   - **Regarde réellement l'aperçu avant d'aller plus loin** : sujet, époque,
+     lisibilité, cadrage, présence du détail qui justifie la phrase. Si l'image
+     ne correspond pas, ne la soumets pas à l'opérateur : essaie un autre
+     candidat avec `record_illustration` (le dernier remplace le précédent).
+4. **Faire valider par l'humain — seulement après ton propre contrôle visuel** :
+   pour le meilleur candidat, appelle `ask_operator` avec des options :
    - `Valide — l'image correspond`
    - `Refuse — mauvaise correspondance`
    - `Ambigu — à revoir`
@@ -66,8 +76,16 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    défendable. **Cite la description de l'image**, pas seulement son titre.
    Donne aussi **l'URL exacte de l'image**. Le tool `ask_operator` **attend la
    réponse** et te la renvoie dans le même tour : continue avec elle.
-5. **Enregistrer l'image choisie** avec `record_illustration` (obligatoire pour
-   `match` et `partial`) :
+5. **Finaliser après la réponse de l'opérateur** :
+   - **Valide** : l'illustration provisoire déjà enregistrée devient le
+     résultat final. Si tu changes d'image après la validation, rappelle
+     `record_illustration` avec la nouvelle URL.
+   - **Refuse / Ambigu** : choisis une autre image et rappelle
+     `record_illustration`, ou termine avec `record_result(no_match)` /
+     `record_result(ambiguous)` — dans ce cas la ligne provisoire est effacée.
+
+   Rappel des champs de `record_illustration` (obligatoire pour `match` et
+   `partial`) :
    - `image_url` : l'URL exacte de l'image, pas la page de la fiche ;
    - `sentence` : la phrase illustrée ;
    - `context` : le contexte source (vidéo, transcription, texte) ;
@@ -80,11 +98,7 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    phrase** (toutes sources confondues). S'il refuse, la raison est dans le
    résultat : choisis une autre image et rappelle le tool ; ne contourne pas
    avec `record_result`.
-   En cas de succès technique, **regarde l'aperçu renvoyé** : s'il ne
-   correspond pas à la phrase, rappelle `record_illustration` avec une autre
-   image (la dernière illustration remplace la précédente), ou
-   `record_result(no_match)` si aucune ne convient.
-   `record_result` ne sert plus qu'à `no_match` ou `ambiguous` : pour un
+   `record_result` ne sert qu'à `no_match` ou `ambiguous` : pour un
    `match`/`partial`, c'est `record_illustration` qui enregistre le verdict.
 6. **Si aucune image n'est défendable** : identifie la source/API manquante
    (pays, période, type), puis appelle `request_source` **une fois par source**
