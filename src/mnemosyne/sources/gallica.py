@@ -25,11 +25,18 @@ def _texts(elem: ET.Element, name: str) -> list[str]:
 
 
 class GallicaConnector(Connector):
+    #: provenance tag written to ``Asset.extra["source"]``; siblings override it.
+    SOURCE_TAG = "gallica-sru"
+
+    def _cql(self, query: str, **filters) -> str:
+        """Build the SRU CQL query; targeted siblings override this hook."""
+        return f'gallica all "{query}"'
+
     async def search(self, query: str, limit: int = 20, **filters) -> list[Asset]:
         params = {
             "operation": "searchRetrieve",
             "version": "1.2",
-            "query": f'gallica all "{query}"',
+            "query": self._cql(query, **filters),
             "maximumRecords": str(min(limit, 50)),
             "startRecord": "1",
         }
@@ -86,5 +93,5 @@ class GallicaConnector(Connector):
             image_url=f"{base}/full/full/0/native.jpg",
             thumbnail_url=f"{base}/full/384,/0/native.jpg",
             iiif_id=ark,
-            extra={"source": "gallica-sru"},
+            extra={"source": self.SOURCE_TAG},
         )

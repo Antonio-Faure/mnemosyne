@@ -1,0 +1,49 @@
+id: gallica_presse_reclame
+name: Gallica (BnF) — Presse & réclame
+institution: Bibliothèque nationale de France
+country: FR
+protocol: sru
+base_url: https://gallica.bnf.fr/SRU
+auth: none
+license: varies
+rights: "BnF — droits par objet (domaine public / sous licence)"
+rate_limit_per_s: 0.5
+priority: 11
+tags:
+  - national-library
+  - france
+  - iiif
+  - keyless
+  - photographic-press
+  - poster
+  - advertising
+  - 1919-1935
+seeds:
+  - "Citroën Tour Eiffel illumination 1925"
+  - "affiche réclame automobile"
+  - "photographie de presse Agence Rol"
+  - "affiche publicitaire années 1920"
+  - "Agence Meurisse reportage"
+extra:
+  doc_types:
+    - photographie
+    - affiche
+    - estampe
+  year_min: 1919
+  year_max: 1935
+notes: >-
+  Frère ciblé du connecteur `gallica` générique : même API officielle SRU
+  (Dublin Core) + images via IIIF, aucun scraping HTML. La requête CQL
+  restreint la recherche à la facette « Type de document » (photographie /
+  affiche / estampe) et à la fenêtre 1919-1935, pour faire remonter la presse
+  photographique (Agence Rol, Agence Meurisse) et la réclame publicitaire
+  (affiches, dont Citroën / Tour Eiffel illuminée 1925, département des
+  Estampes) que le connecteur générique noie sous les livres et périodiques.
+  Licences Gallica par objet (domaine public / sous licence) : `dc:rights` est
+  reporté dans `Asset.rights`, aucune image n'est écartée a priori sur le droit.
+  Constat 2026-11-08 : `https://gallica.bnf.fr/SRU` renvoie HTTP 403 (page WAF
+  Cloudflare « Sorry, you have been blocked ») depuis cette IP, comme pour
+  `gallica` — blocage infrastructurel IP/ASN, PAS un bug de chemin/requête ; le
+  connecteur SRU/IIIF est correct et prêt. Source ACTIVE mais signalée
+  « indisponible depuis cette IP (Cloudflare) » ; ne pas modifier le code au
+  hasard (voir docs/SOURCES.md).

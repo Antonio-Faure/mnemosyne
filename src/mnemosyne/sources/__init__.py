@@ -15,6 +15,7 @@ from mnemosyne.sources.dpla import DplaConnector
 from mnemosyne.sources.eol import EolConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
+from mnemosyne.sources.gallica_presse_reclame import GallicaPresseReclameConnector
 from mnemosyne.sources.gbif import GbifConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.inaturalist import INaturalistConnector
@@ -49,6 +50,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "eol": EolConnector,
     "europeana": EuropeanaConnector,
     "gallica": GallicaConnector,
+    "gallica_presse_reclame": GallicaPresseReclameConnector,
     "gbif": GbifConnector,
     "hennepin": ContentDmConnector,
     "hillsborough": ContentDmConnector,
