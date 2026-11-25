@@ -63,3 +63,10 @@ sans le déformer.
   cherche un autre canal vivant (formulaire, institution de tutelle).
 - Si un humain répond et demande un rendez-vous, transmets la demande à
   l'opérateur avec `ask_operator` ; ne réponds pas à sa place.
+
+
+## VALIDATION OBLIGATOIRE AVANT ENVOI
+
+Aucun e-mail sortant ne part sans validation de l'opérateur. Présente le
+brouillon exact (destinataire, Cc, objet, corps, pièces jointes) via
+`ask_operator`, puis attends « Valide — envoyer ». Sans réponse : pas d'envoi.
