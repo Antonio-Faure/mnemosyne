@@ -649,6 +649,33 @@ class ResolverToolProvider(ToolProvider):
                     "n'en demande pas, enregistre ton résultat avec les sources "
                     "actuelles."
                 )
+            lowered_id = p.source_id.strip().lower()
+            if lowered_id.endswith(("_browser", "_fetch", "_proxy", "_mirror")):
+                return _fail(
+                    "identifiant de source refusé : une source n'est pas un "
+                    "navigateur, un proxy ou un miroir de récupération d'images. "
+                    "Demande une vraie archive/API, ou abstiens-toi."
+                )
+            if p.specialisation:
+                lowered = f"{p.source_id} {p.source_name} {p.reason}".lower()
+                bypass_words = (
+                    "contourn",
+                    "bypass",
+                    "proxy",
+                    "miroir",
+                    "cloudflare",
+                    "waf",
+                    "récupération d'images",
+                    "recuperation d'images",
+                    "fix resolver 403",
+                )
+                if any(word in lowered for word in bypass_words):
+                    return _fail(
+                        "spécialisation refusée : une source n'est pas un "
+                        "contournement de 403/Cloudflare ni un proxy d'images. "
+                        "Corrige le fetcher, utilise une variante officielle, "
+                        "change d'image ou abstiens-toi."
+                    )
             known = self._known_sources()
             wanted = _name_tokens(p.source_id, p.source_name)
             if p.source_id in known:

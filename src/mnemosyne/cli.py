@@ -442,7 +442,7 @@ def _cmd_queue_cancel(args: argparse.Namespace) -> int:
     from mnemosyne.agents.supervisor import _complete_resolver_dependencies
 
     _complete_resolver_dependencies(
-        db, Mailbox(db), args.task_id, "failed", "annulée par l'opérateur"
+        cfg, db, Mailbox(db), args.task_id, "failed", "annulée par l'opérateur"
     )
     db.delete_task_messages(args.task_id)
     db.delete_task_email_waits(args.task_id)

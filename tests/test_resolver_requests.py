@@ -81,19 +81,22 @@ def test_supervisor_helper_posts_one_wake_message(config):
         db.set_task_status(resolver, "running", agent="resolver")
         agent_task = db.enqueue_task("coder", "add source A")
         db.create_resolver_request(
-            resolver, source_id="a", source_name="A", agent_task_id=agent_task
+            resolver,
+            source_id="gallica",
+            source_name="Gallica (BnF)",
+            agent_task_id=agent_task,
         )
         _complete_resolver_dependencies(
-            db, Mailbox(db), agent_task, "done", "source added"
+            config, db, Mailbox(db), agent_task, "done", "source added"
         )
         pending = db.pending_task_messages(resolver, "resolver")
         assert len(pending) == 1
         assert pending[0]["sender"] == "system"
         assert "SOURCES READY" in pending[0]["body"]
-        assert "A: done" in pending[0]["body"]
+        assert "Gallica (BnF): done" in pending[0]["body"]
         # Completing again must not post a duplicate.
         _complete_resolver_dependencies(
-            db, Mailbox(db), agent_task, "done", "source added"
+            config, db, Mailbox(db), agent_task, "done", "source added"
         )
         assert len(db.pending_task_messages(resolver, "resolver")) == 1
     finally:

@@ -243,8 +243,8 @@ def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
         db.create_resolver_request(
             resolver_id,
             sentence_id="yt_demo_1",
-            source_id="loc_wwi_photos",
-            source_name="Library of Congress photos",
+            source_id="gallica",
+            source_name="Gallica (BnF)",
             agent_task_id=source_task_id,
         )
         assert db.task_waiting_on_sources(resolver_id) is True
@@ -1019,5 +1019,81 @@ def test_catalog_assets_survive_a_new_activation(config):
 
         second = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
         assert "asset-from-first-activation" in second._catalog_asset_ids
+    finally:
+        db.close()
+
+
+def test_finished_source_task_without_a_catalog_source_is_failed(config, monkeypatch):
+    from mnemosyne.agents import supervisor
+    from mnemosyne.agents.outcome import AgentOutcome
+
+    async def fake_browser(cfg, task, mailbox, journal, vault_get, task_id=None, max_turns=None):
+        return AgentOutcome(finish="source added")
+
+    monkeypatch.setitem(supervisor._RUNNERS, "browser", fake_browser)
+    db = _db(config)
+    try:
+        resolver_id = db.enqueue_task("resolver", "illustrate a sentence")
+        db.set_task_status(resolver_id, "running", agent="resolver")
+        source_task_id = db.enqueue_task(
+            "browser", "add the missing source", payload={"kind": "resolver_source"}
+        )
+        db.create_resolver_request(
+            resolver_id,
+            sentence_id="yt_demo_1",
+            source_id="not_in_catalog",
+            source_name="Missing source",
+            agent_task_id=source_task_id,
+        )
+    finally:
+        db.close()
+
+    asyncio.run(
+        supervisor.run_pending_once(config, agents=("browser",), lease="agency")
+    )
+
+    db = _db(config)
+    try:
+        request = db.resolver_requests(resolver_id)[0]
+        assert request["status"] == "failed"
+        assert "absente du catalogue" in (request["note"] or "")
+    finally:
+        db.close()
+
+
+def test_request_source_refuses_a_bypass_specialisation(config):
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["request_source"].executor(
+                RequestSourceParams(
+                    source_id="gallica_browser",
+                    source_name="Gallica via navigateur",
+                    reason="contournement du 403 Cloudflare",
+                    api_url="https://example.invalid/iiif",
+                    specialisation=True,
+                )
+            )
+        )
+        assert result.success is False
+        assert "identifiant de source refusé" in result.content
+        second = asyncio.run(
+            tools["request_source"].executor(
+                RequestSourceParams(
+                    source_id="gallica_photos_bypass",
+                    source_name="Gallica photos",
+                    reason="contournement du 403 Cloudflare",
+                    api_url="https://example.invalid/iiif",
+                    specialisation=True,
+                )
+            )
+        )
+        assert second.success is False
+        assert "spécialisation refusée" in second.content
+        assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
