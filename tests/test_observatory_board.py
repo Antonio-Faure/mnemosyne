@@ -187,3 +187,29 @@ def test_review_is_terminal_and_atelier_shows_missions_without_request(config):
         assert card["outcome"] == "review"
     finally:
         db.close()
+
+
+def test_pending_mailbox_message_is_waiting_not_running(config):
+    db = _db(config)
+    try:
+        resolver = _resolver_task(db, "Une phrase prête à reprendre.", "yt_v_1")
+        db.set_task_status(resolver, "running", agent="resolver")
+        db.post_message("system", "resolver", "[SOURCES READY]", resolver)
+        card = next(
+            card
+            for card in build_board(db, "resolver")["cards"]
+            if card["task_id"] == resolver
+        )
+        assert card["column"] == "waiting"
+
+        mission = _mission(db, "source_x")
+        db.set_task_status(mission, "running", agent="browser")
+        db.post_message("system", "browser", "contexte", mission)
+        mission_card = next(
+            card
+            for card in build_board(db, "atelier")["cards"]
+            if card["task_id"] == mission
+        )
+        assert mission_card["column"] == "waiting"
+    finally:
+        db.close()

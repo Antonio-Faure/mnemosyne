@@ -373,6 +373,7 @@ def _cmd_queue_list(args: argparse.Namespace) -> int:
     waiting = {t["id"] for t in tasks if db.task_waiting_on_operator(t["id"])}
     email_waiting = {t["id"] for t in tasks if db.task_waiting_on_email(t["id"])}
     sources_waiting = {t["id"] for t in tasks if db.task_waiting_on_sources(t["id"])}
+    message_waiting = {t["id"] for t in tasks if db.task_message_count(t["id"])}
     db.close()
     for task in tasks:
         started = task.get("started_at") or ""
@@ -384,6 +385,8 @@ def _cmd_queue_list(args: argparse.Namespace) -> int:
             suffix += "  📧 attend un email"
         if task["id"] in sources_waiting:
             suffix += "  🧩 attend des sources"
+        if task["id"] in message_waiting:
+            suffix += "  ↻ reprise en attente"
         print(
             f"#{task['id']:<4} {task['status']:<10} départ={task['start_agent']:<7} "
             f"{started[:16]} {objective}{suffix}"
