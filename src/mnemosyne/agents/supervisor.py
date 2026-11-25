@@ -493,6 +493,7 @@ def _complete_resolver_dependencies(
         payload = json.loads(resolver.get("payload") or "{}")
         payload["_search_calls"] = 0
         payload["_source_search_calls"] = 0
+        payload["_web_research_calls"] = 0
         db.update_task_payload(resolver_id, payload)
         requests = db.resolver_requests(resolver_id)
         lines = [

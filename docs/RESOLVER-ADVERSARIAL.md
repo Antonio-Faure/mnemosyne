@@ -81,6 +81,7 @@ propres :
 | `catalog_inventory()` | liste toutes les sources avec état global, présence dans le périmètre et contexte (institution, pays, licence, tags, notes) |
 | `catalog_toggle(source_ids)` | bascule l'état des sources **pour cette session** (active ↔ inactive), plusieurs d'un coup ; une source désactivée globalement ne peut pas être activée |
 | `source_search(query, limit)` | cherche sur le web une **source** (archive, musée, API/IIIF) qui couvre un trou de couverture ; **jamais une image**, **4 recherches max**, des pistes à vérifier avant `request_source` |
+| `web_research(query, limit)` | cherche le **contexte historique** (personne, date, lieu, technologie, histoire de l'usine) en texte ; **jamais une image ni une source**, **4 recherches max**, extraits de pages bornés |
 | `catalog_search(query, limit)` | interroge la meta API **dans le périmètre courant** uniquement ; **6 recherches max par session**, ensuite le tool refuse |
 
 Le compteur de recherches et les `asset_id` déjà vus sont **persistés dans la tâche** : une reprise après attente de source ou redémarrage ne remet ni le budget à zéro ni la provenance à blanc.
