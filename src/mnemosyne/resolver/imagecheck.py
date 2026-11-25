@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import io
 import ipaddress
+import time
 from typing import Any
 
 import httpx
@@ -24,6 +25,10 @@ IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "TIFF", "BMP", "AVIF", "HEIF"}
 _THUMB_HINTS = ("thumb", "thumbnail", "preview", "vignette", "sprite", "logo")
 _RETRY_STATUS = {403, 429, 500, 502, 503, 504}
 _MAX_ATTEMPTS = 3
+#: After a 403, stop hammering the same host for a while (burst protection).
+_HOST_BLOCK_UNTIL: dict[str, float] = {}
+_HOST_BLOCK_SECONDS = 600
+
 #: Standard image-fetch UA. It names the project: not a stealth/browser bypass.
 _IMAGE_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -150,6 +155,13 @@ async def inspect_image(
         result["hard_failures"].append("URL invalide : http(s) attendu")
         return result
 
+    host = (httpx.URL(normalized).host or "").lower()
+    if host and _HOST_BLOCK_UNTIL.get(host, 0.0) > time.monotonic():
+        result["hard_failures"].append(
+            "hôte temporairement bloqué après un 403 récent"
+        )
+        return result
+
     own_client = client is None
     if client is None:
         client = httpx.AsyncClient(
@@ -223,8 +235,12 @@ async def inspect_image(
             await client.aclose()
 
     if not success:
+        if last_error == "HTTP 403" and host:
+            _HOST_BLOCK_UNTIL[host] = time.monotonic() + _HOST_BLOCK_SECONDS
         result["hard_failures"].append(last_error or "échec de téléchargement")
         return result
+    if host:
+        _HOST_BLOCK_UNTIL.pop(host, None)
     if used_fallback:
         result["warnings"].append(
             f"URL de repli utilisée : {result['final_url']} "
