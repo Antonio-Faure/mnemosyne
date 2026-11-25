@@ -1,0 +1,36 @@
+id: deutsches_museum
+name: Deutsches Museum Digital (München)
+institution: Deutsches Museum, München
+country: DE
+protocol: rest
+base_url: https://digital.deutsches-museum.de/api
+auth: none
+license: varies
+rights: "Deutsches Museum Digital — droits par objet (dcterms:rights / dcterms:license) ; vérifier sur la fiche"
+rate_limit_per_s: 1.0
+priority: 45
+tags: [museum, germany, engineering, technology, mechanical, rest, keyless]
+seeds:
+  - "Zahnrad"
+  - "Getriebe"
+  - "Pfeilrad"
+  - "Transmission"
+  - "Dampfmaschine"
+  - "Werkzeugmaschine"
+  - "Automobil"
+  - "Stahl"
+notes: >-
+  Portail « Deutsches Museum Digital » (digital.deutsches-museum.de) construit
+  sur Omeka S : API REST JSON publique à `/api` (lecture anonyme des objets
+  publics), donc accès 100 % programmatique — aucun scraping HTML. Le connecteur
+  interroge `GET /api/items?search=<q>&per_page=<n>`, normalise les objets en
+  `Asset` et récupère une image téléchargeable (URL originale de la `o:media`
+  image, sinon la vignette « large »). Droits par objet via `dcterms:rights` /
+  `dcterms:license` (collection mixte : domaine public + Creative Commons) → la
+  licence de catalogue reste `varies`. Constat d'onboarding (novembre 2026) : le
+  portail était en travaux de maintenance (HTTP 502 « Aktuelle Wartungsarbeiten »)
+  — non vérifiable en direct sur cette IP à ce moment ; le connecteur suit l'API
+  Omeka S standard et sera revérifié par le Résolveur.
+extra:
+  api_base: https://digital.deutsches-museum.de/api
+  platform: omeka-s

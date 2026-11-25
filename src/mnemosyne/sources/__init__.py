@@ -9,6 +9,7 @@ from mnemosyne.sources.anmt import AnmtConnector
 from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.contentdm import ContentDmConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
+from mnemosyne.sources.deutsches_museum import DeutschesMuseumConnector
 from mnemosyne.sources.digital_commonwealth import DigitalCommonwealthConnector
 from mnemosyne.sources.digitalnz import DigitalNzConnector
 from mnemosyne.sources.dpla import DplaConnector
@@ -43,6 +44,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "carli": ContentDmConnector,
     "cleveland": ClevelandConnector,
     "cooper_hewitt": CooperHewittConnector,
+    "deutsches_museum": DeutschesMuseumConnector,
     "digital_commonwealth": DigitalCommonwealthConnector,
     "digitalnz": DigitalNzConnector,
     "dpla": DplaConnector,

@@ -19,10 +19,10 @@ navigateur la demande ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **69**
-- Sources actives : **56**
+- Sources déclarées : **70**
+- Sources actives : **57**
 - Sources désactivées : **13**
-## Sources actives (56)
+## Sources actives (57)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier sur la fiche |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier sur la fiche (conditions Deutsche Fotothek) |
@@ -36,6 +36,7 @@ navigateur la demande ; la référence est stockée dans le descripteur sous
 | cleveland | Cleveland Museum of Art — Open Access | Cleveland Museum of Art | US | rest | none | CC0-1.0 | CC0 1.0 Universal (images) ; œuvres sous-jacentes dans le domaine public |
 | colenda | Colenda Digital Repository (Penn Libraries) | University of Pennsylvania Libraries — rightsstatements.org sur la fiche (majorité domaine public / No Copyright) ; manifeste unique sur la fiche (pas de Collection IIIF) |
 | cooper_hewitt | Cooper Hewitt, Smithsonian Design Museum — Collections | Cooper Hewitt, Smithsonian Design Museum | US | rest | none | CC0-1.0 | Cooper Hewitt / Smithsonian Open Access — API GraphQL publique sans clé ; médias marqués `multimedia[].cc0 = true` en CC0 1.0 Universal ; seuls les médias CC0 porteurs d'une URL sont moissonnés ; rate limit anonyme (~30/min, HTTP 429 + Retry-After) |
+| deutsches_museum | Deutsches Museum Digital (München) | Deutsches Museum, München | DE | rest | none | varies | Deutsches Museum Digital — API Omeka S publique (`/api/items?search=<q>&per_page=<n>`) ; image téléchargeable via l'URL originale de la `o:media` image (sinon vignette « large ») ; droits par objet (dcterms:rights / dcterms:license), collection mixte domaine public + Creative Commons ; vérifier sur la fiche ; aucun scraping HTML |
 | dpla | Digital Public Library of America | Digital Public Library of America | US | rest | api_key | varies | Sur la fiche ; agrégateur US (équivalent d'Européana), vérifier `rights` et l'institution ; recherche `/v2/items` (correctif 2026-11-08) |
 | digital_commonwealth | Digital Commonwealth — Massachusetts Collections | Digital Commonwealth (Massachusetts) | US | rest | none | PDM-1.0 | Digital Commonwealth — API Blacklight JSON publique sans clé (digitalcommonwealth.org/search.json) ; ne conserver que les fiches explicitement ouvertes (`reuse_allowed_ssi` == « no restrictions » / `rights_ss` « No known copyright restrictions » / CC0) ; images via IIIF (iiif.digitalcommonwealth.org, !1200/!400) ; aucune image téléchargée |
 | digitalnz | DigitalNZ — Te Puna Mātauranga o Aotearoa | National Library of New Zealand | NZ | rest | none | varies | DigitalNZ (Te Puna Mātauranga o Aotearoa) — API REST officielle v3 sans clé (api.digitalnz.org/v3/records.json) ; recherche `text` + `and[category][]=Images` + `and[usage][]=Use commercially` + `per_page` (≤ 100) + `page` (1-based) ; filtre sur la fiche : usage commercial (`usage` contient « Use commercially » ; `is_commercial_use` souvent `null` — seul un `false` explicite disqualifie) et image http(s) obligatoire (`large_thumbnail_url` sinon `thumbnail_url`, sinon fiche ignorée) ; droits explicites sur la fiche (PD / No known copyright / out of copyright / CC0 / CC BY acceptés ; Some/All rights reserved, Copyright must be cleared, CC BY-NC/ND rejetés) ; aucune image téléchargée, aucun scraping HTML, pagination bornée |
