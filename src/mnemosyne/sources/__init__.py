@@ -29,6 +29,7 @@ from mnemosyne.sources.nasa import NasaConnector
 from mnemosyne.sources.nb_no import NbNoConnector
 from mnemosyne.sources.openverse import OpenverseConnector
 from mnemosyne.sources.pop import PopConnector
+from mnemosyne.sources.science_museum_group import ScienceMuseumGroupConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
 from mnemosyne.sources.texas_history import TexasHistoryConnector
 from mnemosyne.sources.wikidata import WikidataConnector
@@ -63,6 +64,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
     "scdl": ContentDmConnector,
+    "science_museum_group": ScienceMuseumGroupConnector,
     "smithsonian": SmithsonianConnector,
     "texas_history": TexasHistoryConnector,
     "teva": ContentDmConnector,
