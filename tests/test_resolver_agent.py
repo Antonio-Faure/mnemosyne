@@ -499,6 +499,7 @@ def test_record_illustration_records_the_exact_image_and_result(config, monkeypa
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        provider._catalog_asset_ids.add("asset-photo")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         params = RecordIllustrationParams(
             image_url="https://example.org/photo.jpg#frag",
@@ -542,6 +543,7 @@ def test_record_illustration_refuses_a_reused_image(config, monkeypatch):
         db.set_task_status(second, "running", agent="resolver")
         for task_id, asset in ((first, "asset-a"), (second, "asset-b")):
             provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+            provider._catalog_asset_ids.add(asset)
             tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
             params = RecordIllustrationParams(
                 image_url="https://example.org/same.jpg",
@@ -600,6 +602,7 @@ def test_record_illustration_refusal_carries_the_reason(config, monkeypatch):
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        provider._catalog_asset_ids.add("asset-page")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         result = asyncio.run(
             tools["record_illustration"].executor(
@@ -608,6 +611,7 @@ def test_record_illustration_refusal_carries_the_reason(config, monkeypatch):
                     sentence="In 1914, Belgium was invaded.",
                     context="contexte",
                     image_context="une page",
+                    asset_id="asset-page",
                 )
             )
         )
@@ -628,6 +632,7 @@ def test_no_match_clears_a_provisional_illustration(config, monkeypatch):
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        provider._catalog_asset_ids.add("asset-photo")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         recorded = asyncio.run(
             tools["record_illustration"].executor(
@@ -636,6 +641,7 @@ def test_no_match_clears_a_provisional_illustration(config, monkeypatch):
                     sentence="In 1914, Belgium was invaded.",
                     context="contexte",
                     image_context="troupes",
+                    asset_id="asset-photo",
                 )
             )
         )
@@ -666,6 +672,7 @@ def test_pending_operator_question_writes_nothing(config):
             [{"label": "Oui"}, {"label": "Non"}],
         )
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        provider._catalog_asset_ids.add("asset-photo")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         result = asyncio.run(
             tools["record_illustration"].executor(
@@ -674,6 +681,7 @@ def test_pending_operator_question_writes_nothing(config):
                     sentence="In 1914, Belgium was invaded.",
                     context="contexte",
                     image_context="troupes",
+                    asset_id="asset-photo",
                 )
             )
         )
@@ -866,3 +874,30 @@ def test_bing_rss_parser_returns_results():
 def test_bing_rss_parser_rejects_garbage():
     assert _parse_bing_rss("<html>not rss</html>") == []
     assert _parse_bing_rss("<rss><channel></channel></rss>") == []
+
+
+def test_record_illustration_refuses_an_image_not_seen_in_catalog(config):
+    """A web result is not image provenance: the asset must come from catalog_search."""
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/web-image.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="image trouvée sur le web",
+                    asset_id="asset-from-source-search",
+                )
+            )
+        )
+        assert result.success is False
+        assert "provenance manquante" in result.content
+        assert "source_search" in result.content
+        assert db.get_resolver_illustration_for_task(task_id) is None
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()

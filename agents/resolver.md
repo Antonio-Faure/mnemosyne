@@ -103,9 +103,11 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    `record_result` ne sert qu'à `no_match` ou `ambiguous` : pour un
    `match`/`partial`, c'est `record_illustration` qui enregistre le verdict.
 6. **Si aucune image n'est défendable** : cherche d'abord **la source** sur
-   internet avec `web_search` (maximum 4 recherches) — archive, musée, API ou
-   catalogue IIIF qui couvre le trou de couverture (période, lieu, type
-   d'image). Vérifie le nom, l'URL et ce que le site expose. Puis appelle
+   internet avec `source_search` (maximum 4 recherches) — archive, musée, API
+   ou catalogue IIIF qui couvre le trou de couverture (période, lieu, type
+   d'image). **Ce tool ne sert jamais à trouver une image** : ne récupère
+   aucune image sur le web et ne passe jamais une URL d'image trouvée ainsi à
+   `record_illustration`. Vérifie le nom, l'URL et ce que le site expose. Puis appelle
    `request_source` **une fois par source trouvée**, autant que nécessaire, avec
    un `source_id` stable, un nom, une raison et une URL d'API/docs. Tu peux
    demander à l'Atelier d'utiliser `coder` (API publique) ou `browser`
