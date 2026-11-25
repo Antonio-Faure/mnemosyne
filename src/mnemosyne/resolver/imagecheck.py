@@ -8,6 +8,7 @@ can actually look at.
 
 from __future__ import annotations
 
+import asyncio
 import io
 from typing import Any
 
@@ -21,6 +22,49 @@ log = get_logger("resolver.image")
 
 IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "TIFF", "BMP", "AVIF", "HEIF"}
 _THUMB_HINTS = ("thumb", "thumbnail", "preview", "vignette", "sprite", "logo")
+_RETRY_STATUS = {403, 429, 500, 502, 503, 504}
+_MAX_ATTEMPTS = 3
+
+
+def _referer_for(url: str, page_url: str | None = None) -> str | None:
+    """A Referer is not a bypass: institutions use it as a normal hotlink check."""
+    if page_url:
+        return page_url
+    try:
+        host = (httpx.URL(url).host or "").lower()
+    except (httpx.InvalidURL, ValueError):
+        return None
+    if "gallica.bnf.fr" in host:
+        return "https://gallica.bnf.fr/"
+    if "wikimedia.org" in host:
+        return "https://commons.wikimedia.org/"
+    return None
+
+
+def _fallback_url(url: str) -> str | None:
+    """A smaller/official variant of the same image, for hosts that refuse one URL.
+
+    This is not a mirror or a bypass: it stays on the institution's own server
+    and asks for a documented IIIF size (Gallica) or the official file path
+    (Wikimedia Commons).
+    """
+    try:
+        parsed = httpx.URL(url)
+    except (httpx.InvalidURL, ValueError):
+        return None
+    host = (parsed.host or "").lower()
+    if "gallica.bnf.fr" in host and "/full/full/0/native.jpg" in url:
+        return url.replace("/full/full/0/native.jpg", "/full/1024,/0/default.jpg")
+    if "upload.wikimedia.org" in host and "/wikipedia/commons/" in url:
+        clean = url.split("?", 1)[0].split("#", 1)[0]
+        marker = "https://upload.wikimedia.org/wikipedia/commons/"
+        if clean.startswith(marker) and "/thumb/" not in clean:
+            filename = clean[len(marker):].rsplit("/", 1)[-1]
+            return (
+                "https://commons.wikimedia.org/wiki/Special:FilePath/"
+                f"{filename}?width=1280"
+            )
+    return None
 
 
 def normalise_image_url(url: str) -> str:
@@ -60,6 +104,7 @@ async def inspect_image(
     warn_bytes: int = 20000,
     max_fetch_bytes: int = 8_000_000,
     preview: bool = True,
+    referer: str | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     """Fetch and inspect an image URL; return metadata, quality flags and preview.
@@ -96,28 +141,75 @@ async def inspect_image(
             },
         )
     data = bytearray()
+    candidates = [normalized]
+    fallback = _fallback_url(normalized)
+    if fallback and fallback != normalized:
+        candidates.append(fallback)
+    headers = {
+        "Range": f"bytes=0-{max(0, max_fetch_bytes - 1)}",
+        "Accept": "image/*, */*;q=0.5",
+    }
+    referer_value = _referer_for(normalized, referer)
+    if referer_value:
+        headers["Referer"] = referer_value
+    success = False
+    last_error: str | None = None
+    used_fallback = False
     try:
-        headers = {"Range": f"bytes=0-{max(0, max_fetch_bytes - 1)}"}
-        async with client.stream("GET", normalized, headers=headers) as response:
-            result["final_url"] = str(response.url)
-            content_type = (response.headers.get("content-type") or "").split(";")[0]
-            result["content_type"] = content_type.strip() or None
-            content_length = response.headers.get("content-length")
-            if content_length and content_length.isdigit():
-                result["image_bytes"] = int(content_length)
-            if response.status_code >= 400:
-                result["hard_failures"].append(f"HTTP {response.status_code}")
-                return result
-            async for chunk in response.aiter_bytes():
-                data.extend(chunk)
-                if len(data) >= max_fetch_bytes:
+        for candidate in candidates:
+            for attempt in range(_MAX_ATTEMPTS):
+                data.clear()
+                retryable = False
+                attempt_limit = _MAX_ATTEMPTS
+                try:
+                    async with client.stream("GET", candidate, headers=headers) as response:
+                        result["final_url"] = str(response.url)
+                        content_type = (response.headers.get("content-type") or "").split(";")[0]
+                        result["content_type"] = content_type.strip() or None
+                        if response.status_code >= 400:
+                            last_error = f"HTTP {response.status_code}"
+                            retryable = response.status_code in _RETRY_STATUS
+                            if response.status_code == 403:
+                                # A denial gets one polite retry, not three.
+                                attempt_limit = 2
+                        else:
+                            content_length = response.headers.get("content-length")
+                            if content_length and content_length.isdigit():
+                                result["image_bytes"] = int(content_length)
+                            async for chunk in response.aiter_bytes():
+                                data.extend(chunk)
+                                if len(data) >= max_fetch_bytes:
+                                    break
+                            success = True
+                            used_fallback = candidate != normalized
+                            break
+                except (httpx.HTTPError, ValueError) as exc:
+                    last_error = str(exc) or type(exc).__name__
+                    retryable = True
+                if not retryable or attempt + 1 >= attempt_limit:
                     break
-    except (httpx.HTTPError, ValueError) as exc:
-        result["hard_failures"].append(str(exc) or type(exc).__name__)
-        return result
+                log.debug(
+                    "image fetch %s failed (%s), retry %d/%d",
+                    candidate,
+                    last_error,
+                    attempt + 1,
+                    _MAX_ATTEMPTS,
+                )
+                await asyncio.sleep(min(1.5 * (2**attempt), 8.0))
+            if success:
+                break
     finally:
         if own_client:
             await client.aclose()
+
+    if not success:
+        result["hard_failures"].append(last_error or "échec de téléchargement")
+        return result
+    if used_fallback:
+        result["warnings"].append(
+            f"URL de repli utilisée : {result['final_url']} "
+            "(même image, variante servie par l'institution)"
+        )
 
     raw = bytes(data)
     if result["image_bytes"] is None:

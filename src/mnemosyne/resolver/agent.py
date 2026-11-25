@@ -764,6 +764,9 @@ class ResolverToolProvider(ToolProvider):
                 )
             image_url = normalise_image_url(p.image_url)
             checked = self._image_cache.get(image_url)
+            if checked is not None and not checked.get("ok"):
+                # A transient 403 must stay retryable: never serve a cached failure.
+                checked = None
             if checked is None:
                 checked = await inspect_image(
                     image_url,
@@ -772,8 +775,10 @@ class ResolverToolProvider(ToolProvider):
                     min_bytes=self.config.resolver.min_image_bytes,
                     max_fetch_bytes=self.config.resolver.inspect_max_bytes,
                     preview=True,
+                    referer=p.page_url,
                 )
-                self._image_cache[image_url] = checked
+                if checked.get("ok"):
+                    self._image_cache[image_url] = checked
             if not checked.get("ok"):
                 reasons = checked.get("hard_failures") or ["inconnue"]
                 if checked.get("warnings"):
