@@ -55,9 +55,10 @@ WAITING_LABELS = {
     "sources": "Sources",
     "email": "E-mail",
     "access": "Accès",
+    "message": "Reprise",
 }
 
-WAITING_ORDER = ("operator", "sources", "email", "access")
+WAITING_ORDER = ("operator", "sources", "email", "access", "message")
 RESOLVER_DONE_ORDER = ("match", "partial", "no_match", "ambiguous")
 RESOLVER_FAILED_ORDER = ("technique", "budget", "cancelled")
 MISSION_DONE_ORDER = ("source_added", "already_covered", "refused", "no_source")
@@ -233,6 +234,14 @@ def _mission_waiting(
                 "detail": "accès à obtenir",
             }
         )
+    if db.task_message_count(int(task["id"])):
+        waiting.append(
+            {
+                "type": "message",
+                "label": WAITING_LABELS["message"],
+                "detail": "message en attente dans la boîte",
+            }
+        )
     return waiting, (waiting[0]["type"] if waiting else None)
 
 
@@ -301,6 +310,7 @@ def _mission_resolutions(
         if status == "running" and (
             db.pending_asks_for(int(task_id))
             or db.pending_resolver_requests(int(task_id))
+            or db.task_message_count(int(task_id))
         ):
             status = "waiting"
         out.append(
@@ -413,6 +423,14 @@ def _resolver_card(
                 "type": "sources",
                 "label": WAITING_LABELS["sources"],
                 "detail": " ; ".join(detail_parts),
+            }
+        )
+    if db.task_message_count(int(task["id"])):
+        waiting.append(
+            {
+                "type": "message",
+                "label": WAITING_LABELS["message"],
+                "detail": "message en attente dans la boîte",
             }
         )
 
