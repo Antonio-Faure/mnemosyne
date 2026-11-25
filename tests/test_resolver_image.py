@@ -207,3 +207,10 @@ async def test_inspect_image_uses_the_institution_fallback_url(monkeypatch):
     assert "1024" in result["final_url"]
     assert any("repli" in warning for warning in result["warnings"])
     assert len(calls) == 3
+
+
+@pytest.mark.asyncio
+async def test_inspect_image_refuses_a_private_host():
+    result = await inspect_image("http://127.0.0.1/secret.jpg")
+    assert result["ok"] is False
+    assert "URL invalide" in result["hard_failures"][0]

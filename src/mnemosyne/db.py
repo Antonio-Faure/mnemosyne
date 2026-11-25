@@ -1195,14 +1195,57 @@ class Database:
             return cur.rowcount
 
     def prune_done_jobs(self, before_iso: str) -> int:
-        """Delete finished jobs scheduled before `before_iso` (keep the table small)."""
+        """Delete finished jobs **and their job sessions/events**.
+
+        Keeping the job rows small is not enough: the observatory sessions and
+        their events are the real weight (20 MB of events on 2026-11-25).
+        """
         with self._lock:
+            rows = self._conn.execute(
+                "SELECT id FROM jobs WHERE state = ? AND run_at < ?",
+                (JobState.DONE.value, before_iso),
+            ).fetchall()
+            job_ids = [int(row["id"]) for row in rows]
+            self._delete_job_sessions(job_ids)
             cur = self._conn.execute(
                 "DELETE FROM jobs WHERE state = ? AND run_at < ?",
                 (JobState.DONE.value, before_iso),
             )
             self._conn.commit()
+            self._prune_orphan_job_sessions_locked()
             return cur.rowcount
+
+    def _delete_job_sessions(self, job_ids: list[int]) -> None:
+        """Delete job sessions/events for the given job ids (lock held)."""
+        if not job_ids:
+            return
+        session_ids = [f"job:{job_id}" for job_id in job_ids]
+        placeholders = ",".join("?" for _ in session_ids)
+        self._conn.execute(
+            f"DELETE FROM events WHERE session_id IN ({placeholders})", session_ids
+        )
+        self._conn.execute(
+            f"DELETE FROM sessions WHERE id IN ({placeholders})", session_ids
+        )
+
+    def _prune_orphan_job_sessions_locked(self) -> int:
+        """Delete job sessions whose job row no longer exists (lock held)."""
+        rows = self._conn.execute(
+            "SELECT id FROM sessions WHERE family = 'job' AND id LIKE 'job:%' "
+            "AND CAST(SUBSTR(id, 5) AS INTEGER) NOT IN (SELECT id FROM jobs)"
+        ).fetchall()
+        session_ids = [str(row["id"]) for row in rows]
+        if not session_ids:
+            return 0
+        placeholders = ",".join("?" for _ in session_ids)
+        self._conn.execute(
+            f"DELETE FROM events WHERE session_id IN ({placeholders})", session_ids
+        )
+        self._conn.execute(
+            f"DELETE FROM sessions WHERE id IN ({placeholders})", session_ids
+        )
+        self._conn.commit()
+        return len(session_ids)
 
     def count_jobs(self, state: JobState | None = None) -> int:
         with self._lock:

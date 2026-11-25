@@ -296,7 +296,8 @@ class EmailConfig(BaseModel):
 class ResolverConfig(BaseModel):
     """Adversarial sentence -> archive-image resolver (second permanent loop)."""
 
-    enabled: bool = True
+    #: Off by default: the resolver spends tokens and must be armed explicitly.
+    enabled: bool = False
     model: str = "deepseek-v4.1-flash"
     max_turns: int = 120
     interval_s: int = 60

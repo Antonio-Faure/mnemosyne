@@ -303,15 +303,25 @@ class ResolverToolProvider(ToolProvider):
 
     def _load_progress(self) -> None:
         payload = self._payload()
-        #: Hard caps and provenance survive a pause/restart: a resumed task
-        #: must not get six fresh searches and forget the assets it already saw.
+        #: Hard caps, provenance and the narrowed perimeter survive a
+        #: pause/restart: a resumed task must not get six fresh searches, forget
+        #: the assets it saw or silently re-open every source.
         self._search_calls = int(payload.get("_search_calls") or 0)
         self._source_search_calls = int(payload.get("_source_search_calls") or 0)
-        self._catalog_asset_ids = {
-            str(asset_id)
-            for asset_id in (payload.get("_catalog_asset_ids") or [])
-            if asset_id
+        self._catalog_assets = {
+            str(asset_id): {
+                "image_url": str(meta.get("image_url") or ""),
+                "thumbnail_url": str(meta.get("thumbnail_url") or ""),
+                "page_url": str(meta.get("page_url") or ""),
+                "source_id": str(meta.get("source_id") or ""),
+            }
+            for asset_id, meta in (payload.get("_catalog_assets") or {}).items()
+            if isinstance(meta, dict)
         }
+        scope = payload.get("_source_scope")
+        self._source_scope = (
+            {str(source_id) for source_id in scope} if isinstance(scope, list) else None
+        )
 
     def _save_progress(self) -> None:
         if self.task_id is None:
@@ -319,7 +329,10 @@ class ResolverToolProvider(ToolProvider):
         payload = self._payload()
         payload["_search_calls"] = self._search_calls
         payload["_source_search_calls"] = self._source_search_calls
-        payload["_catalog_asset_ids"] = sorted(self._catalog_asset_ids)
+        payload["_catalog_assets"] = self._catalog_assets
+        payload["_source_scope"] = (
+            sorted(self._source_scope) if self._source_scope is not None else None
+        )
         self.db.update_task_payload(self.task_id, payload)
 
     async def __aenter__(self):
@@ -408,9 +421,8 @@ class ResolverToolProvider(ToolProvider):
                     "choisis le meilleur candidat déjà vu, ou termine par "
                     "record_result(no_match) / record_result(ambiguous)."
                 )
-            self._search_calls += 1
-            self._save_progress()
-            attempt = f"recherche {self._search_calls}/{MAX_CATALOG_SEARCHES}"
+            attempt_number = self._search_calls + 1
+            attempt = f"recherche {attempt_number}/{MAX_CATALOG_SEARCHES}"
             engine = Engine(self.config)
             try:
                 assets = await engine.search(
@@ -421,6 +433,10 @@ class ResolverToolProvider(ToolProvider):
             finally:
                 await engine.aclose()
                 engine.db.close()
+            # Only a completed attempt consumes the budget: a network failure
+            # must not burn one of the six searches.
+            self._search_calls = attempt_number
+            self._save_progress()
             where = (
                 f"le périmètre ({len(scope)} source(s))"
                 if scope is not None
@@ -428,11 +444,20 @@ class ResolverToolProvider(ToolProvider):
             )
             if not assets:
                 return _ok(f"{attempt} — aucun résultat pour {p.query!r} dans {where}.")
-            self._catalog_asset_ids.update(asset.id for asset in assets)
-            self._save_progress()
             ranked = rank_assets(p.query, assets)
             rows = [_compact_row(asset) for asset in ranked[:_MAX_ROWS]]
             shown = _fit_rows(rows)
+            for row in shown:
+                asset_id = str(row.get("asset_id") or "")
+                if not asset_id:
+                    continue
+                self._catalog_assets[asset_id] = {
+                    "image_url": str(row.get("image_url") or ""),
+                    "thumbnail_url": str(row.get("thumbnail_url") or ""),
+                    "page_url": str(row.get("page_url") or ""),
+                    "source_id": str(row.get("source_id") or ""),
+                }
+            self._save_progress()
             header = (
                 f"{attempt} — {len(assets)} résultat(s) — {len(shown)} meilleurs "
                 f"candidats par pertinence (titres/dates), {where}."
@@ -480,6 +505,7 @@ class ResolverToolProvider(ToolProvider):
                     current.add(source_id)
                     turned_on.append(source_id)
             self._source_scope = current
+            self._save_progress()
             changes: list[str] = []
             if turned_on:
                 changes.append("activée(s) : " + ", ".join(turned_on))
@@ -503,13 +529,14 @@ class ResolverToolProvider(ToolProvider):
                     "utilise les pistes déjà trouvées pour demander une source "
                     "avec request_source, ou abstiens-toi."
                 )
-            self._source_search_calls += 1
-            self._save_progress()
-            attempt = f"recherche de source {self._source_search_calls}/{MAX_SOURCE_SEARCHES}"
+            attempt_number = self._source_search_calls + 1
+            attempt = f"recherche de source {attempt_number}/{MAX_SOURCE_SEARCHES}"
             try:
                 results = await _bing_search(p.query, limit=p.limit)
             except Exception as exc:  # noqa: BLE001 - a search failure is recoverable
                 return _fail(f"{attempt} — recherche web impossible : {exc}")
+            self._source_search_calls = attempt_number
+            self._save_progress()
             if not results:
                 return _ok(f"{attempt} — aucun résultat web pour {p.query!r}.")
             lines = [
@@ -701,8 +728,11 @@ class ResolverToolProvider(ToolProvider):
                 same_family = requested_id.startswith(f"{existing_id}_") or existing_id.startswith(
                     f"{requested_id}_"
                 )
-                if (same_family and not p.specialisation) or _same_source(
-                    wanted, _name_tokens(descriptor.id, descriptor.name)
+                if (same_family and not p.specialisation) or (
+                    not p.specialisation
+                    and _same_source(
+                        wanted, _name_tokens(descriptor.id, descriptor.name)
+                    )
                 ):
                     if not descriptor.enabled:
                         return _fail(
@@ -809,13 +839,35 @@ class ResolverToolProvider(ToolProvider):
                     f"(#{pending[0]['id']}) : attends sa réponse avant "
                     "d'enregistrer une illustration."
                 )
-            if p.asset_id not in self._catalog_asset_ids:
+            asset = self._catalog_assets.get(p.asset_id)
+            if asset is None:
                 return _fail(
-                    "provenance manquante : l'image doit venir d'un résultat "
-                    "catalog_search de cette session (asset_id). source_search "
-                    "sert uniquement à trouver des sources, jamais des images."
+                    "provenance manquante : cet asset_id n'était pas dans les "
+                    "résultats affichés par catalog_search. Utilise l'image_url "
+                    "ou la thumbnail_url de la fiche ; source_search ne fournit "
+                    "jamais une image."
                 )
             image_url = normalise_image_url(p.image_url)
+            allowed_images = {
+                normalise_image_url(asset.get("image_url") or ""),
+                normalise_image_url(asset.get("thumbnail_url") or ""),
+            }
+            allowed_images.discard("")
+            if image_url not in allowed_images:
+                return _fail(
+                    "l'URL ne correspond pas à l'asset : utilise exactement "
+                    "l'image_url (ou la thumbnail_url) de la fiche catalog_search."
+                )
+            expected_thumb = normalise_image_url(asset.get("thumbnail_url") or "")
+            if p.thumbnail_url and (
+                not expected_thumb
+                or normalise_image_url(p.thumbnail_url) != expected_thumb
+            ):
+                return _fail(
+                    "la thumbnail_url ne correspond pas à cet asset : reprends "
+                    "celle de la fiche catalog_search."
+                )
+            referer = asset.get("page_url") or p.page_url
             checked = self._image_cache.get(image_url)
             if checked is not None and not checked.get("ok"):
                 # A transient 403 must stay retryable: never serve a cached failure.
@@ -828,7 +880,7 @@ class ResolverToolProvider(ToolProvider):
                     min_bytes=self.config.resolver.min_image_bytes,
                     max_fetch_bytes=self.config.resolver.inspect_max_bytes,
                     preview=True,
-                    referer=p.page_url,
+                    referer=referer,
                 )
                 if checked.get("ok"):
                     self._image_cache[image_url] = checked
@@ -846,7 +898,7 @@ class ResolverToolProvider(ToolProvider):
                             min_bytes=self.config.resolver.min_image_bytes,
                             max_fetch_bytes=self.config.resolver.inspect_max_bytes,
                             preview=True,
-                            referer=p.page_url,
+                            referer=referer,
                         )
                         if thumb_checked.get("ok"):
                             self._image_cache[thumb] = thumb_checked
@@ -906,8 +958,8 @@ class ResolverToolProvider(ToolProvider):
                     source_key=source_key,
                     source_kind=source_kind,
                     asset_id=p.asset_id,
-                    page_url=p.page_url,
-                    source_id=p.source_id,
+                    page_url=asset.get("page_url") or p.page_url,
+                    source_id=asset.get("source_id") or p.source_id,
                     content_type=checked.get("content_type"),
                     image_format=checked.get("image_format"),
                     width=checked.get("width"),
@@ -960,6 +1012,8 @@ class ResolverToolProvider(ToolProvider):
         async def record_result_exec(p: RecordResultParams):
             if self.task_id is None:
                 return _fail("aucune session resolver ouverte")
+            illustration = None
+            asset_id = None
             if p.status in ("match", "partial"):
                 pending = self.db.pending_asks_for(self.task_id)
                 if pending:
@@ -970,12 +1024,24 @@ class ResolverToolProvider(ToolProvider):
                         f"(#{pending[0]['id']}) : attends sa réponse avant "
                         "d'enregistrer un match/partial."
                     )
-                if self.db.get_resolver_illustration_for_task(self.task_id) is None:
+                illustration = self.db.get_resolver_illustration_for_task(self.task_id)
+                if illustration is None:
                     return _fail(
                         "aucune illustration enregistrée : utilise "
                         "`record_illustration` avec l'URL exacte de l'image, la "
                         "phrase, le contexte, le contexte de l'image, puis "
                         "`record_result` pour le verdict."
+                    )
+                asset_id = str(illustration.get("asset_id") or "")
+                if not asset_id:
+                    return _fail(
+                        "l'illustration n'a pas d'asset_id : réenregistre-la avec "
+                        "`record_illustration` avant le verdict."
+                    )
+                if p.asset_id and str(p.asset_id) != asset_id:
+                    return _fail(
+                        f"asset_id incohérent : l'illustration est l'asset "
+                        f"`{asset_id}`, pas `{p.asset_id}`. Utilise le même asset."
                     )
             try:
                 if p.status in ("no_match", "ambiguous"):
@@ -984,7 +1050,7 @@ class ResolverToolProvider(ToolProvider):
                     self.task_id,
                     segment_id=self._segment_id(),
                     status=p.status,
-                    asset_id=p.asset_id,
+                    asset_id=asset_id,
                     evidence=p.evidence[:4000],
                 )
             except Exception as exc:  # noqa: BLE001

@@ -150,3 +150,40 @@ def test_atelier_board_groups_missions_and_resolutions(config):
         assert card["waiting_on"] == "email"
     finally:
         db.close()
+
+
+def test_done_mission_with_failed_request_is_not_source_added(config):
+    db = _db(config)
+    try:
+        resolver = _resolver_task(db, "Une phrase.", "yt_v_1")
+        mission = _mission(db, "source_absente")
+        db.set_task_status(mission, "done", agent="coder", note="Mission terminée.")
+        db.create_resolver_request(
+            resolver,
+            sentence_id="yt_v_1",
+            source_id="source_absente",
+            source_name="Source absente",
+            agent_task_id=mission,
+        )
+        db.complete_resolver_requests_for_agent_task(
+            mission, status="failed", note="source absente du catalogue"
+        )
+        board = build_board(db, "atelier")
+        card = next(card for card in board["cards"] if card["task_id"] == mission)
+        assert card["outcome"] != "source_added"
+        assert card["outcome"] == "no_source"
+    finally:
+        db.close()
+
+
+def test_review_is_terminal_and_atelier_shows_missions_without_request(config):
+    db = _db(config)
+    try:
+        task_id = db.enqueue_task("coder", "Mission technique sans source")
+        db.set_task_status(task_id, "review", agent="coder")
+        board = build_board(db, "atelier")
+        card = next(card for card in board["cards"] if card["task_id"] == task_id)
+        assert card["column"] == "done"
+        assert card["outcome"] == "review"
+    finally:
+        db.close()

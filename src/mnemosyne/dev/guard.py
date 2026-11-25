@@ -47,7 +47,8 @@ def normalize_rel(path: str) -> str:
         else:
             parts.append(part)
     if not parts:
-        raise DevGuardError(f"invalid path: {path}")
+        # "." / "./" is the repository root (list/grep), never a writable target.
+        return ""
     return "/".join(parts)
 
 
@@ -84,6 +85,10 @@ def check_readable(path: str, deny: list[str]) -> str:
     rel = normalize_rel(path)
     if rel == ".env" or rel.endswith(".env") or rel.endswith(".key") or rel.endswith(".enc"):
         raise DevGuardError(f"reading '{rel}' is forbidden")
+    # AGENTS.md is a read-only project instruction file: the coder prompt tells
+    # the agent to read it, while writes remain blocked by the write allowlist.
+    if rel == "AGENTS.md":
+        return rel
     if _hits(rel, deny):
         raise DevGuardError(f"reading '{rel}' is forbidden")
     return rel

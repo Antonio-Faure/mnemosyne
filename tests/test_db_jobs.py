@@ -127,3 +127,33 @@ def test_renew_own_jobs_only_touches_our_claims(config):
     assert refreshed != stale
     assert untouched == stale
     db.close()
+
+
+def test_prune_done_jobs_removes_their_sessions_and_events(config):
+    db = _db(config)
+    try:
+        job_id = db.enqueue(Job(kind="journal", payload={"interval_s": 900}))
+        db.open_job_session(job_id, "journal")
+        db.add_event(f"job:{job_id}", "note", payload={"x": 1})
+        db.upsert_session(
+            "job:999999", family="job", type="verify", title="orphan", status="done"
+        )
+        db.add_event("job:999999", "note", payload={"x": 2})
+        with db._lock:
+            db._conn.execute(
+                "UPDATE jobs SET state = 'done', run_at = ? WHERE id = ?",
+                ("2020-01-01T00:00:00+00:00", job_id),
+            )
+            db._conn.commit()
+        db.prune_done_jobs("2030-01-01T00:00:00+00:00")
+        session_ids = [f"job:{job_id}", "job:999999"]
+        placeholders = ",".join("?" for _ in session_ids)
+        assert db._conn.execute(
+            f"SELECT COUNT(*) FROM sessions WHERE id IN ({placeholders})", session_ids
+        ).fetchone()[0] == 0
+        assert db._conn.execute(
+            f"SELECT COUNT(*) FROM events WHERE session_id IN ({placeholders})",
+            session_ids,
+        ).fetchone()[0] == 0
+    finally:
+        db.close()
