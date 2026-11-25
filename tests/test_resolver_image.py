@@ -9,7 +9,15 @@ import pytest
 from PIL import Image
 
 from mnemosyne.db import Database
+from mnemosyne.resolver import imagecheck
 from mnemosyne.resolver.imagecheck import inspect_image, normalise_image_url
+
+
+@pytest.fixture(autouse=True)
+def _clear_image_host_blocks():
+    imagecheck._HOST_BLOCK_UNTIL.clear()
+    yield
+    imagecheck._HOST_BLOCK_UNTIL.clear()
 
 
 def _png(width: int = 800, height: int = 600) -> bytes:
@@ -173,6 +181,13 @@ async def test_inspect_image_reports_a_persistent_403(monkeypatch):
     await client.aclose()
     assert result["ok"] is False
     assert "HTTP 403" in result["hard_failures"]
+    assert calls["n"] == 2
+    second = await inspect_image(
+        "https://example.org/photo.png", client=client, min_side=10, min_bytes=1
+    )
+    await client.aclose()
+    assert second["ok"] is False
+    assert "temporairement bloqué" in second["hard_failures"][0]
     assert calls["n"] == 2
 
 
