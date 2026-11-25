@@ -488,6 +488,12 @@ def _complete_resolver_dependencies(
         resolver = db.get_task(resolver_id)
         if resolver is None or resolver["status"] != "running":
             continue
+        # A new source means a fresh retest: reset the search budgets, but keep
+        # the assets already seen for provenance of earlier candidates.
+        payload = json.loads(resolver.get("payload") or "{}")
+        payload["_search_calls"] = 0
+        payload["_source_search_calls"] = 0
+        db.update_task_payload(resolver_id, payload)
         requests = db.resolver_requests(resolver_id)
         lines = [
             "[SOURCES READY]",

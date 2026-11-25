@@ -237,6 +237,9 @@ def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
     try:
         resolver_id = db.enqueue_task("resolver", "illustrate a sentence")
         db.set_task_status(resolver_id, "running", agent="resolver")
+        db.update_task_payload(
+            resolver_id, {"_search_calls": 6, "_source_search_calls": 4}
+        )
         source_task_id = db.enqueue_task(
             "browser", "add the missing source", payload={"kind": "resolver_source"}
         )
@@ -261,6 +264,9 @@ def test_closing_an_agent_task_wakes_the_parked_resolver(config, monkeypatch):
         request = db.resolver_requests(resolver_id)[0]
         assert request["status"] == "done"
         assert db.task_waiting_on_sources(resolver_id) is False
+        payload = __import__("json").loads(db.get_task(resolver_id)["payload"])
+        assert payload["_search_calls"] == 0
+        assert payload["_source_search_calls"] == 0
         wake = [
             message
             for message in db.list_messages()
