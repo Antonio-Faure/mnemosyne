@@ -1404,6 +1404,15 @@ class Database:
             row = self._conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         return dict(row) if row else None
 
+    def update_task_payload(self, task_id: int, payload: dict) -> None:
+        """Replace a task payload (resolver progress survives activations)."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE tasks SET payload = ? WHERE id = ?",
+                (json.dumps(payload), task_id),
+            )
+            self._conn.commit()
+
     def set_task_status(
         self,
         task_id: int,

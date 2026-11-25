@@ -299,14 +299,28 @@ class ResolverToolProvider(ToolProvider):
         self._image_cache: dict[str, dict[str, Any]] = {}
         # Search perimeter for this session. None = every enabled source.
         self._source_scope: set[str] | None = None
-        #: Hard cap so one sentence cannot scan the catalog forever.
-        self._search_calls = 0
-        #: Web searches only look for a source to request, not for images.
-        self._source_search_calls = 0
-        #: Asset ids actually returned by catalog_search in this session. An
-        #: image without one of these cannot be recorded: web pages are not
-        #: image provenance.
-        self._catalog_asset_ids: set[str] = set()
+        self._load_progress()
+
+    def _load_progress(self) -> None:
+        payload = self._payload()
+        #: Hard caps and provenance survive a pause/restart: a resumed task
+        #: must not get six fresh searches and forget the assets it already saw.
+        self._search_calls = int(payload.get("_search_calls") or 0)
+        self._source_search_calls = int(payload.get("_source_search_calls") or 0)
+        self._catalog_asset_ids = {
+            str(asset_id)
+            for asset_id in (payload.get("_catalog_asset_ids") or [])
+            if asset_id
+        }
+
+    def _save_progress(self) -> None:
+        if self.task_id is None:
+            return
+        payload = self._payload()
+        payload["_search_calls"] = self._search_calls
+        payload["_source_search_calls"] = self._source_search_calls
+        payload["_catalog_asset_ids"] = sorted(self._catalog_asset_ids)
+        self.db.update_task_payload(self.task_id, payload)
 
     async def __aenter__(self):
         return self._tools()
@@ -395,6 +409,7 @@ class ResolverToolProvider(ToolProvider):
                     "record_result(no_match) / record_result(ambiguous)."
                 )
             self._search_calls += 1
+            self._save_progress()
             attempt = f"recherche {self._search_calls}/{MAX_CATALOG_SEARCHES}"
             engine = Engine(self.config)
             try:
@@ -414,6 +429,7 @@ class ResolverToolProvider(ToolProvider):
             if not assets:
                 return _ok(f"{attempt} — aucun résultat pour {p.query!r} dans {where}.")
             self._catalog_asset_ids.update(asset.id for asset in assets)
+            self._save_progress()
             ranked = rank_assets(p.query, assets)
             rows = [_compact_row(asset) for asset in ranked[:_MAX_ROWS]]
             shown = _fit_rows(rows)
@@ -488,6 +504,7 @@ class ResolverToolProvider(ToolProvider):
                     "avec request_source, ou abstiens-toi."
                 )
             self._source_search_calls += 1
+            self._save_progress()
             attempt = f"recherche de source {self._source_search_calls}/{MAX_SOURCE_SEARCHES}"
             try:
                 results = await _bing_search(p.query, limit=p.limit)
