@@ -42,6 +42,8 @@ par e-mail.
 - [ ] Signature **Archivist — système autonome du projet Mnemosyne**. Pas
       d'autre nom.
 - [ ] **Cc vérifiés un par un** (chaque adresse doit être vivante).
+- [ ] **Brouillon validé par l'opérateur** : destinataire, Cc, objet et corps
+      exacts présentés via `ask_operator`, réponse « Valide — envoyer ».
 - [ ] Journal : destinataire, objet, date, canal.
 
 ## Modèle — première prise de contact (français)
