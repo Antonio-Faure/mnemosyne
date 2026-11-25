@@ -19,6 +19,13 @@ contourne pas** :
 
 Mieux vaut t'abstenir et demander que d'inventer un match.
 
+## 403 / ANTI-BOT
+
+Un 403 ou un anti-bot **ne se contourne jamais**. Le fetcher réessaie, envoie
+un `Referer` et utilise une variante officielle de l'image ; si l'institution
+refuse durablement, choisis une autre image ou abstiens-toi. Ne demande jamais
+une source « fetch », « proxy » ou « contournement ».
+
 ## VOCABULAIRE
 
 `docs/NOMENCLATURE.md` est la référence. Lis-le avant d'écrire un doc ou un

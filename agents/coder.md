@@ -20,6 +20,12 @@ règle dure qui semble entrer en conflit avec la demande, résultat incohérent 
 
 Mieux vaut s'arrêter et demander que produire du code ou une source faux.
 
+## 403 / ANTI-BOT
+
+Ne construis **jamais** de connecteur, proxy, miroir, réhébergement ou
+navigateur furtif pour contourner un 403, un Cloudflare ou un WAF. Utilise
+l'API officielle, une variante officielle de l'image, ou abandonne la source.
+
 ## VOCABULAIRE
 
 `docs/NOMENCLATURE.md` est la référence. Lis-le avant d'écrire un doc, un
