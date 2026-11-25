@@ -6,10 +6,8 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any
 
-import httpx
-
 from mnemosyne.http import HttpClient
-from mnemosyne.models import Asset, SourceDescriptor
+from mnemosyne.models import Asset, AuthKind, SourceDescriptor
 
 
 class Connector(ABC):
@@ -54,15 +52,19 @@ class Connector(ABC):
         }
 
     async def health(self) -> bool:
-        """Reachability probe; a server answering (even with a parameter error)
-        is alive, while 401/403/timeouts mean degraded."""
-        url = str(self.descriptor.base_url or "").strip()
-        if not url:
-            return False
-        try:
-            response = await self.http.get(url, accept="*/*")
-        except httpx.HTTPStatusError as exc:
-            return exc.response.status_code in (400, 405, 422)
-        except Exception:  # noqa: BLE001 - any network failure is degraded
-            return False
-        return response.status_code < 400
+        """Smoke-test the connector: one seed query, no exception = healthy.
+
+        A base_url probe was too pessimistic: many connectors use a search
+        endpoint that 400s without parameters, while a website root 403s even
+        though the API works. Testing the real code path is the honest check.
+        """
+        if self.descriptor.auth == AuthKind.API_KEY and not self.api_key(
+            self.descriptor.key_env or "API_KEY"
+        ):
+            raise RuntimeError("clé API absente")
+        seed = next(
+            (seed.strip() for seed in self.descriptor.seeds if seed.strip()),
+            "test",
+        )
+        await self.search(seed, limit=1)
+        return True
