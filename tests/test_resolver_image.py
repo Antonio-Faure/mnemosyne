@@ -124,3 +124,86 @@ def test_illustrations_are_unique_by_image_and_asset(config):
         assert db.get_resolver_illustration_for_task(1)["image_url"].endswith("c.jpg")
     finally:
         db.close()
+
+
+@pytest.mark.asyncio
+async def test_inspect_image_retries_a_transient_403(monkeypatch):
+    calls = {"n": 0}
+    payload = _png()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(403, headers={"content-type": "text/html"}, content=b"no")
+        return httpx.Response(
+            200,
+            headers={"content-type": "image/png", "content-length": str(len(payload))},
+            content=payload,
+        )
+
+    async def no_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr("mnemosyne.resolver.imagecheck.asyncio.sleep", no_sleep)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    result = await inspect_image(
+        "https://example.org/photo.png", client=client, min_side=10, min_bytes=10
+    )
+    await client.aclose()
+    assert result["ok"] is True
+    assert calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_inspect_image_reports_a_persistent_403(monkeypatch):
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(403, headers={"content-type": "text/html"}, content=b"no")
+
+    async def no_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr("mnemosyne.resolver.imagecheck.asyncio.sleep", no_sleep)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    result = await inspect_image(
+        "https://example.org/photo.png", client=client, min_side=10, min_bytes=1
+    )
+    await client.aclose()
+    assert result["ok"] is False
+    assert "HTTP 403" in result["hard_failures"]
+    assert calls["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_inspect_image_uses_the_institution_fallback_url(monkeypatch):
+    calls: list[str] = []
+    payload = _png()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        if "/full/full/0/native.jpg" in str(request.url):
+            return httpx.Response(403, headers={"content-type": "text/html"}, content=b"no")
+        return httpx.Response(
+            200,
+            headers={"content-type": "image/png", "content-length": str(len(payload))},
+            content=payload,
+        )
+
+    async def no_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr("mnemosyne.resolver.imagecheck.asyncio.sleep", no_sleep)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    result = await inspect_image(
+        "https://gallica.bnf.fr/iiif/ark:/12148/x/f1/full/full/0/native.jpg",
+        client=client,
+        min_side=10,
+        min_bytes=10,
+    )
+    await client.aclose()
+    assert result["ok"] is True
+    assert "1024" in result["final_url"]
+    assert any("repli" in warning for warning in result["warnings"])
+    assert len(calls) == 3

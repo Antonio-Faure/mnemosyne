@@ -114,6 +114,13 @@ renvoie l'aperçu de l'image dans le résultat : le modèle peut vérifier qu'el
 correspond ; sinon il rappelle le tool avec une autre image (la dernière
 remplace la précédente) ou enregistre `no_match`.
 
+Un **403 transitoire** est réessayé **une fois** (429/5xx : jusqu'à 3, backoff) et un échec n'est
+**jamais mis en cache** : le modèle peut réessayer. Si l'URL native est refusée,
+le fetcher tente une variante **officielle** de la même image (Gallica
+`full/1024,`, Wikimedia `Special:FilePath`) avec un `Referer` de la fiche. Aucun
+contournement de blocage, aucun miroir, aucun réhébergement : si l'institution
+refuse durablement, on choisit une autre image ou on s'abstient.
+
 ### Contexte vidéo
 
 Chaque tâche reçoit une **fiche de contexte** : titre, durée, résumé global,

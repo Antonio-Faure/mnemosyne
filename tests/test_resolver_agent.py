@@ -901,3 +901,38 @@ def test_record_illustration_refuses_an_image_not_seen_in_catalog(config):
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def test_transient_image_failure_is_not_cached(config, monkeypatch):
+    """A 403 must stay retryable: the second call must not reuse the cached failure."""
+    calls = {"n": 0}
+
+    async def fake(url, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"ok": False, "hard_failures": ["HTTP 403"], "warnings": []}
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        provider._catalog_asset_ids.add("asset-photo")
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        params = RecordIllustrationParams(
+            image_url="https://example.org/photo.jpg",
+            sentence="In 1914, Belgium was invaded.",
+            context="contexte",
+            image_context="troupes",
+            asset_id="asset-photo",
+        )
+        first = asyncio.run(tools["record_illustration"].executor(params))
+        assert first.success is False
+        assert "403" in first.content
+        second = asyncio.run(tools["record_illustration"].executor(params))
+        assert second.success is True
+        assert calls["n"] == 2
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
