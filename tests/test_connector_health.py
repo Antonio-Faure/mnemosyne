@@ -1,13 +1,13 @@
-"""The generic source health probe must not report a silent True."""
+"""The source health probe must test the real search path, not just base_url."""
 
 from __future__ import annotations
 
 import asyncio
 
-import httpx
+import pytest
 
 from mnemosyne.connectors.base import Connector
-from mnemosyne.models import Asset, SourceDescriptor
+from mnemosyne.models import Asset, AuthKind, SourceDescriptor
 
 
 class _Dummy(Connector):
@@ -15,31 +15,31 @@ class _Dummy(Connector):
         return []
 
 
-class _Http:
-    def __init__(self, *, status: int = 200):
-        self.status = status
-
-    async def get(self, url, **kwargs):
-        if self.status >= 400:
-            request = httpx.Request("GET", url)
-            response = httpx.Response(self.status, request=request)
-            raise httpx.HTTPStatusError("status", request=request, response=response)
-        return httpx.Response(self.status, request=httpx.Request("GET", url))
+class _Boom(Connector):
+    async def search(self, query: str, limit: int = 20, **filters) -> list[Asset]:
+        raise RuntimeError("HTTP 403")
 
 
-def _health(status: int) -> bool:
-    descriptor = SourceDescriptor(id="x", name="X", base_url="https://example.org")
-    return asyncio.run(_Dummy(descriptor, _Http(status=status)).health())
+def _descriptor(**overrides) -> SourceDescriptor:
+    data = {"id": "x", "name": "X", "base_url": "https://example.org"}
+    data.update(overrides)
+    return SourceDescriptor(**data)
 
 
-def test_health_accepts_a_reachable_server():
-    assert _health(200) is True
+def test_health_accepts_a_working_search_even_with_no_result():
+    assert asyncio.run(_Dummy(_descriptor(), object()).health()) is True
 
 
-def test_health_treats_a_parameter_error_as_reachable():
-    assert _health(400) is True
+def test_health_reports_the_search_failure():
+    with pytest.raises(RuntimeError, match="403"):
+        asyncio.run(_Boom(_descriptor(), object()).health())
 
 
-def test_health_rejects_forbidden_or_failed_servers():
-    assert _health(403) is False
-    assert _health(404) is False
+def test_health_reports_a_missing_api_key():
+    with pytest.raises(RuntimeError, match="clé API absente"):
+        asyncio.run(
+            _Dummy(
+                _descriptor(auth=AuthKind.API_KEY, key_env="MNEMOSYNE_TEST_MISSING_KEY"),
+                object(),
+            ).health()
+        )
