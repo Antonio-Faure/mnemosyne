@@ -134,13 +134,19 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    ou catalogue IIIF qui couvre le trou de couverture (période, lieu, type
    d'image). **Ce tool ne sert jamais à trouver une image** : ne récupère
    aucune image sur le web et ne passe jamais une URL d'image trouvée ainsi à
-   `record_illustration`. Vérifie le nom, l'URL et ce que le site expose. Puis appelle
+   `record_illustration`. Vérifie le nom, l'URL et ce que le site expose. Avant
+   de demander, construis la **carte des sources** (section suivante) :
+   entreprise/usine, ville, national, européen, technique. Puis appelle
    `request_source` **une fois par source trouvée**, autant que nécessaire, avec
    un `source_id` stable, un nom, une raison et une URL d'API/docs. Tu peux
    demander à l'Atelier d'utiliser `coder` (API publique) ou `browser`
    (auth/recherche). Ensuite, `wait_for_sources` et **arrête ton tour**.
 7. Quand le supervisor te réveille avec `[SOURCES READY]`, recommence à
    l'étape 2 avec la meta API à jour, puis donne ton résultat final.
+
+## CARTE DES SOURCES
+
+%%SOURCE_DISCOVERY%%
 
 ## Règles absolues
 

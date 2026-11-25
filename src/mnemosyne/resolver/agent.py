@@ -1181,15 +1181,26 @@ async def run_resolver_agent(
             vault_get=vault_get,
         )
         watched = watch_provider(provider, progress, "résolveur")
+        source_discovery = ""
+        skill_path = config.root / "harness" / "skills" / "source-discovery.md"
+        if skill_path.is_file():
+            source_discovery = skill_path.read_text(encoding="utf-8").strip()
+        system_prompt = load_prompt(
+            config.root / "agents" / "resolver.md",
+            fallback=_FALLBACK,
+            name=config.identity.agent_name,
+            task=task,
+        )
+        system_prompt = system_prompt.replace(
+            "%%SOURCE_DISCOVERY%%",
+            source_discovery
+            or "Cherche la source la plus spécifique (entreprise, ville, national) "
+            "avant de demander un musée générique.",
+        )
         agent = Agent(
             client=client,
             name="mnemosyne_resolver",
-            system_prompt=load_prompt(
-                config.root / "agents" / "resolver.md",
-                fallback=_FALLBACK,
-                name=config.identity.agent_name,
-                task=task,
-            ),
+            system_prompt=system_prompt,
             tools=[watched],
             max_turns=max_turns or config.resolver.max_turns,
         )
