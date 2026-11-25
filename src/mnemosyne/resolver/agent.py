@@ -8,8 +8,10 @@ activated by its own permanent heartbeat job, in parallel with the agency.
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 from typing import Any, Literal
 
+import httpx
 from pydantic import BaseModel, Field
 from stirrup import Agent
 from stirrup.core.models import (
@@ -49,6 +51,15 @@ _MAX_ROWS = 40
 #: A hard sentence must not scan the whole catalog for an hour. After this many
 #: searches the agent decides with what it has seen, or abstains.
 MAX_CATALOG_SEARCHES = 6
+
+#: Web searches are for finding a *source*, not for finding images. Four is
+#: enough to identify an archive/API and must not become a browsing loop.
+MAX_WEB_SEARCHES = 4
+_BING_SEARCH_URL = "https://www.bing.com/search"
+_BROWSER_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
 
 _FALLBACK = (
     "You are {name}, the adversarial resolver. MISSION: {task}. "
@@ -90,6 +101,37 @@ def _same_source(a: set[str], b: set[str], threshold: float = 0.6) -> bool:
     return len(a & b) / len(a | b) >= threshold
 
 
+def _parse_bing_rss(xml_text: str, limit: int = 6) -> list[dict[str, str]]:
+    """Extract title/url/snippet from Bing's RSS search output."""
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return []
+    rows: list[dict[str, str]] = []
+    for item in root.findall(".//item"):
+        title = (item.findtext("title") or "").strip()
+        url = (item.findtext("link") or "").strip()
+        if not title or not url.startswith(("http://", "https://")):
+            continue
+        snippet = " ".join((item.findtext("description") or "").split())
+        rows.append(
+            {"title": title[:200], "url": url, "snippet": snippet[:300]}
+        )
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+async def _bing_search(query: str, limit: int = 6) -> list[dict[str, str]]:
+    """Web search used only to *find a source*, never to fetch an image."""
+    headers = {"User-Agent": _BROWSER_UA, "Accept-Language": "fr,en;q=0.8"}
+    params = {"format": "rss", "q": query, "setlang": "fr", "cc": "fr"}
+    async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+        response = await client.get(_BING_SEARCH_URL, params=params, headers=headers)
+        response.raise_for_status()
+    return _parse_bing_rss(response.text, limit=limit)
+
+
 class CatalogSearchParams(BaseModel):
     query: str = Field(description="Historical search query (entities, place, period, synonyms)")
     limit: int = Field(default=10, ge=1, le=30)
@@ -105,6 +147,15 @@ class CatalogToggleParams(BaseModel):
             "deactivated, an inactive one is activated"
         ),
     )
+
+
+class WebSearchParams(BaseModel):
+    query: str = Field(
+        min_length=3,
+        max_length=200,
+        description="What kind of archive/source to find (period, place, subject, API)",
+    )
+    limit: int = Field(default=6, ge=1, le=8)
 
 
 class VideoContextParams(BaseModel):
@@ -234,6 +285,8 @@ class ResolverToolProvider(ToolProvider):
         self._source_scope: set[str] | None = None
         #: Hard cap so one sentence cannot scan the catalog forever.
         self._search_calls = 0
+        #: Web searches only look for a source to request, not for images.
+        self._web_search_calls = 0
 
     async def __aenter__(self):
         return self._tools()
@@ -405,6 +458,36 @@ class ResolverToolProvider(ToolProvider):
                 f"{summary} — périmètre : {len(current)}/{len(enabled)} source(s)."
                 + suffix
             )
+
+        async def web_search_exec(p: WebSearchParams):
+            if self._web_search_calls >= MAX_WEB_SEARCHES:
+                return _fail(
+                    f"budget de {MAX_WEB_SEARCHES} recherches web épuisé : "
+                    "utilise les pistes déjà trouvées pour demander une source "
+                    "avec request_source, ou abstiens-toi."
+                )
+            self._web_search_calls += 1
+            attempt = f"recherche web {self._web_search_calls}/{MAX_WEB_SEARCHES}"
+            try:
+                results = await _bing_search(p.query, limit=p.limit)
+            except Exception as exc:  # noqa: BLE001 - a search failure is recoverable
+                return _fail(f"{attempt} — recherche web impossible : {exc}")
+            if not results:
+                return _ok(f"{attempt} — aucun résultat web pour {p.query!r}.")
+            lines = [
+                f"{attempt} — {len(results)} piste(s) pour {p.query!r} :",
+                "Ce sont des pistes, pas des sources vérifiées : regarde le nom, "
+                "l'URL et ce que le site expose avant de demander son ajout.",
+            ]
+            for number, row in enumerate(results, start=1):
+                lines.append(f"{number}. {row['title']} — {row['url']}")
+                if row["snippet"]:
+                    lines.append(f"   {row['snippet']}")
+            lines.append(
+                "Si une piste est une vraie source (archive, musée, API/IIIF), "
+                "demande son ajout avec request_source — une demande par source."
+            )
+            return _ok("\n".join(lines))
 
         async def catalog_inventory_exec(_p: EmptyParams):
             descriptors = sorted(
@@ -864,6 +947,19 @@ class ResolverToolProvider(ToolProvider):
                 ),
                 parameters=CatalogToggleParams,
                 executor=catalog_toggle_exec,
+            ),
+            Tool(
+                name="web_search",
+                description=(
+                    "Search the public web for an archive, museum, API or IIIF "
+                    "catalogue that could fill a coverage gap. Use it only when "
+                    "no defensible image was found in the catalog: results are "
+                    "leads, not verified sources. Then ask L'Atelier to add the "
+                    "relevant source(s) with request_source. Max 4 web searches "
+                    "per session."
+                ),
+                parameters=WebSearchParams,
+                executor=web_search_exec,
             ),
             Tool(
                 name="video_context",

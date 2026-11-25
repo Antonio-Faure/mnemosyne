@@ -102,10 +102,13 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    avec `record_result`.
    `record_result` ne sert qu'à `no_match` ou `ambiguous` : pour un
    `match`/`partial`, c'est `record_illustration` qui enregistre le verdict.
-6. **Si aucune image n'est défendable** : identifie la source/API manquante
-   (pays, période, type), puis appelle `request_source` **une fois par source**
-   avec un `source_id` stable, un nom, une raison et une URL d'API/docs. Tu
-   peux demander à l'Atelier d'utiliser `coder` (API publique) ou `browser`
+6. **Si aucune image n'est défendable** : cherche d'abord **la source** sur
+   internet avec `web_search` (maximum 4 recherches) — archive, musée, API ou
+   catalogue IIIF qui couvre le trou de couverture (période, lieu, type
+   d'image). Vérifie le nom, l'URL et ce que le site expose. Puis appelle
+   `request_source` **une fois par source trouvée**, autant que nécessaire, avec
+   un `source_id` stable, un nom, une raison et une URL d'API/docs. Tu peux
+   demander à l'Atelier d'utiliser `coder` (API publique) ou `browser`
    (auth/recherche). Ensuite, `wait_for_sources` et **arrête ton tour**.
 7. Quand le supervisor te réveille avec `[SOURCES READY]`, recommence à
    l'étape 2 avec la meta API à jour, puis donne ton résultat final.

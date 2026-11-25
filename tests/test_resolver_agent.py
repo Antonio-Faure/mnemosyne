@@ -23,6 +23,7 @@ from mnemosyne.resolver.agent import (
     ResolverToolProvider,
     SearchTranscriptParams,
     VideoContextParams,
+    _parse_bing_rss,
 )
 
 
@@ -839,3 +840,29 @@ def test_catalog_search_budget_stops_the_loop(config, monkeypatch):
         assert len(calls) == MAX_CATALOG_SEARCHES
     finally:
         db.close()
+
+
+def test_bing_rss_parser_returns_results():
+    xml = """<?xml version="1.0" encoding="utf-8"?>
+    <rss version="2.0"><channel>
+      <item>
+        <title>Archive Citroën 1901</title>
+        <link>https://example.org/archive</link>
+        <description>Photographies de l'atelier et des engrenages.</description>
+      </item>
+      <item>
+        <title>Musée des Arts et Métiers</title>
+        <link>https://example.org/musee</link>
+        <description>Collections industrielles.</description>
+      </item>
+    </channel></rss>
+    """
+    rows = _parse_bing_rss(xml, limit=1)
+    assert len(rows) == 1
+    assert rows[0]["url"] == "https://example.org/archive"
+    assert "engrenages" in rows[0]["snippet"]
+
+
+def test_bing_rss_parser_rejects_garbage():
+    assert _parse_bing_rss("<html>not rss</html>") == []
+    assert _parse_bing_rss("<rss><channel></channel></rss>") == []
