@@ -969,3 +969,55 @@ def test_record_illustration_falls_back_to_the_official_thumbnail(config, monkey
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def test_search_budget_survives_a_new_activation(config, monkeypatch):
+    async def fake_search(self, query, source_ids=None, limit=20):
+        return []
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.Engine.search", fake_search)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        first = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(first.__aenter__())}
+        for number in range(2):
+            result = asyncio.run(
+                tools["catalog_search"].executor(
+                    CatalogSearchParams(query=f"query {number}")
+                )
+            )
+            assert result.success is True
+
+        second = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(second.__aenter__())}
+        assert second._search_calls == 2
+        for number in range(4):
+            result = asyncio.run(
+                tools["catalog_search"].executor(
+                    CatalogSearchParams(query=f"next {number}")
+                )
+            )
+            assert result.success is True
+        blocked = asyncio.run(
+            tools["catalog_search"].executor(CatalogSearchParams(query="one too many"))
+        )
+        assert blocked.success is False
+        assert "budget" in blocked.content
+        assert second._search_calls == MAX_CATALOG_SEARCHES
+    finally:
+        db.close()
+
+
+def test_catalog_assets_survive_a_new_activation(config):
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        first = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        first._catalog_asset_ids.add("asset-from-first-activation")
+        first._save_progress()
+
+        second = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        assert "asset-from-first-activation" in second._catalog_asset_ids
+    finally:
+        db.close()

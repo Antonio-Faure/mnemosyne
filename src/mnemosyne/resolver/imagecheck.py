@@ -15,7 +15,6 @@ from typing import Any
 import httpx
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from mnemosyne.http import default_contact
 from mnemosyne.logger import get_logger
 
 log = get_logger("resolver.image")
@@ -24,6 +23,12 @@ IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "TIFF", "BMP", "AVIF", "HEIF"}
 _THUMB_HINTS = ("thumb", "thumbnail", "preview", "vignette", "sprite", "logo")
 _RETRY_STATUS = {403, 429, 500, 502, 503, 504}
 _MAX_ATTEMPTS = 3
+#: Standard image-fetch UA. It names the project: not a stealth/browser bypass.
+_IMAGE_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 "
+    "Mnemosyne/0.1 (+https://github.com/Antonio-Faure/mnemosyne)"
+)
 
 
 def _referer_for(url: str, page_url: str | None = None) -> str | None:
@@ -136,7 +141,7 @@ async def inspect_image(
             timeout=25.0,
             follow_redirects=True,
             headers={
-                "User-Agent": default_contact(),
+                "User-Agent": _IMAGE_UA,
                 "Accept": "image/*, */*;q=0.5",
             },
         )

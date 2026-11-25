@@ -23,6 +23,13 @@ from mnemosyne.notify import Notifier
 from mnemosyne.operator.models import AskOperatorParams
 from mnemosyne.util import atomic_write_text
 
+#: Wikimedia and others reject httpx's default UA; name the project explicitly.
+_FETCH_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 "
+    "Mnemosyne/0.1 (+https://github.com/Antonio-Faure/mnemosyne)"
+)
+
 
 class PathParam(BaseModel):
     path: str = Field(description="Repo-relative path")
@@ -216,7 +223,11 @@ class DevToolProvider(ToolProvider):
 
         async def fetch_exec(p: FetchParam):
             try:
-                async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+                async with httpx.AsyncClient(
+                    timeout=20,
+                    follow_redirects=True,
+                    headers={"User-Agent": _FETCH_UA, "Accept-Language": "fr,en;q=0.8"},
+                ) as client:
                     resp = await client.get(p.url)
                 resp.raise_for_status()
                 return _ok(resp.text[: self.config.fetch_max_chars])
