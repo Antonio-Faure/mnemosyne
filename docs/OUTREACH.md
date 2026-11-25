@@ -46,6 +46,21 @@ par e-mail.
       exacts présentés via `ask_operator`, réponse « Valide — envoyer ».
 - [ ] Journal : destinataire, objet, date, canal.
 
+## Personnalisation obligatoire
+
+Le modèle n'est pas un copier-coller. Avant l'envoi :
+
+- **Exemples** : 2 à 3 recherches précises tirées des collections de
+  l'institution. Pas d'exemples génériques (pétrole, raffineries) si le fonds
+  n'est pas sur ce sujet.
+- **Nombre de sources** : ne l'invente pas et ne recopie pas un chiffre ancien.
+  Demande-le au coder (il lit `config/sources`) ; si tu ne peux pas le vérifier,
+  omets le chiffre.
+- **Pas de jargon** : « retrouver une photographie précise » plutôt que
+  « recherche au niveau de la pièce ».
+- **Destinataire** : adresse officielle vérifiée sur le site de l'institution ;
+  jamais une adresse devinée.
+
 ## Modèle — première prise de contact (français)
 
 **Objet :** Mnemosyne — ajouter les images d'archives du {institution} à un moteur de recherche
@@ -55,24 +70,27 @@ par e-mail.
 > Je suis Archivist, le système autonome qui ajoute les sources d'images
 > d'archives à Mnemosyne. Mnemosyne est le moteur de recherche d'images
 > d'archives : comme Google pour les pages web, il permet de chercher en une
-> fois dans de nombreuses sources. Par exemple : « raffineries de pétrole en
-> France », « ouvriers du pétrole », « machines industrielles des années 1950 ».
+> fois dans de nombreuses sources. Par exemple, pour votre fonds :
+> {deux ou trois recherches précises et pertinentes pour cette institution}.
 >
 > J'aimerais ajouter votre institution et vos images d'archives à Mnemosyne,
 > pour qu'elles existent comme source.
 >
-> Le projet est en développement actif : une cinquantaine de sources sont
+> Le projet est en développement actif : {source_count} sources actives sont
 > déjà connectées, et le nombre augmente. Le code et l'historique sont publics :
 > https://github.com/Antonio-Faure/mnemosyne
 >
 > Ma question est simple : puis-je accéder à votre catalogue en ligne de façon
-> programmatique, c'est-à-dire automatiquement, sans passer par un navigateur ?
+> programmatique, c'est-à-dire automatiquement, sans passer par un navigateur,
+> et retrouver une **photographie précise** (pas seulement une collection ou un
+> fonds) ?
 >
 > - Si oui, deux options, selon ce qui est le plus simple pour vous :
->   1. un accès officiel, si vous pouvez m'en fournir un (API, IIIF, OAI-PMH ou
->      export) ;
+>   1. un accès officiel, si vous pouvez m'en fournir un (API, IIIF, OAI-PMH
+>      permettant de retrouver une photographie précise, ou export) ;
 >   2. à défaut, l'autorisation de lire automatiquement vos pages publiques,
->      pour y faire une recherche au moment où quelqu'un utilise Mnemosyne.
+>      pour y rechercher une photographie précise au moment où quelqu'un
+>      utilise Mnemosyne.
 > - Si non, dites-le simplement : je n'ajoute pas votre institution et je
 >   n'insiste pas.
 >
@@ -109,24 +127,27 @@ raison : les adresses mortes, les relances et les réponses sont dans le journal
 > Je suis Archivist, le système autonome qui ajoute les sources d'images
 > d'archives à Mnemosyne. Mnemosyne est le moteur de recherche d'images
 > d'archives : comme Google pour les pages web, il permet de chercher en une
-> fois dans de nombreuses sources. Par exemple : « raffineries de pétrole en
-> France », « ouvriers du pétrole », « machines industrielles des années 1950 ».
+> fois dans de nombreuses sources. Par exemple, pour votre fonds :
+> {deux ou trois recherches précises et pertinentes pour cette institution}.
 >
 > J'aimerais ajouter votre musée et vos images d'archives à Mnemosyne, pour
 > qu'elles existent comme source.
 >
-> Le projet est en développement actif : une cinquantaine de sources sont
+> Le projet est en développement actif : {source_count} sources actives sont
 > déjà connectées, et le nombre augmente. Le code et l'historique sont publics :
 > https://github.com/Antonio-Faure/mnemosyne
 >
 > Ma question est simple : puis-je accéder à votre catalogue en ligne de façon
-> programmatique, c'est-à-dire automatiquement, sans passer par un navigateur ?
+> programmatique, c'est-à-dire automatiquement, sans passer par un navigateur,
+> et retrouver une **photographie précise** (pas seulement une collection ou un
+> fonds) ?
 >
 > - Si oui, deux options, selon ce qui est le plus simple pour vous :
->   1. un accès officiel, si vous pouvez m'en fournir un (API, IIIF, OAI-PMH ou
->      export) ;
+>   1. un accès officiel, si vous pouvez m'en fournir un (API, IIIF, OAI-PMH
+>      permettant de retrouver une photographie précise, ou export) ;
 >   2. à défaut, l'autorisation de lire automatiquement vos pages publiques,
->      pour y faire une recherche au moment où quelqu'un utilise Mnemosyne.
+>      pour y rechercher une photographie précise au moment où quelqu'un
+>      utilise Mnemosyne.
 > - Si non, dites-le simplement : je n'ajoute pas votre institution et je
 >   n'insiste pas.
 >

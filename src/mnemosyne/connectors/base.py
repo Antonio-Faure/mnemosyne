@@ -6,6 +6,8 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any
 
+import httpx
+
 from mnemosyne.http import HttpClient
 from mnemosyne.models import Asset, SourceDescriptor
 
@@ -52,5 +54,15 @@ class Connector(ABC):
         }
 
     async def health(self) -> bool:
-        """Cheap connectivity check. Override for a real probe."""
-        return True
+        """Reachability probe; a server answering (even with a parameter error)
+        is alive, while 401/403/timeouts mean degraded."""
+        url = str(self.descriptor.base_url or "").strip()
+        if not url:
+            return False
+        try:
+            response = await self.http.get(url, accept="*/*")
+        except httpx.HTTPStatusError as exc:
+            return exc.response.status_code in (400, 405, 422)
+        except Exception:  # noqa: BLE001 - any network failure is degraded
+            return False
+        return response.status_code < 400

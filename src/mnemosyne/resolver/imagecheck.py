@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import ipaddress
 from typing import Any
 
 import httpx
@@ -82,7 +83,21 @@ def _valid_url(url: str) -> bool:
         parsed = httpx.URL(url)
     except (httpx.InvalidURL, ValueError):
         return False
-    return parsed.scheme in ("http", "https") and bool(parsed.host)
+    if parsed.scheme not in ("http", "https") or not parsed.host:
+        return False
+    host = (parsed.host or "").lower()
+    if host in ("localhost", "127.0.0.1", "::1") or host.endswith(".local"):
+        return False
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return True
+    return not (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_reserved
+    )
 
 
 def _preview(data: bytes, max_dim: int) -> bytes | None:

@@ -53,6 +53,15 @@ def _seed_task(db: Database, config) -> int:
     return task_id
 
 
+def _seed_asset(provider, asset_id: str, image_url: str, thumbnail_url: str = "") -> None:
+    provider._catalog_assets[asset_id] = {
+        "image_url": image_url,
+        "thumbnail_url": thumbnail_url,
+        "page_url": f"https://example.org/notice/{asset_id}",
+        "source_id": "wikimedia",
+    }
+
+
 def test_golden_get_and_result_roundtrip(config):
     db = _db(config)
     try:
@@ -505,7 +514,7 @@ def test_record_illustration_records_the_exact_image_and_result(config, monkeypa
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        provider._catalog_asset_ids.add("asset-photo")
+        _seed_asset(provider, "asset-photo", "https://example.org/photo.jpg")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         params = RecordIllustrationParams(
             image_url="https://example.org/photo.jpg#frag",
@@ -549,7 +558,7 @@ def test_record_illustration_refuses_a_reused_image(config, monkeypatch):
         db.set_task_status(second, "running", agent="resolver")
         for task_id, asset in ((first, "asset-a"), (second, "asset-b")):
             provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-            provider._catalog_asset_ids.add(asset)
+            _seed_asset(provider, asset, "https://example.org/same.jpg")
             tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
             params = RecordIllustrationParams(
                 image_url="https://example.org/same.jpg",
@@ -608,7 +617,7 @@ def test_record_illustration_refusal_carries_the_reason(config, monkeypatch):
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        provider._catalog_asset_ids.add("asset-page")
+        _seed_asset(provider, "asset-page", "https://example.org/notice")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         result = asyncio.run(
             tools["record_illustration"].executor(
@@ -638,7 +647,7 @@ def test_no_match_clears_a_provisional_illustration(config, monkeypatch):
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        provider._catalog_asset_ids.add("asset-photo")
+        _seed_asset(provider, "asset-photo", "https://example.org/photo.jpg")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         recorded = asyncio.run(
             tools["record_illustration"].executor(
@@ -678,7 +687,7 @@ def test_pending_operator_question_writes_nothing(config):
             [{"label": "Oui"}, {"label": "Non"}],
         )
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        provider._catalog_asset_ids.add("asset-photo")
+        _seed_asset(provider, "asset-photo", "https://example.org/photo.jpg")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         result = asyncio.run(
             tools["record_illustration"].executor(
@@ -924,7 +933,7 @@ def test_transient_image_failure_is_not_cached(config, monkeypatch):
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        provider._catalog_asset_ids.add("asset-photo")
+        _seed_asset(provider, "asset-photo", "https://example.org/photo.jpg")
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         params = RecordIllustrationParams(
             image_url="https://example.org/photo.jpg",
@@ -955,7 +964,12 @@ def test_record_illustration_falls_back_to_the_official_thumbnail(config, monkey
     try:
         task_id = _seed_task(db, config)
         provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        provider._catalog_asset_ids.add("asset-photo")
+        _seed_asset(
+            provider,
+            "asset-photo",
+            "https://example.org/native.jpg",
+            "https://example.org/thumb.jpg",
+        )
         tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
         result = asyncio.run(
             tools["record_illustration"].executor(
@@ -1020,11 +1034,16 @@ def test_catalog_assets_survive_a_new_activation(config):
     try:
         task_id = _seed_task(db, config)
         first = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        first._catalog_asset_ids.add("asset-from-first-activation")
+        first._catalog_assets["asset-from-first-activation"] = {
+            "image_url": "https://example.org/first.jpg",
+            "thumbnail_url": "",
+            "page_url": "https://example.org/notice/first",
+            "source_id": "wikimedia",
+        }
         first._save_progress()
 
         second = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
-        assert "asset-from-first-activation" in second._catalog_asset_ids
+        assert "asset-from-first-activation" in second._catalog_assets
     finally:
         db.close()
 
@@ -1100,6 +1119,140 @@ def test_request_source_refuses_a_bypass_specialisation(config):
         assert second.success is False
         assert "spécialisation refusée" in second.content
         assert db.resolver_requests(task_id) == []
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_record_illustration_refuses_an_image_from_another_asset(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        _seed_asset(provider, "asset-a", "https://example.org/a.jpg")
+        _seed_asset(provider, "asset-b", "https://example.org/b.jpg")
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/b.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="mauvais asset",
+                    asset_id="asset-a",
+                )
+            )
+        )
+        assert result.success is False
+        assert "ne correspond pas à l'asset" in result.content
+        assert db.get_resolver_illustration_for_task(task_id) is None
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_record_result_refuses_a_different_asset(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        _seed_asset(provider, "asset-a", "https://example.org/a.jpg")
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        recorded = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/a.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="bon asset",
+                    asset_id="asset-a",
+                )
+            )
+        )
+        assert recorded.success is True
+        bad = asyncio.run(
+            tools["record_result"].executor(
+                RecordResultParams(status="match", asset_id="asset-b", evidence="faux")
+            )
+        )
+        assert bad.success is False
+        assert "asset_id incohérent" in bad.content
+        good = asyncio.run(
+            tools["record_result"].executor(
+                RecordResultParams(status="match", asset_id="asset-a", evidence="ok")
+            )
+        )
+        assert good.success is True
+        assert db.get_resolver_result(task_id)["asset_id"] == "asset-a"
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_no_match_writes_no_asset_id(config, monkeypatch):
+    async def fake(url, **kwargs):
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        _seed_asset(provider, "asset-a", "https://example.org/a.jpg")
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/a.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="provisoire",
+                    asset_id="asset-a",
+                )
+            )
+        )
+        result = asyncio.run(
+            tools["record_result"].executor(
+                RecordResultParams(status="no_match", asset_id="bogus", evidence="non")
+            )
+        )
+        assert result.success is True
+        stored = db.get_resolver_result(task_id)
+        assert stored["status"] == "no_match"
+        assert stored["asset_id"] is None
+        assert db.get_resolver_illustration_for_task(task_id) is None
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_specialisation_is_not_blocked_by_the_similar_name_check(config):
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["request_source"].executor(
+                RequestSourceParams(
+                    source_id="gallica_photos_v3",
+                    source_name="Gallica (BnF)",
+                    reason="photographies seulement, le connecteur général renvoie des livres",
+                    api_url="https://example.invalid/iiif",
+                    specialisation=True,
+                )
+            )
+        )
+        assert result.success is True
+        assert len(db.resolver_requests(task_id)) == 1
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()

@@ -47,6 +47,7 @@ MISSION_OUTCOMES = {
     "technique": "Technique",
     "abandon": "Abandon",
     "cancelled": "Annulé",
+    "review": "À revoir",
 }
 
 WAITING_LABELS = {
@@ -153,6 +154,8 @@ def _mission_outcome(task: dict, requests: list[dict]) -> str | None:
     status = str(task.get("status") or "")
     if status == "cancelled":
         return "cancelled"
+    if status == "review":
+        return "review"
     text = _task_text(task) + " " + " ".join(
         str(request.get("note") or "") for request in requests
     )
@@ -163,6 +166,16 @@ def _mission_outcome(task: dict, requests: list[dict]) -> str | None:
             return "abandon"
         return "technique"
     if status == "done":
+        if requests:
+            statuses = {str(request.get("status") or "") for request in requests}
+            if "failed" in statuses:
+                # A done Atelier task is not a source: the supervisor only
+                # marks a request done when the descriptor exists.
+                return "no_source" if "absente" in text.casefold() else "refused"
+            if statuses & {"pending", "running"}:
+                return None
+            if "done" in statuses:
+                return "source_added"
         lowered = text.casefold()
         if any(
             token in lowered
@@ -176,10 +189,11 @@ def _mission_outcome(task: dict, requests: list[dict]) -> str | None:
             return "no_source"
         if any(
             token in lowered
-            for token in ("refus", "droits réservés", "all rights reserved", "droits")
+            for token in ("refus", "droits réservés", "all rights reserved")
         ):
             return "refused"
-        return "source_added"
+        # No request and no explicit result: a tech/warmup mission, not a source.
+        return None
     return None
 
 
@@ -228,6 +242,8 @@ def _column_for(status: str, waiting: list[dict], outcome: str | None) -> str:
     if status == "running":
         return "waiting" if waiting else "running"
     if status == "done":
+        return "done"
+    if status == "review":
         return "done"
     if status in ("failed", "cancelled"):
         return "failed"
@@ -556,7 +572,15 @@ def build_board(db: Database, board: str) -> dict:
         ]
         cards = [_resolver_card(db, task, mission_cards=mission_cards) for task in tasks]
     else:
-        cards = list(mission_cards.values())
+        tasks = [
+            task
+            for task in db.list_tasks(limit=2000)
+            if task.get("start_agent") in ("coder", "browser")
+        ]
+        cards = [
+            _mission_card(db, task, groups.get(int(task["id"]), []))
+            for task in tasks
+        ]
 
     columns = _columns(board)
     by_column = {column["id"]: [] for column in columns}
