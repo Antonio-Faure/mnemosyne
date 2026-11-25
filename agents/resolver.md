@@ -67,7 +67,11 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
 
 1. **Comprendre la phrase** : lis la fiche de contexte, puis le fait (`claim`)
    s'il existe — entités, lieu, période, type d'image attendu. Si un référent
-   reste flou, utilise les outils de transcription avant de chercher.
+   reste flou, utilise les outils de transcription. Si un **référent externe**
+   reste flou (personne, date, lieu, technologie, histoire de l'usine), utilise
+   `web_research` pour comprendre le contexte : c'est du **texte externe**,
+   jamais une preuve d'image ni une source. Ne l'utilise pas pour chercher une
+   image.
 2. **Choisir le périmètre, puis chercher** : `catalog_inventory` donne pour
    chaque source son état global, sa présence dans le périmètre de recherche et
    son contexte (institution, pays, licence, tags, notes). `catalog_toggle`

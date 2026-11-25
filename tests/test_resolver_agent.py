@@ -23,6 +23,7 @@ from mnemosyne.resolver.agent import (
     ResolverToolProvider,
     SearchTranscriptParams,
     VideoContextParams,
+    WebResearchParams,
     _parse_bing_rss,
 )
 
@@ -1253,6 +1254,46 @@ def test_specialisation_is_not_blocked_by_the_similar_name_check(config):
         )
         assert result.success is True
         assert len(db.resolver_requests(task_id)) == 1
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
+
+
+def test_web_research_is_context_only_and_budgeted(config, monkeypatch):
+    async def fake_bing(query, limit=6):
+        return [
+            {
+                "title": "Contexte industriel",
+                "url": "https://example.org/contexte",
+                "snippet": "Les usines de guerre en 1916.",
+            }
+        ]
+
+    async def fake_page(url, max_chars=1200):
+        return "Texte de contexte sur les munitionnettes."
+
+    monkeypatch.setattr("mnemosyne.resolver.agent._bing_search", fake_bing)
+    monkeypatch.setattr("mnemosyne.resolver.agent._fetch_page_text", fake_page)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        for number in range(4):
+            result = asyncio.run(
+                tools["web_research"].executor(
+                    WebResearchParams(query=f"contexte {number}")
+                )
+            )
+            assert result.success is True
+            assert "contexte externe" in result.content
+            assert "Texte seulement" in result.content
+        blocked = asyncio.run(
+            tools["web_research"].executor(WebResearchParams(query="trop"))
+        )
+        assert blocked.success is False
+        assert "budget" in blocked.content
+        assert provider._catalog_assets == {}
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()

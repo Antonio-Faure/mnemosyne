@@ -7,7 +7,9 @@ activated by its own permanent heartbeat job, in parallel with the agency.
 
 from __future__ import annotations
 
+import html as html_lib
 import json
+import re
 import xml.etree.ElementTree as ET
 from typing import Any, Literal
 
@@ -55,6 +57,10 @@ MAX_CATALOG_SEARCHES = 6
 #: Web searches are for finding a *source*, not for finding images. Four is
 #: enough to identify an archive/API and must not become a browsing loop.
 MAX_SOURCE_SEARCHES = 4
+
+#: Context research is separate from source discovery: it reads text about the
+#: period/person/place, never images. Four calls keep it bounded.
+MAX_WEB_RESEARCH = 4
 _BING_SEARCH_URL = "https://www.bing.com/search"
 _BROWSER_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -132,6 +138,24 @@ async def _bing_search(query: str, limit: int = 6) -> list[dict[str, str]]:
     return _parse_bing_rss(response.text, limit=limit)
 
 
+async def _fetch_page_text(url: str, max_chars: int = 1200) -> str:
+    """Fetch the visible text of one public page (bounded, no images)."""
+    headers = {
+        "User-Agent": _BROWSER_UA,
+        "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
+        "Accept-Language": "fr,en;q=0.8",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+    except Exception:  # noqa: BLE001 - context is best-effort
+        return ""
+    text = re.sub(r"<script.*?</script>|<style.*?</style>", " ", response.text, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    return " ".join(html_lib.unescape(text).split())[:max_chars]
+
+
 class CatalogSearchParams(BaseModel):
     query: str = Field(description="Historical search query (entities, place, period, synonyms)")
     limit: int = Field(default=10, ge=1, le=30)
@@ -159,6 +183,18 @@ class SourceSearchParams(BaseModel):
         ),
     )
     limit: int = Field(default=6, ge=1, le=8)
+
+
+class WebResearchParams(BaseModel):
+    query: str = Field(
+        min_length=3,
+        max_length=200,
+        description=(
+            "Historical/contextual question (person, place, date, event, "
+            "technology). This is TEXT research, never an image or source search."
+        ),
+    )
+    limit: int = Field(default=4, ge=1, le=6)
 
 
 class VideoContextParams(BaseModel):
@@ -308,6 +344,7 @@ class ResolverToolProvider(ToolProvider):
         #: the assets it saw or silently re-open every source.
         self._search_calls = int(payload.get("_search_calls") or 0)
         self._source_search_calls = int(payload.get("_source_search_calls") or 0)
+        self._web_research_calls = int(payload.get("_web_research_calls") or 0)
         self._catalog_assets = {
             str(asset_id): {
                 "image_url": str(meta.get("image_url") or ""),
@@ -329,6 +366,7 @@ class ResolverToolProvider(ToolProvider):
         payload = self._payload()
         payload["_search_calls"] = self._search_calls
         payload["_source_search_calls"] = self._source_search_calls
+        payload["_web_research_calls"] = self._web_research_calls
         payload["_catalog_assets"] = self._catalog_assets
         payload["_source_scope"] = (
             sorted(self._source_scope) if self._source_scope is not None else None
@@ -553,6 +591,39 @@ class ResolverToolProvider(ToolProvider):
                 "Si une piste est une vraie source (archive, musée, API/IIIF), "
                 "demande son ajout avec request_source — une demande par source."
             )
+            return _ok("\n".join(lines))
+
+        async def web_research_exec(p: WebResearchParams):
+            if self._web_research_calls >= MAX_WEB_RESEARCH:
+                return _fail(
+                    f"budget de {MAX_WEB_RESEARCH} recherches de contexte épuisé : "
+                    "utilise ce que tu as déjà lu ou demande à l'opérateur."
+                )
+            attempt_number = self._web_research_calls + 1
+            attempt = f"recherche de contexte {attempt_number}/{MAX_WEB_RESEARCH}"
+            try:
+                results = await _bing_search(p.query, limit=p.limit)
+            except Exception as exc:  # noqa: BLE001 - best effort
+                return _fail(f"{attempt} — recherche impossible : {exc}")
+            self._web_research_calls = attempt_number
+            self._save_progress()
+            if not results:
+                return _ok(f"{attempt} — aucun résultat pour {p.query!r}.")
+            lines = [
+                f"{attempt} — contexte externe pour {p.query!r} :",
+                "Texte seulement : ne cherche aucune image ici, ne demande aucune "
+                "source ici. Utilise ce contexte pour comprendre la phrase ; "
+                "les images viennent uniquement de catalog_search.",
+            ]
+            for number, row in enumerate(results[: p.limit], start=1):
+                lines.append(f"{number}. {row['title']} — {row['url']}")
+                snippet = row["snippet"]
+                if number <= 2:
+                    page = await _fetch_page_text(row["url"])
+                    if page:
+                        snippet = page
+                if snippet:
+                    lines.append(f"   {snippet}")
             return _ok("\n".join(lines))
 
         async def catalog_inventory_exec(_p: EmptyParams):
@@ -1130,6 +1201,18 @@ class ResolverToolProvider(ToolProvider):
                 ),
                 parameters=SourceSearchParams,
                 executor=source_search_exec,
+            ),
+            Tool(
+                name="web_research",
+                description=(
+                    "Research the historical CONTEXT of the sentence on the public "
+                    "web: person, place, date, event, technology, factory history. "
+                    "Returns text snippets/page extracts only. NEVER use it to find "
+                    "an image or to request a source: use catalog_search for images "
+                    "and source_search for sources. Its pages are not image provenance."
+                ),
+                parameters=WebResearchParams,
+                executor=web_research_exec,
             ),
             Tool(
                 name="video_context",
