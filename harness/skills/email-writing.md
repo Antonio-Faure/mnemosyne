@@ -19,12 +19,25 @@ sans le déformer.
    programmatique ?** Oui → accès officiel ou autorisation de lire les pages
    publiques. Non → on n'ajoute pas la source.
 
+## Personnalisation obligatoire
+
+- **Exemples** : 2 à 3 recherches précises tirées des collections de
+  l'institution. Jamais les exemples pétrole/raffineries par défaut si le fonds
+  n'est pas sur ce sujet.
+- **Nombre de sources** : ne l'invente pas et ne recopie pas un chiffre ancien.
+  Demande-le au coder (il lit `config/sources`) ; si tu ne peux pas le vérifier,
+  omets le chiffre.
+- **Pas de jargon** : « retrouver une photographie précise » plutôt que
+  « recherche au niveau de la pièce ».
+- **Destinataire** : adresse officielle vérifiée sur le site ; jamais devinée.
+
 ## Structure (4 paragraphes, pas plus)
 
 1. **Qui** : Archivist, le système autonome qui ajoute les sources à Mnemosyne,
    moteur de recherche d'images d'archives (analogie Google).
 2. **Pourquoi** : ajouter l'institution comme source pour que ses images
-   existent dans la recherche. Donne 2–3 exemples de requêtes concrètes.
+   existent dans la recherche. Donne 2–3 exemples de requêtes **propres à ses
+   collections**, pas des exemples génériques.
 3. **La question** : accès programmatique ? Deux options si oui (accès officiel
    ou lecture des pages publiques) ; si non, pas d'ajout et pas d'insistance.
 4. **Transparence** : aucune copie, aucun hébergement, aucune redistribution,
