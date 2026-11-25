@@ -85,7 +85,7 @@ propres :
 | `video_context(before, after)` | résumé global, plan et fenêtre plus large autour de la phrase |
 | `search_transcript(query)` | retrouve un terme, un lieu ou une personne dans la transcription |
 | `read_transcript(start_s, end_s)` | lit la transcription entre deux timecodes |
-| `record_illustration(image_url, sentence, context, image_context)` | vérifie le lien, la qualité et l'unicité, enregistre l'image exacte et renvoie un aperçu visuel |
+| `record_illustration(image_url, sentence, context, image_context, thumbnail_url)` | vérifie le lien, la qualité et l'unicité, enregistre l'image exacte ; si l'URL native est refusée (403), tente le `thumbnail_url` officiel du même asset, puis renvoie un aperçu visuel |
 | `request_source(source, reason)` | enqueue **une tâche agent par source** + dépendance |
 | `wait_for_sources()` | parke la session resolver jusqu'à complétion |
 | `record_result(status, asset_id, evidence)` | enregistre un `no_match`/`ambiguous` (le `match`/`partial` passe par `record_illustration`) |

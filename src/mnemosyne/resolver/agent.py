@@ -210,6 +210,13 @@ class RecordIllustrationParams(BaseModel):
             "found through source_search is never valid provenance."
         ),
     )
+    thumbnail_url: str | None = Field(
+        default=None,
+        description=(
+            "Official preview/thumbnail URL of the same catalog asset, used only "
+            "if the native image URL is refused (403). Never a proxy or mirror."
+        ),
+    )
     page_url: str | None = Field(
         default=None, description="Institution notice/page URL"
     )
@@ -257,6 +264,8 @@ def _compact_row(asset) -> dict[str, Any]:
         "page_url": asset.page_url,
         "image_url": asset.image_url,
     }
+    if asset.thumbnail_url and asset.thumbnail_url != asset.image_url:
+        row["thumbnail_url"] = asset.thumbnail_url
     if asset.description:
         row["description"] = asset.description[:240]
     return {key: value for key, value in row.items() if value not in (None, "")}
@@ -779,6 +788,33 @@ class ResolverToolProvider(ToolProvider):
                 )
                 if checked.get("ok"):
                     self._image_cache[image_url] = checked
+            if not checked.get("ok") and p.thumbnail_url:
+                thumb = normalise_image_url(p.thumbnail_url)
+                if thumb and thumb != image_url:
+                    thumb_checked = self._image_cache.get(thumb)
+                    if thumb_checked is not None and not thumb_checked.get("ok"):
+                        thumb_checked = None
+                    if thumb_checked is None:
+                        thumb_checked = await inspect_image(
+                            thumb,
+                            preview_max=self.config.resolver.inspect_preview_max,
+                            min_side=self.config.resolver.min_image_side,
+                            min_bytes=self.config.resolver.min_image_bytes,
+                            max_fetch_bytes=self.config.resolver.inspect_max_bytes,
+                            preview=True,
+                            referer=p.page_url,
+                        )
+                        if thumb_checked.get("ok"):
+                            self._image_cache[thumb] = thumb_checked
+                    if thumb_checked.get("ok"):
+                        checked = thumb_checked
+                        image_url = normalise_image_url(
+                            str(checked.get("final_url") or thumb)
+                        )
+                        checked.setdefault("warnings", []).append(
+                            "URL native refusée : miniature officielle du même "
+                            "asset utilisée"
+                        )
             if not checked.get("ok"):
                 reasons = checked.get("hard_failures") or ["inconnue"]
                 if checked.get("warnings"):
