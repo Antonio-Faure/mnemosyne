@@ -91,6 +91,9 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
      lisibilité, cadrage, présence du détail qui justifie la phrase. Si l'image
      ne correspond pas, ne la soumets pas à l'opérateur : essaie un autre
      candidat avec `record_illustration` (le dernier remplace le précédent).
+   - **403 sur l'URL native** : reprends le `thumbnail_url` du même asset
+     fourni par `catalog_search` et passe-le à `record_illustration` ; le tool
+     essaie cette variante officielle. Jamais de proxy, miroir ou URL fabriquée.
 4. **Faire valider par l'humain — seulement après ton propre contrôle visuel** :
    pour le meilleur candidat, appelle `ask_operator` avec des options :
    - `Valide — l'image correspond`
@@ -115,7 +118,9 @@ disponible via `catalog_inventory` ; consulte-le avant de demander une source.
    - `context` : le contexte source (vidéo, transcription, texte) ;
    - `image_context` : ce que montre l'image et pourquoi elle convient ;
    - `status` : `match` ou `partial` ;
-   - `asset_id`, `page_url`, `source_id`, `evidence` si disponibles.
+   - `asset_id` (obligatoire, celui du catalogue), `thumbnail_url` (aperçu
+     officiel du même asset, si l'URL native est refusée), `page_url`,
+     `source_id`, `evidence`.
 
    Le tool vérifie que le lien est une image, que ses dimensions/poids passent
    le minimum, et que **la même image n'est pas déjà utilisée par une autre

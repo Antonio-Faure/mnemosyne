@@ -936,3 +936,36 @@ def test_transient_image_failure_is_not_cached(config, monkeypatch):
         asyncio.run(provider.__aexit__(None, None, None))
     finally:
         db.close()
+
+
+def test_record_illustration_falls_back_to_the_official_thumbnail(config, monkeypatch):
+    async def fake(url, **kwargs):
+        if "native" in url:
+            return {"ok": False, "hard_failures": ["HTTP 403"], "warnings": []}
+        return _fake_image_check(url)
+
+    monkeypatch.setattr("mnemosyne.resolver.agent.inspect_image", fake)
+    db = _db(config)
+    try:
+        task_id = _seed_task(db, config)
+        provider = ResolverToolProvider(config, Mailbox(db), task_id=task_id)
+        provider._catalog_asset_ids.add("asset-photo")
+        tools = {tool.name: tool for tool in asyncio.run(provider.__aenter__())}
+        result = asyncio.run(
+            tools["record_illustration"].executor(
+                RecordIllustrationParams(
+                    image_url="https://example.org/native.jpg",
+                    thumbnail_url="https://example.org/thumb.jpg",
+                    sentence="In 1914, Belgium was invaded.",
+                    context="contexte",
+                    image_context="troupes",
+                    asset_id="asset-photo",
+                )
+            )
+        )
+        assert result.success is True
+        stored = db.get_resolver_illustration_for_task(task_id)
+        assert stored["image_url"] == "https://example.org/thumb.jpg"
+        asyncio.run(provider.__aexit__(None, None, None))
+    finally:
+        db.close()
