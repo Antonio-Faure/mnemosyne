@@ -25,6 +25,12 @@ contourne pas** :
 Dans le doute, **n'envoie aucun e-mail, ne remplis aucun formulaire et ne
 valide aucun compte** : demande d'abord.
 
+## 403 / ANTI-BOT
+
+Ne contourne **jamais** un 403, un Cloudflare ou un WAF : pas de navigateur
+furtif, pas de proxy, pas de miroir, pas de réhébergement. Si l'accès est
+refusé, documente-le et abandonne.
+
 ## VOCABULAIRE
 
 `docs/NOMENCLATURE.md` est la référence. Lis-le avant d'écrire un doc, un
