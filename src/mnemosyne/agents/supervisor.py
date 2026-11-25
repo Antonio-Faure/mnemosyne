@@ -437,13 +437,48 @@ async def _activate_session(
 
 
 def _complete_resolver_dependencies(
+    config: Config,
     db: Database,
     mailbox: Mailbox,
     task_id: int,
     status: str,
     note: str | None,
 ) -> None:
-    """Wake resolver sessions whose requested sources just became terminal."""
+    """Wake resolver sessions whose requested sources just became terminal.
+
+    A finished Atelier task is not enough: the source must actually exist in the
+    catalog. An open PR (or a helper-only mission) is not a source.
+    """
+    if status == "done":
+        from mnemosyne.catalog import Catalog
+
+        catalog = Catalog(config.sources_path, db)
+        known = {descriptor.id for descriptor in catalog.load_descriptors()}
+        requests = [
+            request
+            for request in db.all_resolver_requests()
+            if int(request.get("agent_task_id") or 0) == task_id
+            and request.get("status") in ("pending", "running")
+        ]
+        missing = sorted(
+            {
+                str(request.get("source_id"))
+                for request in requests
+                if request.get("source_id")
+                and str(request.get("source_id")) not in known
+            }
+        )
+        if missing:
+            status = "failed"
+            suffix = (
+                "source absente du catalogue (PR non mergée ou mission de "
+                "reconnaissance seule) : " + ", ".join(missing)
+            )
+            note = f"{note} — {suffix}" if note else suffix
+        elif requests:
+            # The descriptor exists on disk but may not be in the synced
+            # registry yet: make it visible to Engine.search immediately.
+            catalog.sync()
     resolver_ids = db.complete_resolver_requests_for_agent_task(
         task_id, status=status, note=note
     )
@@ -601,6 +636,7 @@ async def run_pending_once(
                     # is parked on: mark the request and wake it (the missing
                     # half of the resolver cycle — only `queue cancel` did this).
                     _complete_resolver_dependencies(
+                        config,
                         db,
                         mailbox,
                         task["id"],
