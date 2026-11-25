@@ -1,0 +1,39 @@
+id: gallica_agences_photos
+name: Gallica (BnF) — Agences photographiques de presse
+institution: Bibliothèque nationale de France
+country: FR
+protocol: sru
+base_url: https://gallica.bnf.fr/SRU
+auth: none
+license: varies
+rights: "BnF — check per record (public domain / licensed)"
+rate_limit_per_s: 0.5
+priority: 11
+tags: [national-library, france, iiif, keyless, photography, press, agences-de-presse]
+seeds:
+  - "Citroën usine quai de Javel"
+  - "Citroën Rosalie Salon 1932"
+  - "Citroën Traction Avant 1934"
+  - "agence photographique presse automobile 1930"
+  - "usine automobile France 1930"
+notes: >-
+  Source sœur PHOTO-ONLY du connecteur `gallica` générique. Même API 100 %
+  officielle et programmatique (SRU Dublin Core + images exposées via IIIF,
+  aucun scraping HTML), mais la requête SRU est restreinte au type documentaire
+  « photographie » (`dc.type all "photographie"`, surchargeable via
+  `extra.doc_type`) afin de ne plus enfouir les collections photographiques des
+  agences de presse (Agence Rol / Meurisse / Mondial, arks `btv1b…`) sous les
+  livres et journaux qui dominent le classement du connecteur générique.
+  Périmètre éditorial : photographies de presse 1929-1934 de la Grande
+  Dépression (usine Citroën du quai de Javel, Rosalie au Salon 1932, Traction
+  Avant 1934). Le connecteur normalise chaque fiche vers un `Asset`
+  (page_url Gallica + dérivés IIIF image/thumbnail, iiif_id = ark) et détecte
+  l'agence de presse pour l'exposer dans `extra.agence` + tag `agence:<nom>`.
+  Constat 2026-11-08 : `https://gallica.bnf.fr/SRU` renvoie HTTP 403 (page de
+  blocage WAF Cloudflare) depuis l'IP d'exécution de l'agent — même blocage
+  infrastructurel que la source `gallica` (voir son descripteur et
+  docs/SOURCES.md). Le connecteur est correct (API officielle) ; le 403 est
+  IP/ASN, pas un bug de chemin. Source laissée ACTIVE, à réévaluer depuis une
+  IP de production (ADR #15).
+extra:
+  doc_type: photographie
