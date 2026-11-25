@@ -54,7 +54,7 @@ MAX_CATALOG_SEARCHES = 6
 
 #: Web searches are for finding a *source*, not for finding images. Four is
 #: enough to identify an archive/API and must not become a browsing loop.
-MAX_WEB_SEARCHES = 4
+MAX_SOURCE_SEARCHES = 4
 _BING_SEARCH_URL = "https://www.bing.com/search"
 _BROWSER_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -149,11 +149,14 @@ class CatalogToggleParams(BaseModel):
     )
 
 
-class WebSearchParams(BaseModel):
+class SourceSearchParams(BaseModel):
     query: str = Field(
         min_length=3,
         max_length=200,
-        description="What kind of archive/source to find (period, place, subject, API)",
+        description=(
+            "Which archive/source to find (period, place, subject, API). "
+            "This is a SOURCE search, never an image search."
+        ),
     )
     limit: int = Field(default=6, ge=1, le=8)
 
@@ -200,8 +203,12 @@ class RecordIllustrationParams(BaseModel):
         default="match",
         description="match = literal/defendable; partial = contextual illustration",
     )
-    asset_id: str | None = Field(
-        default=None, description="Catalog asset id, when the candidate came from a search"
+    asset_id: str = Field(
+        min_length=1,
+        description=(
+            "Catalog asset id from a catalog_search result. Required: an image "
+            "found through source_search is never valid provenance."
+        ),
     )
     page_url: str | None = Field(
         default=None, description="Institution notice/page URL"
@@ -286,7 +293,11 @@ class ResolverToolProvider(ToolProvider):
         #: Hard cap so one sentence cannot scan the catalog forever.
         self._search_calls = 0
         #: Web searches only look for a source to request, not for images.
-        self._web_search_calls = 0
+        self._source_search_calls = 0
+        #: Asset ids actually returned by catalog_search in this session. An
+        #: image without one of these cannot be recorded: web pages are not
+        #: image provenance.
+        self._catalog_asset_ids: set[str] = set()
 
     async def __aenter__(self):
         return self._tools()
@@ -393,6 +404,7 @@ class ResolverToolProvider(ToolProvider):
             )
             if not assets:
                 return _ok(f"{attempt} — aucun résultat pour {p.query!r} dans {where}.")
+            self._catalog_asset_ids.update(asset.id for asset in assets)
             ranked = rank_assets(p.query, assets)
             rows = [_compact_row(asset) for asset in ranked[:_MAX_ROWS]]
             shown = _fit_rows(rows)
@@ -459,15 +471,15 @@ class ResolverToolProvider(ToolProvider):
                 + suffix
             )
 
-        async def web_search_exec(p: WebSearchParams):
-            if self._web_search_calls >= MAX_WEB_SEARCHES:
+        async def source_search_exec(p: SourceSearchParams):
+            if self._source_search_calls >= MAX_SOURCE_SEARCHES:
                 return _fail(
-                    f"budget de {MAX_WEB_SEARCHES} recherches web épuisé : "
+                    f"budget de {MAX_SOURCE_SEARCHES} recherches de sources épuisé : "
                     "utilise les pistes déjà trouvées pour demander une source "
                     "avec request_source, ou abstiens-toi."
                 )
-            self._web_search_calls += 1
-            attempt = f"recherche web {self._web_search_calls}/{MAX_WEB_SEARCHES}"
+            self._source_search_calls += 1
+            attempt = f"recherche de source {self._source_search_calls}/{MAX_SOURCE_SEARCHES}"
             try:
                 results = await _bing_search(p.query, limit=p.limit)
             except Exception as exc:  # noqa: BLE001 - a search failure is recoverable
@@ -475,9 +487,10 @@ class ResolverToolProvider(ToolProvider):
             if not results:
                 return _ok(f"{attempt} — aucun résultat web pour {p.query!r}.")
             lines = [
-                f"{attempt} — {len(results)} piste(s) pour {p.query!r} :",
-                "Ce sont des pistes, pas des sources vérifiées : regarde le nom, "
-                "l'URL et ce que le site expose avant de demander son ajout.",
+                f"{attempt} — {len(results)} piste(s) de SOURCES pour {p.query!r} :",
+                "Pas une recherche d'image : ne récupère aucune image ici. "
+                "Regarde le nom, l'URL et ce que le site expose, puis demande "
+                "son ajout avec request_source.",
             ]
             for number, row in enumerate(results, start=1):
                 lines.append(f"{number}. {row['title']} — {row['url']}")
@@ -743,6 +756,12 @@ class ResolverToolProvider(ToolProvider):
                     f"(#{pending[0]['id']}) : attends sa réponse avant "
                     "d'enregistrer une illustration."
                 )
+            if p.asset_id not in self._catalog_asset_ids:
+                return _fail(
+                    "provenance manquante : l'image doit venir d'un résultat "
+                    "catalog_search de cette session (asset_id). source_search "
+                    "sert uniquement à trouver des sources, jamais des images."
+                )
             image_url = normalise_image_url(p.image_url)
             checked = self._image_cache.get(image_url)
             if checked is None:
@@ -949,17 +968,17 @@ class ResolverToolProvider(ToolProvider):
                 executor=catalog_toggle_exec,
             ),
             Tool(
-                name="web_search",
+                name="source_search",
                 description=(
-                    "Search the public web for an archive, museum, API or IIIF "
-                    "catalogue that could fill a coverage gap. Use it only when "
-                    "no defensible image was found in the catalog: results are "
-                    "leads, not verified sources. Then ask L'Atelier to add the "
-                    "relevant source(s) with request_source. Max 4 web searches "
-                    "per session."
+                    "Search the public web ONLY for a source to add: an "
+                    "archive, museum, API or IIIF catalogue that could fill a "
+                    "coverage gap. NEVER use it to find an image, and never use "
+                    "a page it returns as image provenance. Images come from "
+                    "catalog_search only. Then ask L'Atelier to add the relevant "
+                    "source(s) with request_source. Max 4 source searches."
                 ),
-                parameters=WebSearchParams,
-                executor=web_search_exec,
+                parameters=SourceSearchParams,
+                executor=source_search_exec,
             ),
             Tool(
                 name="video_context",
@@ -1013,10 +1032,13 @@ class ResolverToolProvider(ToolProvider):
                 name="record_illustration",
                 description=(
                     "Record the exact image chosen for this sentence, with the "
-                    "sentence, the source context and what the image shows. Refuses "
-                    "dead/non-image links, images that are too small, images already "
-                    "used by another resolution, or a record while an operator "
-                    "question is open. Stores the illustration and the match/partial verdict."
+                    "sentence, the source context and what the image shows. The "
+                    "image MUST come from a catalog_search result (pass its "
+                    "asset_id); never use an image found through source_search. "
+                    "Refuses dead/non-image links, images that are too small, "
+                    "images already used by another resolution, or a record while "
+                    "an operator question is open. Stores the illustration and the "
+                    "match/partial verdict."
                 ),
                 parameters=RecordIllustrationParams,
                 executor=record_illustration_exec,

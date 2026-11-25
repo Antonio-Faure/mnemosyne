@@ -80,7 +80,7 @@ propres :
 |---|---|
 | `catalog_inventory()` | liste toutes les sources avec état global, présence dans le périmètre et contexte (institution, pays, licence, tags, notes) |
 | `catalog_toggle(source_ids)` | bascule l'état des sources **pour cette session** (active ↔ inactive), plusieurs d'un coup ; une source désactivée globalement ne peut pas être activée |
-| `web_search(query, limit)` | cherche sur le web une **source** (archive, musée, API/IIIF) qui couvre un trou de couverture ; **4 recherches max**, des pistes à vérifier avant `request_source` |
+| `source_search(query, limit)` | cherche sur le web une **source** (archive, musée, API/IIIF) qui couvre un trou de couverture ; **jamais une image**, **4 recherches max**, des pistes à vérifier avant `request_source` |
 | `catalog_search(query, limit)` | interroge la meta API **dans le périmètre courant** uniquement ; **6 recherches max par session**, ensuite le tool refuse |
 | `video_context(before, after)` | résumé global, plan et fenêtre plus large autour de la phrase |
 | `search_transcript(query)` | retrouve un terme, un lieu ou une personne dans la transcription |
