@@ -17,6 +17,7 @@ from mnemosyne.sources.eol import EolConnector
 from mnemosyne.sources.europeana import EuropeanaConnector
 from mnemosyne.sources.gallica import GallicaConnector
 from mnemosyne.sources.gallica_agences_photos import GallicaAgencesPhotosConnector
+from mnemosyne.sources.gallica_estampes_affiches import GallicaEstampesAffichesConnector
 from mnemosyne.sources.gbif import GbifConnector
 from mnemosyne.sources.iiif import IIIFConnector
 from mnemosyne.sources.inaturalist import INaturalistConnector
@@ -54,6 +55,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "europeana": EuropeanaConnector,
     "gallica": GallicaConnector,
     "gallica_agences_photos": GallicaAgencesPhotosConnector,
+    "gallica_estampes_affiches": GallicaEstampesAffichesConnector,
     "gbif": GbifConnector,
     "hennepin": ContentDmConnector,
     "hillsborough": ContentDmConnector,
