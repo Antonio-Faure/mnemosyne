@@ -33,6 +33,7 @@ from mnemosyne.sources.musee_petrole_pechelbronn import MuseePetrolePechelbronnC
 from mnemosyne.sources.nasa import NasaConnector
 from mnemosyne.sources.nb_no import NbNoConnector
 from mnemosyne.sources.openverse import OpenverseConnector
+from mnemosyne.sources.paris_en_images import ParisEnImagesConnector
 from mnemosyne.sources.pop import PopConnector
 from mnemosyne.sources.science_museum_group import ScienceMuseumGroupConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
@@ -71,6 +72,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "loc_wwi_photos": LocWwiPhotosConnector,
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
+    "paris_en_images": ParisEnImagesConnector,
     "scdl": ContentDmConnector,
     "science_museum_group": ScienceMuseumGroupConnector,
     "smithsonian": SmithsonianConnector,
