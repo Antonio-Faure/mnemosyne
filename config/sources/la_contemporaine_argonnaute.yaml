@@ -1,0 +1,43 @@
+id: la_contemporaine_argonnaute
+name: "La Contemporaine — L'Argonnaute (bibliothèque numérique)"
+institution: "La Contemporaine (ex-BDIC), 184 cours Nicole Dreyfus, 92001 Nanterre"
+country: FR
+protocol: rest
+base_url: https://argonnaute.parisnanterre.fr
+auth: none
+license: "Licence Ouverte / Open Licence (œuvres du domaine public) — sinon « tous droits réservés » (voir la notice du document)"
+rights: "La Contemporaine — L'Argonnaute : réutilisation selon la notice (champ « Conditions d'utilisation »), attribution requise"
+rate_limit_per_s: 1.0
+priority: 100
+tags: [france, labor-history, social-history, photography, keyless, no-iiif, nanterre]
+# Découverte par liste curatée : l'API n'expose que le JSON PAR DOCUMENT
+# (arkName + uuid), il n'y a pas d'API de recherche. Chaque seed est une URL
+# notice/média ; le connecteur la résout via /visualizer/api et renvoie l'URL
+# publique de l'image (hotlink, aucune copie, aucun scraping HTML).
+seeds:
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/4l6m9krbngfv/36b0a7b5-c8a7-4b1d-9ae4-6a685f4eac3d"
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/1qxwblpsgtjh/4ab60e31-3cea-4730-a5cd-5472776ac18c"
+extra:
+  api_path: "/visualizer/api"
+  ark_naan: "14707"
+  attribution: "La Contemporaine / L'Argonnaute"
+  access_model: "json_per_document (arkName + uuid) ; pas de IIIF ; pas d'API de recherche"
+  coverage_note: >-
+    Photos ouvriers / grèves des années 1930 (fonds « France, entre-deux-guerres
+    1918-1939. Photographies ») ; fonds Citroën = Javel 1915 (Albums Valois) +
+    affiches ; pas de photo isolée « grève Citroën Javel 1936 ». Couverture
+    volontairement honnête pour le résolveur.
+notes: >-
+  API JSON PAR DOCUMENT uniquement : /visualizer/api?arkName=<ARK>&uuid=<UUID>
+  renvoie media[0].record{title, referenceCode, description, period.boundaries,
+  locationKeywords} + media[0].location{original, thumb, iiif:null}. PAS de IIIF
+  (isIIIFEnabled=false), PAS d'API de recherche JSON (aucun index public). Faute
+  de recherche programmatique, la découverte passe par une liste `seeds` curatée
+  (une URL notice/média par photo). Aucun scraping HTML ni contournement d'anti-bot
+  (règle dure ; cf. docs/SOURCE-LA-CONTEMPORAINE.md) : le service expose un accès
+  programmatique (cette API JSON), c'est lui qui est utilisé. Images servies en
+  direct par l'institution (/images/<UUID>.jpg) — hotlink, aucune copie. robots.txt :
+  seuls /private/, /oai-pmh, /user/ sont interdits ; l'User-Agent descriptif du
+  projet (mnemosyne) n'est pas dans la liste des robots bloqués. OAI-PMH interdit
+  par robots.txt et trop pauvre (identifiants seuls). Licences : Licence Ouverte
+  (domaine public) sinon « tous droits réservés » — renvoyer à la notice.

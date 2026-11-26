@@ -19,10 +19,10 @@ navigateur la demande ; la référence est stockée dans le descripteur sous
 `extra.scraping_consent`). Vérifié par
 `tests/test_sources_inventory.py::test_html_sources_carry_scraping_consent`.
 
-- Sources déclarées : **70**
-- Sources actives : **57**
+- Sources déclarées : **71**
+- Sources actives : **58**
 - Sources désactivées : **13**
-## Sources actives (57)
+## Sources actives (58)
 | albertina | ALBERTINA Sammlungen Online | ALBERTINA (Graphische Sammlung), Wien | AT | iiif | none | varies | ALBERTINA, Wien — beaucoup de domaine public (Gemeinfrei), vérifier sur la fiche |
 | anmt | Archives nationales du monde du travail (Roubaix) | Archives nationales du monde du travail | FR | iiif | none | Réutilisation libre (décision 21 août 2017) | ANMT — réutilisation libre commerciale et non commerciale ; attribution requise (origine + cote + titre du fonds) ; vues « non affichables » (`ligeoRestrictedAccess`) ignorées |
 | arthistoricum | arthistoricum.net IIIF (Deutsche Fotothek / SLUB Dresden) | arthistoricum.net — Fachinformationsdienst Kunst, Fotografie, Design (SLUB Dresden) | DE | iiif | none | varies | SLUB Dresden / arthistoricum.net — vérifier sur la fiche (conditions Deutsche Fotothek) |
@@ -52,6 +52,7 @@ navigateur la demande ; la référence est stockée dans le descripteur sous
 | internet_archive | Internet Archive | Internet Archive | US | rest | none | varies | Par item ; beaucoup de domaine public |
 | japan_search | Japan Search — ジャパンサーチ | Japan Search (National Diet Library) | JP | rest | none | PDM-1.0 / CC0-1.0 / CC-BY-4.0 | Japan Search — agrégateur national japonais, API REST publique sans clé (jpsearch.go.jp/api/item/search/jps-cross) ; filtres f-contents=image, f-caccess=internet, f-rights répété (+pdm/+cc0/+ccby) ; pagination from/size (size clamp 100) ; images via contentsUrl[0] sinon thumbnailUrl[0] ; licences pdm→PDM-1.0, cc0→CC0-1.0, ccby→CC-BY-4.0 ; vérifier sur la fiche ; aucun téléchargement (URLs seulement), aucun scraping HTML |
 | kmska | KMSKA — Koninklijk Museum voor Schone Kunsten Antwerpen (Royal Museum of Fine Arts Antwerp) | Koninklijk Museum voor Schone Kunsten Antwerpen | BE | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Royal Museum of Fine Arts Antwerp — Flemish Community (domaine public, CC0) ; Collection IIIF « Top Level Collection for Imagehub » (iiif/2/collection/manifest.json) |
+| la_contemporaine_argonnaute | La Contemporaine — L'Argonnaute (bibliothèque numérique) | La Contemporaine (ex-BDIC), Université Paris Nanterre | FR | rest | none | Licence Ouverte / Open Licence (domaine public) — sinon « tous droits réservés » (voir la notice) | API JSON PAR DOCUMENT uniquement (`/visualizer/api?arkName=<ARK>&uuid=<UUID>`) ; pas de IIIF, pas d'API de recherche publique ; découverte par liste `seeds` curatée (aucun scraping HTML, aucun contournement d'anti-bot) ; images servies en direct par l'institution `/images/<UUID>.jpg` (hotlink, aucune copie) ; fonds photo histoire sociale/ouvrière années 1930 (« France, entre-deux-guerres 1918-1939 ») ; fonds Citroën = Javel 1915 + affiches (pas de photo isolée « grève Citroën Javel 1936 ») ; renvoyer à la notice pour les droits |
 | leiden | Leiden University Libraries Digital Collections | Leiden University Libraries (Universiteitsbibliotheek Leiden) | NL | iiif | none | varies | Leiden University Libraries — vérifier sur la fiche (domaine public / sous licence) |
 | lehigh | Lehigh University Libraries — Preserve (IIIF) | Lehigh University Libraries | US | iiif | none | varies | Lehigh University Libraries — vérifier sur la fiche (droits variables, rightsstatements.org possible) ; Islandora/Cantaloupe ; manifeste unique sur la fiche (pas de Collection IIIF) |
 | llgc | National Library of Wales — Digital Collections (IIIF) | Llyfrgell Genedlaethol Cymru – The National Library of Wales | GB | iiif | none | [PDM 1.0](https://creativecommons.org/publicdomain/mark/1.0/) | Public Domain Mark — National Library of Wales (vérifier sur la fiche) ; manifeste unique sur la fiche (pas de Collection IIIF) |
@@ -116,7 +117,7 @@ navigateur la demande ; la référence est stockée dans le descripteur sous
   média. `inaturalist` : uniquement les photos sous CC0 ou CC BY 4.0.
 - **Varies / sur la fiche** : `albertina`, `arthistoricum`, `bsb_collection`,
   `colenda`, `dpla`, `digitalnz`, `europeana`, `gallica`, `gallica_agences_photos`, `hammer`, `harvard_art_museums`,
-  `internet_archive`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`, `texas_history`,
+  `internet_archive`, `la_contemporaine_argonnaute`, `leiden`, `lehigh`, `nationalmuseum_se`, `nga`, `openverse`, `texas_history`,
   `paris_musees`, `princeton_art_museum`, `rit`, `vanderbilt`, `wellesley`, `wikimedia`,
   `wikimedia_commons_photos`, `yale`, `yale_lux` — la licence est décidée au
   niveau de l'`Asset` à la frontière du connecteur, pas de la source.
