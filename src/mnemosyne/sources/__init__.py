@@ -6,6 +6,7 @@ from mnemosyne.connectors.base import Connector
 from mnemosyne.http import HttpClient
 from mnemosyne.models import Protocol, SourceDescriptor
 from mnemosyne.sources.anmt import AnmtConnector
+from mnemosyne.sources.archives_paris import ArchivesParisConnector
 from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.contentdm import ContentDmConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
@@ -30,6 +31,7 @@ from mnemosyne.sources.nasa import NasaConnector
 from mnemosyne.sources.nb_no import NbNoConnector
 from mnemosyne.sources.openverse import OpenverseConnector
 from mnemosyne.sources.pop import PopConnector
+from mnemosyne.sources.science_museum_group import ScienceMuseumGroupConnector
 from mnemosyne.sources.smithsonian import SmithsonianConnector
 from mnemosyne.sources.texas_history import TexasHistoryConnector
 from mnemosyne.sources.wikidata import WikidataConnector
@@ -39,6 +41,7 @@ from mnemosyne.sources.wikimedia_commons_photos import WikimediaCommonsPhotosCon
 #: exact connector per source id
 CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
+    "archives_paris": ArchivesParisConnector,
     "atlanta": ContentDmConnector,
     "auc": ContentDmConnector,
     "byu": ContentDmConnector,
@@ -65,6 +68,7 @@ CONNECTORS: dict[str, type[Connector]] = {
     "inaturalist": INaturalistConnector,
     "openverse": OpenverseConnector,
     "scdl": ContentDmConnector,
+    "science_museum_group": ScienceMuseumGroupConnector,
     "smithsonian": SmithsonianConnector,
     "texas_history": TexasHistoryConnector,
     "teva": ContentDmConnector,

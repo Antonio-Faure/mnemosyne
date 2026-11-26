@@ -1,0 +1,43 @@
+id: archives_paris
+name: Archives de Paris — fonds photographiques
+institution: Archives de Paris (Ville de Paris)
+country: FR
+protocol: rest
+base_url: https://archives.paris.fr
+auth: none
+license: varies
+rights: >-
+  Archives de Paris — crédit « Archives de Paris » (mention par notice, voir les
+  mentions légales) ; aucune licence ouverte, pas de réutilisation ni de
+  ré-hébergement des images ; Mnemosyne n'affiche que métadonnées + vignette
+  IIIF renvoyant vers le fournisseur
+rate_limit_per_s: 1.0
+priority: 45
+tags: [archive, france, paris, photographs, keyless, iiif]
+seeds:
+  - "quai de Grenelle"
+  - "Javel"
+  - "rue de la Convention"
+  - "15e arrondissement"
+notes: >-
+  Plateforme Arkothèque « ad75 » (millésime 8.97). Accès 100 % programmatique,
+  sans clé ni CAPTCHA : recherche JSON publique `GET /_recherche-api/search-simple/41`,
+  fiche JSON `GET /_recherche-api/render-fiche/<moteur>/<refUnique>/<mode>/detail`
+  (métadonnées en `data-champ`/`<dt><dd>` + `<img src>` portant l'id image), puis
+  images via le proxy IIIF Image API v2 niveau 2 `GET /_recherche-images/show/
+  <fiche>/image/<image>/<pos>/...` (`info.json`, `full/!800,800/0/default.jpg`,
+  `full/!400,400/0/default.jpg`). Les routes `/_arkotheque/*` et `/tags/*`
+  (interdites par robots.txt, protégées par CAPTCHA/login) ne sont JAMAIS
+  appelées ; aucune page HTML de front n'est scrapée. Périmètre vérifié en
+  direct (2026-11) : fonds photographiques de la Ville de Paris (~1860-1940,
+  surtout urbanisme). La recherche libre « Citroën » et « usine Citroen »
+  renvoie 0 → AUCUNE photographie étiquetée Citroën ; la source est donc câblée
+  au niveau TERRITOIRE (« quai de Grenelle », « Javel », « 15e arrondissement »
+  → photos de contexte, ex. 15e arr. ≈ 318 notices) et ne promet pas l'usine
+  Javel. Pas de licence par notice : crédit par défaut « Archives de Paris ».
+  Le champ `extra` fige les identifiants opaques d'Arkothèque pour ce millésime.
+extra:
+  moteur: arko_default_67d426d4c0eab
+  search_endpoint: /_recherche-api/search-simple/41
+  field_fulltext: arko_default_67d42ab10bf33
+  mode_restitution: arko_default_67d42cbbe4d8f
