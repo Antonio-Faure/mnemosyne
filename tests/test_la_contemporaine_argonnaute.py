@@ -233,10 +233,25 @@ async def test_query_relevance_orders_citroen_first() -> None:
     )
     assets = await connector.search("ouvrier Citroën Javel", limit=10)
     assert assets[0].source_asset_id == UUID_B  # Citroën Javel matches
-    assert {a.source_asset_id for a in assets} == {UUID_A, UUID_B}
+    assert {a.source_asset_id for a in assets} == {UUID_B}  # A is unrelated
 
 
 # -- robustness -----------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unrelated_query_drops_curated_seeds() -> None:
+    http = FakeHttp(
+        {
+            _api_url(ARK_A, UUID_A): _doc_a(),
+            _api_url(ARK_B, UUID_B): _doc_b(),
+        }
+    )
+    connector = LaContemporaineArgonnauteConnector(
+        _descriptor(seeds=[_seed(ARK_A, UUID_A), _seed(ARK_B, UUID_B)]), http
+    )
+    assets = await connector.search("agriculture moisson", limit=10)
+    assert assets == []
 
 
 @pytest.mark.asyncio

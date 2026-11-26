@@ -224,6 +224,11 @@ class LaContemporaineArgonnauteConnector(Connector):
             if asset is not None:
                 assets.append(asset)
 
+        # Curated seeds are a fallback, not a blanket result set: when the
+        # query carries usable tokens, drop seeds with no lexical relevance.
+        # Otherwise every catalog search would inherit these two photos.
+        if _tokens(query):
+            assets = [asset for asset in assets if self._relevance(asset, query) > 0]
         # Relevant photos first; a stable sort keeps the curated seed order
         # for ties (and when the query carries no usable token).
         assets.sort(key=lambda a: self._relevance(a, query), reverse=True)
