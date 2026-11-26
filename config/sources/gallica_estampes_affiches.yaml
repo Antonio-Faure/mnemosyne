@@ -1,0 +1,42 @@
+id: gallica_estampes_affiches
+name: Gallica (BnF) — Estampes et affiches (publicité industrielle)
+institution: Bibliothèque nationale de France
+country: FR
+protocol: sru
+base_url: https://gallica.bnf.fr/SRU
+auth: none
+license: varies
+rights: "BnF — check per record (public domain / licensed)"
+rate_limit_per_s: 0.5
+priority: 11
+tags: [national-library, france, iiif, keyless, estampe, affiche, poster, publicite, industrie, michelin]
+seeds:
+  - "Michelin Bibendum"
+  - "affiche pneumatique Michelin"
+  - "Bibendum O'Galop affiche"
+  - "affiche publicité pneu automobile"
+  - "usine Michelin Clermont-Ferrand"
+  - "affiche industrielle publicité"
+notes: >-
+  Source sœur ESTAMPE/AFFICHE-ONLY du connecteur `gallica` générique. Même API
+  100 % officielle et programmatique (SRU Dublin Core + images exposées via
+  IIIF, aucun scraping HTML), mais la requête SRU est restreinte aux types
+  documentaires « estampe » et « affiche » (`(dc.type all "estampe") or
+  (dc.type all "affiche")`, surchargeable via `extra.doc_types`) afin de ne plus
+  enfouir la production graphique sous les livres, la presse et les
+  photographies qui dominent le classement du connecteur générique. Périmètre
+  éditorial : affiches publicitaires de l'industrie française, en premier lieu
+  la publicité du pneu (Michelin/Bibendum, O'Galop, ~1900-1930) et les affiches
+  d'usines et de produits industriels conservées par la BnF (Département des
+  Estampes et de la photographie, arks `btv1b…`). Le connecteur normalise
+  chaque fiche vers un `Asset` (page_url Gallica + dérivés IIIF
+  image/thumbnail, iiif_id = ark) et expose le genre détecté dans
+  `extra.genre` + tag `genre:<nom>`. Constat 2026-11-08 : `https://gallica.bnf.fr/SRU`
+  renvoie HTTP 403 (page de blocage WAF Cloudflare) depuis l'IP d'exécution de
+  l'agent — même blocage infrastructurel que les sources `gallica` et
+  `gallica_agences_photos` (voir leurs descripteurs et docs/SOURCES.md). Le
+  connecteur est correct (API officielle) ; le 403 est IP/ASN, pas un bug de
+  chemin. Source laissée ACTIVE, à réévaluer depuis une IP de production
+  (ADR #15).
+extra:
+  doc_types: [estampe, affiche]
