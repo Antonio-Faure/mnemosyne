@@ -62,7 +62,7 @@ DS). C'est la vraie cible du « patrimoine photographique Citroën Heritage ».
    autorisation, AUCUNE licence libre ; boutique de reproductions payantes.
    => accès / lecture programmatique = AUTORISATION OBLIGATOIRE.
 
-7. PRISE DE CONTACT
+7. PRISE DE CONTACT (Terre Blanche)
 --------------------------------------------------------------------
    E-mail déjà envoyé le 2026-11-25 22:45
    à archives-avpcd@laventureassociation.com
@@ -71,19 +71,28 @@ DS). C'est la vraie cible du « patrimoine photographique Citroën Heritage ».
    => STATUT : EN ATTENTE. Ne PAS ajouter la source ni committer de connecteur
       « live » tant que la réponse n'est pas « oui ».
 
-8. ALTERNATIVE PUBLIQUE (source SÉPARÉE à router)
+8. ALTERNATIVE « PUBLIQUE » : La Contemporaine / L'Argonnaute
 --------------------------------------------------------------------
-   La Contemporaine / L'Argonnaute (bibliothèque publique, Univ. Paris Nanterre),
-   https://argonnaute.parisnanterre.fr — série numérisée « Paris. Usine Citroën.
-   Quai de Javel » avec ouvriers. Exemple :
-   ark:/14707/1qxwblpsgtjh « L'infirmerie. Infirmière pansant un ouvrier blessé ».
-   Publique → potentiellement addable comme source distincte.
+   La Contemporaine (bibliothèque publique, Univ. Paris Nanterre) — via sa
+   bibliothèque numérique L'Argonnaute — possède une série numérisée
+   « Paris. Usine Citroën. Quai de Javel » avec ouvriers
+   (ex. ark:/14707/1qxwblpsgtjh, « L'infirmerie. Infirmière pansant un blessé »).
+   MAIS ce n'est PAS librement moissonnable (vérifié 2026-11-26) :
+   - robots.txt bloque les crawlers IA (GPTBot, OAI-SearchBot, ChatGPT-User…)
+     et interdit /oai-pmh ; un endpoint OAI-PMH existe donc mais est Disallow ;
+   - CGU : simple licence de navigation, aucun droit d'exploitation
+     commerciale ; reproduction et « extraction substantielle » = accord
+     préalable et écrit obligatoire.
+   => Comme Terre Blanche : autorisation écrite nécessaire, pas d'ajout auto.
+      Contact : contact@lacontemporaine.fr (mentions légales).
 
 9. STATUT GLOBAL (à la clôture de la recherche)
 --------------------------------------------------------------------
-   Source identifiée et localisée, MAIS : aucun accès programmatique public +
-   tout sous droits → ajout au catalogue BLOQUÉ jusqu'à autorisation écrite.
-   Prise de contact en attente. Hand-off au codeur via la messagerie de tâche.
+   Source demandée (Terre Blanche) identifiée et localisée, MAIS aucun accès
+   programmatique public + tout sous droits → ajout au catalogue BLOQUÉ
+   jusqu'à autorisation écrite. Prise de contact en attente. L'alternative
+   « publique » (L'Argonnaute) est elle aussi soumise à autorisation.
+   Hand-off au codeur via la messagerie de tâche (descripteur NON committé).
 """
 
 # --- Identifiants techniques de la source ---------------------------------
@@ -213,13 +222,20 @@ CONNECTEUR_RECOMMANDE = {
     "images": "afficher métadonnées + lien ; ne pas copier le JPEG",
 }
 
-# Source publique distincte, potentiellement addable sans autorisation.
+# Source « publique » distincte — PAS librement moissonnable (voir section 8).
 ALTERNATIVE_PUBLIQUE = {
     "nom": "La Contemporaine / L'Argonnaute",
     "organisation": "Bibliothèque publique, Université Paris Nanterre",
     "url": "https://argonnaute.parisnanterre.fr",
+    "cgu_url": "https://argonnaute.parisnanterre.fr/page/"
+               "conditions-generales-d-utilisation",
+    "contact": "contact@lacontemporaine.fr",
+    "adresse": "184 cours Nicole Dreyfus, 92001 Nanterre",
     "serie": "Paris. Usine Citroën. Quai de Javel (ouvriers)",
     "exemple_ark": "ark:/14707/1qxwblpsgtjh",
     "exemple_titre": "L'infirmerie. Infirmière pansant un ouvrier blessé",
-    "statut": "Publique → à router comme source distincte (hors Terre Blanche)",
+    "oai_pmh": "endpoint existe mais robots.txt Disallow /oai-pmh",
+    "robots": "bloque GPTBot/OAI-SearchBot/ChatGPT-User ; IA interdite",
+    "cgu": "licence navigation seule ; reproduction = accord écrit préalable",
+    "statut": "PAS librement addable -> autorisation écrite nécessaire",
 }
