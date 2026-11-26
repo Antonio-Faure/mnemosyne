@@ -9,24 +9,62 @@ license: "Licence Ouverte / Open Licence (œuvres du domaine public) — sinon �
 rights: "La Contemporaine — L'Argonnaute : réutilisation selon la notice (champ « Conditions d'utilisation »), attribution requise"
 rate_limit_per_s: 1.0
 priority: 100
-tags: [france, labor-history, social-history, photography, keyless, no-iiif, nanterre]
+tags:
+  - france
+  - labor-history
+  - social-history
+  - strikes
+  - interwar
+  - 1930s
+  - photography
+  - keyless
+  - no-iiif
+  - nanterre
 # Découverte par liste curatée : l'API n'expose que le JSON PAR DOCUMENT
 # (arkName + uuid), il n'y a pas d'API de recherche. Chaque seed est une URL
 # notice/média ; le connecteur la résout via /visualizer/api et renvoie l'URL
 # publique de l'image (hotlink, aucune copie, aucun scraping HTML).
+# Les seeds ci-dessous couvrent les grèves et mouvements sociaux des années
+# 1930 en Île-de-France (fonds « France, entre-deux-guerres 1918-1939.
+# Photographies », cotes PH C4/PH C6) + une photo d'usine Citroën (Javel 1915).
 seeds:
+  # Grève des Bateliers à Conflans, 1936 — PH C4 03 (16)
   - "https://argonnaute.parisnanterre.fr/ark:/14707/4l6m9krbngfv/36b0a7b5-c8a7-4b1d-9ae4-6a685f4eac3d"
+  # Paris. Usine Citroën. Quai de Javel. L'infirmerie, 1915 — VAL 364/022 (Albums Valois)
   - "https://argonnaute.parisnanterre.fr/ark:/14707/1qxwblpsgtjh/4ab60e31-3cea-4730-a5cd-5472776ac18c"
+  # Grève des transports, janvier 1938 — PH C4 03 (23)
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/qt4hcw0f9bxk/200278be-a725-4b71-b677-e64d1ca00f00"
+  # Manifestation Front Populaire à la Nation, 1938 — PH C4 03 (02)
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/6vhzx0sg4r9c/e5c8c654-ce04-4403-befd-c812c38a9d99"
+  # Marcheurs de la faim arrivés à Paris, 1933 — PH C4 06 (11)
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/m8sk62047fqg/a89eb33f-07ab-4f47-b858-96a3d96af8d6"
+  # Grève de la Batellerie terminée, 1936 — PH C4 03 (15)
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/f28sr7k1vjt5/aa587925-2bad-4ab1-bd33-2ff33831037d"
+  # Grève des taxis, 1933 — PH C4 06 (05)
+  - "https://argonnaute.parisnanterre.fr/ark:/14707/1hbndgm24r75/c7102347-6987-4bae-8cf5-9e86a57d3450"
 extra:
   api_path: "/visualizer/api"
   ark_naan: "14707"
   attribution: "La Contemporaine / L'Argonnaute"
   access_model: "json_per_document (arkName + uuid) ; pas de IIIF ; pas d'API de recherche"
   coverage_note: >-
-    Photos ouvriers / grèves des années 1930 (fonds « France, entre-deux-guerres
-    1918-1939. Photographies ») ; fonds Citroën = Javel 1915 (Albums Valois) +
-    affiches ; pas de photo isolée « grève Citroën Javel 1936 ». Couverture
-    volontairement honnête pour le résolveur.
+    Fonds « France, entre-deux-guerres 1918-1939. Photographies » de La
+    Contemporaine (cotes PH C4/PH C6) : grèves et mouvements sociaux des années
+    1930 en Île-de-France — grève des transports (1938), grève des taxis (1933),
+    grève de la batellerie / des bateliers (1936), manifestation du Front
+    populaire (1938), marcheurs de la faim (1933) — plus une photo d'usine
+    Citroën (Javel, 1915, Albums Valois). Pas de photographie isolée « ouvriers
+    Citroën / grève Javel 1936 » : le fonds Citroën des années 1930 n'est pas
+    décrit par une légende de presse. Couverture volontairement honnête pour le
+    Résolveur : la valeur réelle est « grèves / histoire sociale 1930s en
+    Île-de-France », pas « usines Citroën ».
+  relevance_note: >-
+    Pas de recherche côté source : search() filtre la liste curatée par
+    recouvrement lexical (titre, description, mots-clés, cote, date), rendu
+    tolérant aux pluriels (grèves=grève) et à la décennie (une année 1930
+    vaut pour 1930-1939) afin que les phrases du Résolveur retrouvent les
+    photos de grèves 1930s. Sans aucun recouvrement, un seed est écarté
+    (aucune fuite vers des recherches hors-sujet).
 notes: >-
   API JSON PAR DOCUMENT uniquement : /visualizer/api?arkName=<ARK>&uuid=<UUID>
   renvoie media[0].record{title, referenceCode, description, period.boundaries,
@@ -40,4 +78,5 @@ notes: >-
   seuls /private/, /oai-pmh, /user/ sont interdits ; l'User-Agent descriptif du
   projet (mnemosyne) n'est pas dans la liste des robots bloqués. OAI-PMH interdit
   par robots.txt et trop pauvre (identifiants seuls). Licences : Licence Ouverte
-  (domaine public) sinon « tous droits réservés » — renvoyer à la notice.
+  (domaine public) sinon « tous droits réservés » — renvoyer à la notice. Les
+  seeds ont été vérifiés en direct (API /visualizer/api, HTTP 200, JSON conforme).

@@ -28,6 +28,16 @@ document ; l'image n'est **jamais téléchargée** (on renvoie son URL publique)
 ``/user/`` sont interdits) et l'User-Agent descriptif du projet n'est pas dans la
 liste des robots bloqués. ``GET /visualizer/api`` sans ``uuid`` renvoie ``400`` :
 l'API est strictement par document.
+
+Comme il n'y a pas de recherche côté source, ``search`` filtre la liste curatée
+par recouvrement lexical (titre, description, mots-clés, cote, date). Ce
+recouvrement est volontairement **tolérant aux flexions et à la datation** pour
+que les phrases du Résolveur (ex. « ouvriers Citroën grèves 1930 ») retrouvent
+les photos de grèves des années 1930 : les pluriels sont ramenés au singulier
+(« grèves » = « grève ») et une année à 4 chiffres de la requête vaut pour la
+décennie du document (« 1930 » retient 1933/1936/1938). On reste toutefois
+strict : sans **aucun** recouvrement, un seed est écarté (une recherche hors
+sujet, ex. « agriculture », n'hérite jamais des photos curatées).
 """
 
 from __future__ import annotations
@@ -45,6 +55,7 @@ from mnemosyne.util import parse_year
 log = get_logger("sources.la_contemporaine_argonnaute")
 
 _SEED_RE = re.compile(r"ark:/(?P<naan>\d+)/(?P<ark>[^/]+)/(?P<uuid>[0-9a-fA-F-]+)")
+_YEAR_RE = re.compile(r"^(?:18|19|20)\d{2}$")
 _DEFAULT_API_PATH = "/visualizer/api"
 #: bound the per-search work (one HTTP call per seed) so a large seed list can
 #: never blow through the engine's per-source timeout
@@ -58,11 +69,22 @@ def _strip_accents(text: str) -> str:
     )
 
 
+def _singularise(token: str) -> str:
+    """Crude, symmetric FR/EN singularisation: drop a trailing plural ``s``."""
+    if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
 def _tokens(text: str | None) -> set[str]:
     if not text:
         return set()
     normalised = _strip_accents(text.lower())
-    return {t for t in re.split(r"[^a-z0-9]+", normalised) if len(t) >= _MIN_TOKEN_LEN}
+    return {
+        _singularise(t)
+        for t in re.split(r"[^a-z0-9]+", normalised)
+        if len(t) >= _MIN_TOKEN_LEN
+    }
 
 
 def _first(value: Any) -> Any:
@@ -204,7 +226,16 @@ class LaContemporaineArgonnauteConnector(Connector):
                 ]
             )
         )
-        return len(wanted & haystack)
+        score = len(wanted & haystack)
+        # A 4-digit year in the query also matches any document of the same
+        # decade (e.g. "1930" -> photos dated 1933/1936/1938): the curated
+        # fonds is captioned by press legend, not by an exact day-level date.
+        if asset.year:
+            decade = asset.year // 10
+            query_years = {int(t) for t in wanted if _YEAR_RE.match(t)}
+            if any(year // 10 == decade for year in query_years):
+                score += 1
+        return score
 
     async def search(self, query: str, limit: int = 20, **filters: Any) -> list[Asset]:
         pairs: list[tuple[str, str]] = []
@@ -226,7 +257,7 @@ class LaContemporaineArgonnauteConnector(Connector):
 
         # Curated seeds are a fallback, not a blanket result set: when the
         # query carries usable tokens, drop seeds with no lexical relevance.
-        # Otherwise every catalog search would inherit these two photos.
+        # Otherwise every catalog search would inherit these curated photos.
         if _tokens(query):
             assets = [asset for asset in assets if self._relevance(asset, query) > 0]
         # Relevant photos first; a stable sort keeps the curated seed order
