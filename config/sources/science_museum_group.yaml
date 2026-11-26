@@ -1,0 +1,48 @@
+id: science_museum_group
+name: Science Museum Group Collection
+institution: Science Museum Group
+country: GB
+protocol: rest
+base_url: https://collection.sciencemuseumgroup.org.uk
+auth: none
+license: varies
+rights: >-
+  Per item. Each record's rights statement lives on its object page and its
+  IIIF manifest carries the holder in `attribution` (surfaced on every asset).
+  Many items are available for non-commercial use; the Daily Herald Archive
+  press photographs are typically under copyright / restricted. Always verify
+  the object page and its rights before any reuse — never assume a blanket
+  licence.
+rate_limit_per_s: 1.0
+priority: 55
+tags:
+  - museum
+  - united-kingdom
+  - science-and-technology
+  - photography
+  - daily-herald-archive
+  - press-photography
+  - motoring
+seeds:
+  - "Citroen Traction Avant"
+  - "Traction Avant motor car"
+  - "Daily Herald motor car"
+  - "motor car press photograph"
+  - "London motor show 1930s"
+notes: >-
+  Science Museum Group Collection (UK) — over 500k objects incl. the Daily
+  Herald photographic archive (press photography, 1910s-1960s). Two open,
+  programmatic endpoints are used instead of scraping: (1) JSON:API search
+  `GET /search?q=...`, which returns JSON **only** when the client sends
+  `Accept: application/json` (a browser gets HTML); (2) IIIF Presentation v2
+  manifest `GET /iiif/objects/{id}`, pure JSON with the full-resolution image
+  (`sequences[].canvases[].images[].resource['@id']`, IIIF Image API on
+  zoom.sciencemuseumgroup.org.uk), thumbnail, canvas dimensions, `attribution`
+  and an identifier. The connector searches, then enriches each hit from its
+  manifest; the raw provider shape never leaves the boundary. Relevance check
+  (tâche #546): `citroen traction avant` returns ≈135 Daily Herald Archive
+  photographs — the period (1930-1950) press coverage the catalogue lacked.
+extra:
+  search_path: /search
+  manifest_path: /iiif/objects/{id}
+  object_page: /objects/{id}
