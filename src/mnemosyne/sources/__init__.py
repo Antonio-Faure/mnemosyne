@@ -6,6 +6,7 @@ from mnemosyne.connectors.base import Connector
 from mnemosyne.http import HttpClient
 from mnemosyne.models import Protocol, SourceDescriptor
 from mnemosyne.sources.anmt import AnmtConnector
+from mnemosyne.sources.archives_paris import ArchivesParisConnector
 from mnemosyne.sources.cleveland import ClevelandConnector
 from mnemosyne.sources.contentdm import ContentDmConnector
 from mnemosyne.sources.cooper_hewitt import CooperHewittConnector
@@ -38,6 +39,7 @@ from mnemosyne.sources.wikimedia_commons_photos import WikimediaCommonsPhotosCon
 #: exact connector per source id
 CONNECTORS: dict[str, type[Connector]] = {
     "anmt": AnmtConnector,
+    "archives_paris": ArchivesParisConnector,
     "atlanta": ContentDmConnector,
     "auc": ContentDmConnector,
     "byu": ContentDmConnector,
