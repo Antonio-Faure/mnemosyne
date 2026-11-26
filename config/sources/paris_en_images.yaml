@@ -1,0 +1,50 @@
+id: paris_en_images
+name: Paris en Images — Paris Musées Collections (photothèque historique de la Ville de Paris)
+institution: Paris Musées (Ville de Paris)
+country: FR
+protocol: iiif
+base_url: https://apicollections.parismusees.paris.fr
+auth: none
+license: varies
+rights: >-
+  Paris Musées — droits par notice : certaines œuvres sont en CC0 / domaine
+  public, d'autres « tous droits réservés ». Mnemosyne n'affiche l'image PLEINE
+  RÉSOLUTION que pour une notice ouverte (CC0 / domaine public) avec crédit
+  « Paris Musées » ; pour une notice restreinte il ne renvoie que la vignette +
+  le lien vers la notice, jamais l'image pleine résolution.
+rate_limit_per_s: 1.0
+priority: 35
+tags: [museum, france, paris, photographs, phototheque, iiif, keyless]
+# Découverte par liste curatée : pas d'API de recherche publique (le GraphQL
+# /graphql exige un jeton par compte) et pas de Collection IIIF énumérable.
+# Chaque seed est une notice IIIF : "<visuel_id>|<droits>|<url_notice>"
+#   - visuel_id : identifiant interne du manifeste (/iiif/<visuel_id>/manifest)
+#   - droits    : "open" (CC0 / domaine public, vérifié sur la notice) ou
+#                 "restricted" ; vide => détection via le champ license du manifeste
+#   - url_notice: lien public vers la notice (provenance / droits)
+seeds:
+  - "320017427|open|https://www.parismuseescollections.paris.fr/fr/musee-carnavalet/oeuvres/escalier-du-tribunal-de-commerce"
+notes: >-
+  « Paris en Images » = les collections photographiques historiques de la Ville
+  de Paris, aujourd'hui publiées par Paris Musées. L'ancien domaine
+  parisenimages.fr redirige (301/302) vers paris.fr : plus de photothèque dédiée.
+  Les œuvres vivent sur parismuseescollections.paris.fr et leur API IIIF sur
+  apicollections.parismusees.paris.fr — le MÊME hôte que la source `paris_musees`
+  (connecteur générique IIIF mono-manifeste). `paris_en_images` est la variante
+  « photothèque historique » focalisée photos, à découverte par seeds (comme
+  gallica / gallica_agences_photos / gallica_estampes_affiches scindent une même
+  institution), qui exploite le manifeste IIIF v2 PAR ŒUVRE
+  (/iiif/<visuel_id>/manifest) et applique les droits par notice.
+  AUCUN scraping HTML (règle dure : la plateforme expose un accès programmatique
+  IIIF, cf. docs/SOURCES.md « Politique d'accès aux images ») : ni la page de
+  recherche rendue côté serveur (/fr/recherche), ni la notice ne sont scrapées.
+  Faute d'API de recherche publique, la découverte passe par une liste `seeds`
+  curatée (un visuel IIIF par œuvre pertinente). Aucune copie d'image : on
+  renvoie l'URL publique renvoyée par le manifeste. À compléter par l'agent
+  navigateur (seeds vérifiés : tribunal de commerce de Paris, île de la Cité,
+  usine de Javel, 15e arrondissement, années 1930).
+extra:
+  manifest_template: "https://apicollections.parismusees.paris.fr/iiif/{visuel_id}/manifest"
+  portal: "https://www.parismuseescollections.paris.fr"
+  access_model: "iiif_manifest_per_object_over_curated_seeds ; pas d'API de recherche publique ; aucun scraping HTML"
+  related_source: paris_musees
